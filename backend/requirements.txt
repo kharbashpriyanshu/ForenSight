@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+pytest
+httpx
+sqlalchemy
+python-multipart
+pillow
+numpy
+opencv-python-headless
+celery
+redis
+psycopg2-binary
+python-jose[cryptography]
+passlib[bcrypt]
+alembic
