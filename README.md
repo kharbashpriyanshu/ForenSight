@@ -1,9 +1,9 @@
-# ForenSight V1.0
+# ForenSight V2.0
 
 An explainable digital image forensic analysis platform combining classical image processing, computer vision, evidence provenance, and deterministic cross-modality correlation.
 
 ## 1. Project Overview
-ForenSight V1.0 is a modular digital image forensics platform designed to execute multi-modality analysis to uncover traces of tampering and processing history. It provides a unified, secure platform for multi-layered forensic analysis, establishing a strong evidentiary chain of custody by isolating original evidence from derived artifacts. It features a fully functional end-to-end forensic pipeline, explainable correlation engine, and a recruiter-ready dashboard.
+ForenSight V2.0 is a modular digital image forensics platform designed to execute multi-modality analysis to uncover traces of tampering and processing history. It features an async job architecture (Celery/Redis), proper case isolation (RBAC), and a dynamic React Router-driven workspace.
 
 ## Links
 - [Demo Workflow](docs/demo-workflow.md)

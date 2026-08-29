@@ -28,6 +28,13 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 
+from app.api.deps import get_current_user
+from app.models.domain import User
+
+def override_get_current_user():
+    return User(id=999, username="test_admin", role="ADMIN")
+
+app.dependency_overrides[get_current_user] = override_get_current_user
 @pytest.fixture
 def db_session():
     Base.metadata.create_all(bind=engine)

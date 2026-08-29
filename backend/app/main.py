@@ -8,6 +8,7 @@ from app.api.jobs import router as jobs_router
 from app.api.audit import router as audit_router
 from app.api.reports import router as reports_router
 from app.api.fusion import router as fusion_router
+from app.api.auth import router as auth_router
 from app.db.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
@@ -40,3 +41,4 @@ app.include_router(jobs_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(fusion_router, prefix="/api")
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])

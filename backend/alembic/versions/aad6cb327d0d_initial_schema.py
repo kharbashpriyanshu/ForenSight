@@ -1,8 +1,8 @@
-"""Initial V2 Schema
+"""Initial Schema
 
-Revision ID: 7d3b8e4278ab
+Revision ID: aad6cb327d0d
 Revises: 
-Create Date: 2026-08-30 00:32:37.699581
+Create Date: 2026-08-30 00:39:16.957063
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '7d3b8e4278ab'
+revision: str = 'aad6cb327d0d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -35,18 +35,6 @@ def upgrade() -> None:
     op.create_index(op.f('ix_audit_events_event_type'), 'audit_events', ['event_type'], unique=False)
     op.create_index(op.f('ix_audit_events_id'), 'audit_events', ['id'], unique=False)
     op.create_index(op.f('ix_audit_events_timestamp'), 'audit_events', ['timestamp'], unique=False)
-    op.create_table('investigation_cases',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('case_identifier', sa.String(), nullable=True),
-    sa.Column('title', sa.String(), nullable=True),
-    sa.Column('status', sa.String(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_investigation_cases_case_identifier'), 'investigation_cases', ['case_identifier'], unique=True)
-    op.create_index(op.f('ix_investigation_cases_id'), 'investigation_cases', ['id'], unique=False)
-    op.create_index(op.f('ix_investigation_cases_title'), 'investigation_cases', ['title'], unique=False)
     op.create_table('reports',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('report_identifier', sa.String(), nullable=True),
@@ -71,6 +59,20 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
+    op.create_table('investigation_cases',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('case_identifier', sa.String(), nullable=True),
+    sa.Column('title', sa.String(), nullable=True),
+    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_investigation_cases_case_identifier'), 'investigation_cases', ['case_identifier'], unique=True)
+    op.create_index(op.f('ix_investigation_cases_id'), 'investigation_cases', ['id'], unique=False)
+    op.create_index(op.f('ix_investigation_cases_title'), 'investigation_cases', ['title'], unique=False)
     op.create_table('evidence',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('evidence_identifier', sa.String(), nullable=True),
@@ -214,6 +216,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_evidence_id'), table_name='evidence')
     op.drop_index(op.f('ix_evidence_evidence_identifier'), table_name='evidence')
     op.drop_table('evidence')
+    op.drop_index(op.f('ix_investigation_cases_title'), table_name='investigation_cases')
+    op.drop_index(op.f('ix_investigation_cases_id'), table_name='investigation_cases')
+    op.drop_index(op.f('ix_investigation_cases_case_identifier'), table_name='investigation_cases')
+    op.drop_table('investigation_cases')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_table('users')
@@ -221,10 +227,6 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_reports_id'), table_name='reports')
     op.drop_index(op.f('ix_reports_case_id'), table_name='reports')
     op.drop_table('reports')
-    op.drop_index(op.f('ix_investigation_cases_title'), table_name='investigation_cases')
-    op.drop_index(op.f('ix_investigation_cases_id'), table_name='investigation_cases')
-    op.drop_index(op.f('ix_investigation_cases_case_identifier'), table_name='investigation_cases')
-    op.drop_table('investigation_cases')
     op.drop_index(op.f('ix_audit_events_timestamp'), table_name='audit_events')
     op.drop_index(op.f('ix_audit_events_id'), table_name='audit_events')
     op.drop_index(op.f('ix_audit_events_event_type'), table_name='audit_events')
