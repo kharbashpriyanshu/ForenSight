@@ -1,10 +1,14 @@
 
 
+import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+  const { logout } = useAuth();
   return (
     <div className="app-container">
       <aside className="sidebar">
@@ -42,6 +46,21 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
               A
             </div>
+            <button 
+              id="logout-button"
+              onClick={logout} 
+              style={{ 
+                background: 'transparent', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-muted)', 
+                padding: '0.35rem 0.75rem', 
+                borderRadius: '0.25rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              Logout
+            </button>
           </div>
         </header>
         <div className="page-container">

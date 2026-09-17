@@ -1,0 +1,19 @@
+The following screenshots could not be captured due to environment limitations (no browser interface available for automated capture):
+
+01-login.png
+02-cases.png
+03-evidence-library.png
+04-evidence-detail.png
+05-analysis-jobs.png
+06-metadata.png
+07-ela.png
+08-noise.png
+09-jpeg-dct.png
+10-copy-move.png
+11-observations.png
+12-correlation.png
+13-assessment.png
+14-timeline.png
+15-report.png
+16-system-health.png
+17-full-workflow.png

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { fetchApi } from '../api';
+
 
 const CaseOverview: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
@@ -9,7 +11,7 @@ const CaseOverview: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/cases/${caseId}/overview`)
+    fetchApi(`/cases/${caseId}/overview`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch case overview');
         return res.json();

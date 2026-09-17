@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { fetchApi } from '../api';
+
 
 export default function AuditTimeline() {
   const { caseId } = useParams<{ caseId: string }>();
@@ -9,7 +11,7 @@ export default function AuditTimeline() {
 
   useEffect(() => {
     if (caseId) {
-      fetch(`http://localhost:8000/api/cases/${caseId}/audit`)
+      fetchApi(`/cases/${caseId}/audit`)
         .then(res => res.json())
         .then(data => {
           setEvents(data);

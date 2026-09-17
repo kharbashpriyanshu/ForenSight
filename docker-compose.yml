@@ -21,20 +21,35 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   backend:
     build: 
       context: ./backend
     environment:
       - DATABASE_URL=postgresql://forensight:forensight_password@db:5432/forensight
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=false
       - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+      - SECRET_KEY=${SECRET_KEY:-a_very_secret_key_for_jwt_auth_replace_in_prod}
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./backend/storage:/app/storage
 
@@ -43,13 +58,18 @@ services:
       context: ./backend
     environment:
       - DATABASE_URL=postgresql://forensight:forensight_password@db:5432/forensight
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_TASK_ALWAYS_EAGER=false
       - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=production
+      - SECRET_KEY=${SECRET_KEY:-a_very_secret_key_for_jwt_auth_replace_in_prod}
     command: celery -A app.core.celery_app worker --loglevel=info
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./backend/storage:/app/storage
 

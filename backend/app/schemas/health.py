@@ -6,3 +6,6 @@ class HealthResponse(BaseModel):
     service: str
     database: Optional[str] = None
     redis: Optional[str] = None
+    celery_worker: Optional[str] = None
+    storage: Optional[str] = None
+    environment: Optional[str] = None

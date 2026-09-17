@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { fetchApi } from '../api';
+
 
 export default function ReportsInterface() {
   const { caseId } = useParams<{ caseId: string }>();
@@ -12,7 +14,7 @@ export default function ReportsInterface() {
   }, [caseId]);
 
   const fetchReports = () => {
-    fetch(`http://localhost:8000/api/cases/${caseId}/reports`)
+    fetchApi(`/cases/${caseId}/reports`)
       .then(res => res.json())
       .then(data => {
         setReports(data);
@@ -26,7 +28,7 @@ export default function ReportsInterface() {
 
   const handleGenerate = () => {
     setGenerating(true);
-    fetch(`http://localhost:8000/api/cases/${caseId}/reports`, { method: 'POST' })
+    fetchApi(`/cases/${caseId}/reports`, { method: 'POST' })
       .then(res => res.json())
       .then(() => {
         setGenerating(false);
@@ -75,7 +77,7 @@ export default function ReportsInterface() {
                 <td><span className="badge">{report.status}</span></td>
                 <td>
                   <a 
-                    href={`http://localhost:8000/api/reports/${report.report_identifier}/download`} 
+                    href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/reports/${report.report_identifier}/download`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="secondary-button"

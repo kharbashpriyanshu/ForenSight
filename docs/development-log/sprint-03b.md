@@ -46,4 +46,4 @@ The visualization heavily relies on extreme normalization ($M = 255 / max(E)$). 
 Confirmed NO machine learning models or copy-move detection modules were activated. No deterministic final classifier was built.
 
 ## 14. Recommended next step
-**Sprint 4: Evidence Fusion & Confidence Scoring**. Now that both Metadata observation and ELA indicator systems exist in parallel, they can be fused into an overarching probabilistic or heuristic risk classifier.
+**Sprint 4: Evidence Fusion & Qualitative Assessment**. Now that both Metadata observation and ELA indicator systems exist in parallel, they can be fused into an overarching qualitative assessment framework.

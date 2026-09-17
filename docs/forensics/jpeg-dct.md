@@ -56,4 +56,4 @@ DCT characteristics are heavily influenced by:
 - Legitimate image editing software saving standards.
 - Social media platform compression.
 
-ForenSight's JPEG/DCT module is strictly an **observational tool**. It measures the mathematical reality of the frequency domain but leaves the final forensic interpretation to the analyst or future probabilistic fusion models.
+ForenSight's JPEG/DCT module is strictly an **observational tool**. It measures the mathematical reality of the frequency domain but leaves the final forensic interpretation to the analyst or qualitative fusion models.

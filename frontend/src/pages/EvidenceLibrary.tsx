@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { fetchApi } from '../api';
+
 
 const EvidenceLibrary: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
@@ -10,7 +12,7 @@ const EvidenceLibrary: React.FC = () => {
 
   const fetchEvidence = () => {
     setLoading(true);
-    fetch(`http://localhost:8000/api/cases/${caseId}`)
+    fetchApi(`/cases/${caseId}`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch case evidence');
         return res.json();

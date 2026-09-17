@@ -53,4 +53,4 @@ Legitimate image properties that produce high residuals include:
 The Noise Residual engine is an **observational tool**. It measures the distribution of high-frequency energy. Forensic analysts look for *inconsistencies* in the residual map (e.g., a completely smooth patch in the middle of a noisy sensor background) rather than simply flagging "high noise" as fake.
 
 ## Future Forensic Interpretation
-In future sprints, this standalone statistical engine will be integrated into the Evidence Fusion platform. By comparing the local residual variance of suspected regions against the global background residual baseline, the system will probabilistically estimate the likelihood of localized tampering (such as splicing or region-smoothing).
+In future sprints, this standalone statistical engine will be integrated into the Evidence Fusion platform. By comparing the local residual variance of suspected regions against the global background residual baseline, the system will generate qualitative assessments of structural consistency, highlighting areas requiring further investigation.

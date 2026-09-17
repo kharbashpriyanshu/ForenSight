@@ -1,13 +1,10 @@
 from celery import Celery
-import os
-
-# Allow overriding for docker/production
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+from app.core.config import settings
 
 celery_app = Celery(
     "forensics_worker",
-    broker=redis_url,
-    backend=redis_url
+    broker=settings.CELERY_BROKER_URL,
+    backend=settings.CELERY_RESULT_BACKEND
 )
 
 celery_app.conf.update(
@@ -16,7 +13,8 @@ celery_app.conf.update(
     result_serializer="json",
     timezone="UTC",
     enable_utc=True,
-    task_track_started=True
+    task_track_started=True,
+    task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER
 )
 
 import app.workers.analysis_worker

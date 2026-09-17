@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { fetchApi } from '../api';
+
 
 export default function Dashboard() {
   const [cases, setCases] = useState<any[]>([]);
@@ -39,7 +41,7 @@ export default function Dashboard() {
 
 
   const fetchCases = () => {
-    fetch('http://localhost:8000/api/cases')
+    fetchApi('/cases')
       .then(res => res.json())
       .then(data => setCases(data))
       .catch(err => console.error("Error fetching cases", err));
@@ -72,22 +74,22 @@ export default function Dashboard() {
     };
 
     // Sequentially run all
-    await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/metadata`, setAnalyzing, setAnalysisResult, setAnalysisError);
-    await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/ela`, setAnalyzingELA, setElaResult, setElaError);
-    await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/noise`, setAnalyzingNoise, setNoiseResult, setNoiseError);
-    await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/jpeg-dct`, setAnalyzingDCT, setDctResult, setDctError);
-    await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/copy-move`, setAnalyzingCopyMove, setCopyMoveResult, setCopyMoveError);
+    await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/analysis/metadata`, setAnalyzing, setAnalysisResult, setAnalysisError);
+    await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/analysis/ela`, setAnalyzingELA, setElaResult, setElaError);
+    await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/analysis/noise`, setAnalyzingNoise, setNoiseResult, setNoiseError);
+    await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/analysis/jpeg-dct`, setAnalyzingDCT, setDctResult, setDctError);
+    await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/analysis/copy-move`, setAnalyzingCopyMove, setCopyMoveResult, setCopyMoveError);
     
     // Run Fusion
-    const normSuccess = await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/fusion/normalize`, setNormalizing, setFusionResult, setFusionError);
+    const normSuccess = await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/fusion/normalize`, setNormalizing, setFusionResult, setFusionError);
     if (normSuccess) {
-        await runSingle(`http://localhost:8000/api/evidence/${uploadResult.id}/fusion/correlate`, setCorrelating, setCorrelationResult, setCorrelationError);
+        await runSingle(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/evidence/${uploadResult.id}/fusion/correlate`, setCorrelating, setCorrelationResult, setCorrelationError);
     }
   };
 
   const handleCreateCase = () => {
     if (!newCaseTitle) return;
-    fetch('http://localhost:8000/api/cases', {
+    fetchApi('/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: newCaseTitle })
@@ -125,7 +127,7 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('file', file);
 
-    fetch(`http://localhost:8000/api/cases/${activeCase.id}/evidence`, {
+    fetchApi(`/cases/${activeCase.id}/evidence`, {
       method: 'POST',
       body: formData
     })
@@ -147,7 +149,7 @@ export default function Dashboard() {
     setAnalyzing(true);
     setAnalysisError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/metadata`, {
+    fetchApi(`/evidence/${uploadResult.id}/analysis/metadata`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -167,7 +169,7 @@ export default function Dashboard() {
     setAnalyzingELA(true);
     setElaError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/ela`, {
+    fetchApi(`/evidence/${uploadResult.id}/analysis/ela`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -187,7 +189,7 @@ export default function Dashboard() {
     setAnalyzingNoise(true);
     setNoiseError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/noise`, {
+    fetchApi(`/evidence/${uploadResult.id}/analysis/noise`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -207,7 +209,7 @@ export default function Dashboard() {
     setAnalyzingDCT(true);
     setDctError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/jpeg-dct`, {
+    fetchApi(`/evidence/${uploadResult.id}/analysis/jpeg-dct`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -227,7 +229,7 @@ export default function Dashboard() {
     setAnalyzingCopyMove(true);
     setCopyMoveError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/analysis/copy-move`, {
+    fetchApi(`/evidence/${uploadResult.id}/analysis/copy-move`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -247,7 +249,7 @@ export default function Dashboard() {
     setNormalizing(true);
     setFusionError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/fusion/normalize`, {
+    fetchApi(`/evidence/${uploadResult.id}/fusion/normalize`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -267,7 +269,7 @@ export default function Dashboard() {
     setCorrelating(true);
     setCorrelationError(false);
 
-    fetch(`http://localhost:8000/api/evidence/${uploadResult.id}/fusion/correlate`, {
+    fetchApi(`/evidence/${uploadResult.id}/fusion/correlate`, {
       method: 'POST'
     })
       .then(async (res) => {
@@ -645,7 +647,7 @@ export default function Dashboard() {
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Normalized ELA Map</div>
                             <img 
-                                src={`http://localhost:8000/api/artifacts/${elaResult.structured_findings.artifacts.ela_map}`} 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${elaResult.structured_findings.artifacts.ela_map}`} 
                                 alt="ELA Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
@@ -733,7 +735,7 @@ export default function Dashboard() {
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Global Noise Residual Map</div>
                             <img 
-                                src={`http://localhost:8000/api/artifacts/${noiseResult.structured_findings.artifacts.noise_residual_map}`} 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${noiseResult.structured_findings.artifacts.noise_residual_map}`} 
                                 alt="Global Residual Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
@@ -741,7 +743,7 @@ export default function Dashboard() {
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Local Residual Magnitude Map</div>
                             <img 
-                                src={`http://localhost:8000/api/artifacts/${noiseResult.structured_findings.artifacts.noise_local_map}`} 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${noiseResult.structured_findings.artifacts.noise_local_map}`} 
                                 alt="Local Residual Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
@@ -852,7 +854,7 @@ export default function Dashboard() {
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Global Average DCT Energy Map</div>
                             <img 
-                                src={`http://localhost:8000/api/artifacts/${dctResult.structured_findings.artifacts.dct_energy_map}`} 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${dctResult.structured_findings.artifacts.dct_energy_map}`} 
                                 alt="Global DCT Energy Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
@@ -975,7 +977,7 @@ export default function Dashboard() {
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Candidate Copy-Move Correspondences</div>
                             <img 
-                                src={`http://localhost:8000/api/artifacts/${copyMoveResult.structured_findings.artifacts.copymove_map}`} 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${copyMoveResult.structured_findings.artifacts.copymove_map}`} 
                                 alt="Candidate Copy-Move Correspondences" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />

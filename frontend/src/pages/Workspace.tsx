@@ -1,8 +1,10 @@
 import React from 'react';
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useParams, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const Workspace: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
+  const { logout } = useAuth();
 
   return (
     <div className="app-container">
@@ -36,14 +38,35 @@ const Workspace: React.FC = () => {
       
       <main className="main-content">
         <header className="topbar">
-          <div style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-            Case: {caseId}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <Link to="/cases" style={{ color: 'var(--primary-color)', fontSize: '0.9rem', textDecoration: 'none' }}>
+              &larr; All Cases
+            </Link>
+            <span style={{ color: 'var(--border-color)' }}>|</span>
+            <div style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
+              Case: {caseId}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span className="status-badge">System Healthy</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
               I
             </div>
+            <button 
+              id="logout-button"
+              onClick={logout} 
+              style={{ 
+                background: 'transparent', 
+                border: '1px solid var(--border-color)', 
+                color: 'var(--text-muted)', 
+                padding: '0.35rem 0.75rem', 
+                borderRadius: '0.25rem',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              Logout
+            </button>
           </div>
         </header>
         <div className="page-container">

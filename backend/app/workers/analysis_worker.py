@@ -13,7 +13,16 @@ import traceback
 
 @celery_app.task(bind=True, name="run_analysis")
 def run_analysis_task(self, job_id: int):
-    db: Session = SessionLocal()
+    from app.main import app
+    from app.db.database import get_db
+    
+    if get_db in app.dependency_overrides:
+        override = app.dependency_overrides[get_db]
+        gen = override()
+        db: Session = next(gen) if hasattr(gen, "__next__") else gen
+    else:
+        db = SessionLocal()
+
     try:
         job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
         if not job:
@@ -31,37 +40,27 @@ def run_analysis_task(self, job_id: int):
             AuditService.log_event(db, case.case_identifier, "ANALYSIS_STARTED", evidence.id, metadata={"analysis_type": analysis_type, "job_id": job.job_identifier})
         
         # Dispatch to engine
-        result_data = None
-        
         try:
-            if analysis_type == "metadata":
-                analyzer = MetadataAnalyzer()
-                result_data = analyzer.analyze(evidence.stored_path)
-            elif analysis_type == "ela":
-                analyzer = ELAAnalyzer()
-                result_data = analyzer.analyze(evidence.stored_path)
-            elif analysis_type == "noise":
-                analyzer = NoiseAnalyzer()
-                result_data = analyzer.analyze(evidence.stored_path)
-            elif analysis_type == "jpeg-dct":
-                analyzer = JPEGDCTAnalyzer()
-                result_data = analyzer.analyze(evidence.stored_path)
-            elif analysis_type == "copy-move":
-                analyzer = CopyMoveAnalyzer()
-                result_data = analyzer.analyze(evidence.stored_path)
+            analysis = None
+            if analysis_type in ("metadata",):
+                analysis = MetadataAnalyzer.run_analysis(db, evidence.id)
+            elif analysis_type in ("ela",):
+                analysis = ELAAnalyzer.run_analysis(db, evidence.id)
+            elif analysis_type in ("noise",):
+                analysis = NoiseAnalyzer.run_analysis(db, evidence.id)
+            elif analysis_type in ("jpeg-dct", "jpeg_dct"):
+                analysis = JPEGDCTAnalyzer.run_analysis(db, evidence.id)
+            elif analysis_type in ("copy-move", "copy_move"):
+                analysis = CopyMoveAnalyzer.run_analysis(db, evidence.id)
             else:
                 raise ValueError(f"Unknown analysis type {analysis_type}")
                 
-            # Analysis successful
-            analysis = db.query(Analysis).filter(Analysis.id == job.analysis_id).first()
             if analysis:
-                analysis.status = "completed"
-                analysis.completed_at = datetime.datetime.utcnow()
-                analysis.structured_findings = result_data.get("findings", {})
-                analysis.summary = result_data.get("summary", "")
+                job.analysis_id = analysis.id
             
             job.status = "COMPLETED"
             job.completed_at = datetime.datetime.utcnow()
+            job.safe_error_message = None
             db.commit()
             if case:
                 AuditService.log_event(db, case.case_identifier, "ANALYSIS_COMPLETED", evidence.id, metadata={"analysis_type": analysis_type, "job_id": job.job_identifier})
@@ -69,20 +68,29 @@ def run_analysis_task(self, job_id: int):
             
         except Exception as e:
             # Forensic failure (e.g. invalid format)
+            # Sanitize error message: extract concise reason without stacktraces or internal paths
+            raw_err = str(e).strip()
+            clean_err = raw_err.split("failed:", 1)[-1].strip() if "failed:" in raw_err.lower() else raw_err
+
             job.status = "FAILED"
             job.completed_at = datetime.datetime.utcnow()
-            job.safe_error_message = str(e)
-            if case:
-                AuditService.log_event(db, case.case_identifier, "ANALYSIS_FAILED", evidence.id, metadata={"analysis_type": analysis_type, "job_id": job.job_identifier, "error": str(e)})
+            job.safe_error_message = clean_err
             
-            analysis = db.query(Analysis).filter(Analysis.id == job.analysis_id).first()
-            if analysis:
-                analysis.status = "failed"
-                analysis.completed_at = datetime.datetime.utcnow()
-                analysis.summary = str(e)
-                
+            # If an analysis was created and failed, associate it
+            latest_analysis = (
+                db.query(Analysis)
+                .filter(Analysis.evidence_id == evidence.id, Analysis.analysis_type.ilike(analysis_type))
+                .order_by(Analysis.id.desc())
+                .first()
+            )
+            if latest_analysis and not job.analysis_id:
+                job.analysis_id = latest_analysis.id
+
             db.commit()
-            return {"status": "failed", "error": str(e)}
+            if case:
+                AuditService.log_event(db, case.case_identifier, "ANALYSIS_FAILED", evidence.id, metadata={"analysis_type": analysis_type, "job_id": job.job_identifier, "error": clean_err})
+            
+            return {"status": "failed", "error": clean_err}
 
     except Exception as e:
         db.rollback()

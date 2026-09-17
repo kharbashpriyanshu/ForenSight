@@ -1,5 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Workspace from './pages/Workspace';
 import CaseOverview from './pages/CaseOverview';
@@ -12,25 +15,28 @@ import CasesList from './pages/CasesList';
 
 function App() {
   return (
-    <BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/legacy" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Navigate to="/cases" replace />} />
         
-        <Route path="/legacy" element={<AppLayout><Dashboard /></AppLayout>} />
+        <Route path="/legacy" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
 
-        <Route path="/cases" element={<AppLayout><CasesList /></AppLayout>} />
+        <Route path="/cases" element={<ProtectedRoute><AppLayout><CasesList /></AppLayout></ProtectedRoute>} />
 
-        <Route path="/cases/:caseId" element={<Workspace />}>
+        <Route path="/cases/:caseId" element={<ProtectedRoute><Workspace /></ProtectedRoute>}>
           <Route index element={<CaseOverview />} />
           <Route path="evidence" element={<EvidenceLibrary />} />
           <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
-          <Route path="timeline" element={<AuditTimeline />} />
+          <Route path="audit" element={<AuditTimeline />} />
           <Route path="findings" element={<ReportsInterface />} />
           <Route path="reports" element={<ReportsInterface />} />
         </Route>
-        <Route path="/system" element={<SystemHealth />} />
+        <Route path="/system" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
+    </AuthProvider>
   );
 }
 

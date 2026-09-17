@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { fetchApi } from '../api';
+
 
 export default function CasesList() {
   const [cases, setCases] = useState<any[]>([]);
@@ -7,7 +9,7 @@ export default function CasesList() {
   const navigate = useNavigate();
 
   const fetchCases = () => {
-    fetch('http://localhost:8000/api/cases')
+    fetchApi('/cases')
       .then(res => res.json())
       .then(data => setCases(data))
       .catch(err => console.error("Error fetching cases", err));
@@ -20,7 +22,7 @@ export default function CasesList() {
   const handleCreateCase = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCaseTitle) return;
-    fetch('http://localhost:8000/api/cases', {
+    fetchApi('/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: newCaseTitle })

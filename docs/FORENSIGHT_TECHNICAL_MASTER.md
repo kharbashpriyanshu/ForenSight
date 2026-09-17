@@ -88,6 +88,20 @@ Dashboard
 - **Communication:** Connects the Frontend to the Backend core.
 - **Implemented in:** `backend/app/api/`
 
+### Asynchronous Worker Layer (Celery)
+- **What it does:** Executes CPU-bound forensic algorithms (SIFT, RANSAC, DCT, Noise) off the main web thread with a dual-mode architecture:
+  - **Production Mode:** Consumes jobs asynchronously from a Redis broker.
+  - **Local Development Fallback:** Executes eagerly in-process (`CELERY_TASK_ALWAYS_EAGER=true`) when Redis is absent.
+- **Why it exists:** To prevent HTTP connection timeouts and worker pool starvation on long-running image processing operations.
+- **Communication:** Triggered by `app.api.jobs`, managed by `app.core.celery_app`, executed in `app.workers.analysis_worker`.
+- **Implemented in:** `backend/app/core/celery_app.py`, `backend/app/workers/analysis_worker.py`
+
+### Protected Artifact Serving Layer
+- **What it does:** Serves forensic image artifacts (ELA error maps, Copy-Move match visualizations) with mandatory JWT Bearer authentication, investigator case isolation, path traversal mitigation, and correct MIME headers.
+- **Why it exists:** Binary forensic artifacts are sensitive evidence derivatives that must never be exposed via unauthenticated public static routes or accessible across investigative case boundaries.
+- **Communication:** Accessed by the frontend via `AuthenticatedImage` component using blob fetches.
+- **Implemented in:** `backend/app/api/analysis.py` (`/api/artifacts/{artifact_path:path}`), `frontend/src/components/evidence/AuthenticatedImage.tsx`
+
 ==================================================
 ## 4. TECHNOLOGY MASTER GUIDE
 ==================================================

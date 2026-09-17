@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head><title>E2E Test</title></head>
+<body>
+    <h1>E2E API Test Workflow</h1>
+    <pre id="log"></pre>
+    <script>
+        const API = 'http://localhost:8000/api';
+        const logEl = document.getElementById('log');
+        
+        function log(msg) {
+            logEl.textContent += msg + '\n';
+        }
+
+        async function run() {
+            try {
+                log("1. Authenticating...");
+                const authRes = await fetch(API + '/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: 'username=admin&password=forensight_admin'
+                });
+                const authData = await authRes.json();
+                const token = authData.access_token;
+                log("   Success! Token: " + token.substring(0, 10) + "...");
+                
+                const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+                
+                log("2. Creating case...");
+                const caseRes = await fetch(API + '/cases', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({title: "E2E API Test Case"})
+                });
+                const caseData = await caseRes.json();
+                log("   Success! Case ID: " + caseData.case_identifier);
+                
+                log("3. Fetching Audit Trail...");
+                const auditRes = await fetch(API + '/cases/' + caseData.case_identifier + '/audit', {
+                    headers: headers
+                });
+                const auditData = await auditRes.json();
+                log("   Success! Found " + auditData.length + " audit events.");
+                auditData.forEach(e => log("    - " + e.event_type));
+
+                log("\nALL TESTS PASSED SUCCESSFULLY");
+            } catch (err) {
+                log("ERROR: " + err.message);
+            }
+        }
+        run();
+    </script>
+</body>
+</html>

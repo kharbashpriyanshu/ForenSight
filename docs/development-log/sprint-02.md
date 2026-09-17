@@ -42,4 +42,4 @@ GPS data and exact capture coordinates are highly sensitive.
 - Faking deep, nested EXIF structures in tests without a dedicated library (like `piexif`) limits our ability to test highly complex malformed EXIF trees dynamically.
 
 ## 12. Future connection to evidence fusion
-These metadata indicators (e.g., software presence, missing EXIF) will eventually feed into the Evidence Fusion engine. The fusion engine will combine this metadata layer with Classical DIP results (Sprint 3) and ML classifiers to generate a final, holistic confidence score.
+These metadata indicators (e.g., software presence, missing EXIF) will eventually feed into the Evidence Fusion engine. The fusion engine will combine this metadata layer with Classical DIP results (Sprint 3) to generate a final, holistic qualitative assessment.

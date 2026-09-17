@@ -52,8 +52,8 @@ class ReportService:
             for ass in assessments:
                 report_data["assessments"].append({
                     "evidence_id": ev.id,
-                    "conclusion": ass.conclusion,
-                    "explanation": ass.explanation,
+                    "level": ass.level,
+                    "summary": ass.summary,
                     "rule_version": ass.rule_version
                 })
 
