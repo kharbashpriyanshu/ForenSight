@@ -10,6 +10,7 @@ import EvidenceLibrary from './pages/EvidenceLibrary';
 import EvidenceDetail from './pages/EvidenceDetail';
 import AuditTimeline from './pages/AuditTimeline';
 import ReportsInterface from './pages/ReportsInterface';
+import EvidenceComparison from './pages/EvidenceComparison';
 import SystemHealth from './pages/SystemHealth';
 import CasesList from './pages/CasesList';
 
@@ -29,6 +30,7 @@ function App() {
           <Route index element={<CaseOverview />} />
           <Route path="evidence" element={<EvidenceLibrary />} />
           <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
+          <Route path="compare" element={<EvidenceComparison />} />
           <Route path="audit" element={<AuditTimeline />} />
           <Route path="findings" element={<ReportsInterface />} />
           <Route path="reports" element={<ReportsInterface />} />

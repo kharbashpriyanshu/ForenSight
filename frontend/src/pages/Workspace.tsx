@@ -27,6 +27,9 @@ const Workspace: React.FC = () => {
           <NavLink to={`/cases/${caseId}/evidence`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             Evidence Library
           </NavLink>
+          <NavLink to={`/cases/${caseId}/compare`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            Compare Evidence
+          </NavLink>
           <NavLink to={`/cases/${caseId}/reports`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             Reports
           </NavLink>
@@ -43,15 +46,26 @@ const Workspace: React.FC = () => {
               &larr; All Cases
             </Link>
             <span style={{ color: 'var(--border-color)' }}>|</span>
-            <div style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-              Case: {caseId}
+            <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.9rem' }}>
+              Case: <code style={{ color: 'var(--primary-color)' }}>{caseId}</code>
             </div>
+            <span style={{ 
+              fontSize: '0.7rem', 
+              fontWeight: 700, 
+              background: 'rgba(245, 158, 11, 0.15)', 
+              color: '#f59e0b', 
+              border: '1px solid rgba(245, 158, 11, 0.3)', 
+              padding: '0.15rem 0.5rem', 
+              borderRadius: '9999px',
+              letterSpacing: '0.05em'
+            }}>
+              DEMO ENVIRONMENT
+            </span>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span className="status-badge">System Healthy</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-              I
-            </div>
+            <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              RBAC Guard Active
+            </span>
             <button 
               id="logout-button"
               onClick={logout} 

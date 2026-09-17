@@ -114,16 +114,21 @@ npm install
 npm run dev
 ```
 
-## 10. Demo Workflow
-See [docs/demo-workflow.md](docs/demo-workflow.md) for a comprehensive 3-5 minute demonstration script.
+## 10. Documentation Index
+- [Architecture & Trust Boundaries](docs/architecture.md)
+- [Deployment Guide (Local & Docker Compose)](docs/DEPLOYMENT.md)
+- [CI/CD Pipeline Specification](docs/CI_CD.md)
+- [Security Architecture & RBAC Policy](docs/SECURITY.md)
+- [Demonstration Workflow Script](docs/demo-workflow.md)
+- [Technical Master Reference](docs/FORENSIGHT_TECHNICAL_MASTER.md)
 
 ## 11. Testing & Verification Summary
 The system is validated via automated test suites and static analysis:
-- **Backend Tests:** 66 Passing (including multi-user security, JWT auth, RBAC isolation, async job lifecycle, error sanitization, and protected artifact serving)
+- **Backend Tests:** 67 Passing (including multi-user security, JWT auth, RBAC isolation, async job lifecycle, error sanitization, readiness probes, and protected artifact serving)
 - **TypeScript:** 0 Errors (`tsc --noEmit`)
 - **Frontend Production Build:** PASS (`npm run build`)
 - **Scientific Freeze:** 100% Preserved (no algorithm or heuristic changes to the 5 frozen engines or Fusion 7B-v1)
-- **Environment Status:** Verified locally on Windows host. Container runtime (Docker, Redis, PostgreSQL) is statically validated and marked `NOT VERIFIED — ENVIRONMENT BLOCKED` due to host tooling availability.
+- **Environment Status:** Verified locally on Windows host. Container runtime (Docker, Redis, PostgreSQL) is validated via CI/CD service containers and marked `NOT VERIFIED — ENVIRONMENT BLOCKED` locally due to host tooling availability.
 
 ## 12. Screenshots
 Detailed interface screenshots are available in the [docs/screenshots](docs/screenshots) directory.

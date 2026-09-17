@@ -32,6 +32,7 @@ async def add_security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block" # Legacy/compatibility defense
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
 
 app.include_router(health_router, prefix="/api")

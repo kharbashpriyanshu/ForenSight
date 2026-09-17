@@ -5,8 +5,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DATABASE_URL: str = "sqlite:///./forensight.db"
     STORAGE_DIR: str = "storage/evidence"
+    STORAGE_PATH: str = "storage/evidence"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
     BACKEND_CORS_ORIGINS: str = "*"
+    REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
     CELERY_TASK_ALWAYS_EAGER: bool = True

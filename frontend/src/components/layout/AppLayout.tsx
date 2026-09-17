@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -20,32 +18,33 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
         <nav className="sidebar-nav">
           <div className="nav-item active">
-            Dashboard
-          </div>
-          <div className="nav-item">
-            New Case
-          </div>
-          <div className="nav-item">
-            Evidence Library
-          </div>
-          <div className="nav-item">
-            Reports
-          </div>
-          <div className="nav-item">
-            Settings
+            Cases Overview
           </div>
         </nav>
       </aside>
       <main className="main-content">
         <header className="topbar">
-          <div style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
-            ForenSight V1.0
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem' }}>
+              ForenSight V2.1
+            </div>
+            <span style={{ 
+              fontSize: '0.7rem', 
+              fontWeight: 700, 
+              background: 'rgba(245, 158, 11, 0.15)', 
+              color: '#f59e0b', 
+              border: '1px solid rgba(245, 158, 11, 0.3)', 
+              padding: '0.2rem 0.6rem', 
+              borderRadius: '9999px',
+              letterSpacing: '0.05em'
+            }}>
+              DEMO ENVIRONMENT
+            </span>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span className="status-badge">System Healthy</span>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-              A
-            </div>
+            <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              Multi-User RBAC Active
+            </span>
             <button 
               id="logout-button"
               onClick={logout} 

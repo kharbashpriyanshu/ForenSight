@@ -29,7 +29,7 @@ def run_analysis_task(self, job_id: int):
             return {"status": "error", "message": "Job not found"}
         
         job.status = "RUNNING"
-        job.started_at = datetime.datetime.utcnow()
+        job.started_at = datetime.datetime.now(datetime.timezone.utc)
         db.commit()
 
         evidence = db.query(Evidence).filter(Evidence.id == job.evidence_id).first()
@@ -59,7 +59,7 @@ def run_analysis_task(self, job_id: int):
                 job.analysis_id = analysis.id
             
             job.status = "COMPLETED"
-            job.completed_at = datetime.datetime.utcnow()
+            job.completed_at = datetime.datetime.now(datetime.timezone.utc)
             job.safe_error_message = None
             db.commit()
             if case:
@@ -73,7 +73,7 @@ def run_analysis_task(self, job_id: int):
             clean_err = raw_err.split("failed:", 1)[-1].strip() if "failed:" in raw_err.lower() else raw_err
 
             job.status = "FAILED"
-            job.completed_at = datetime.datetime.utcnow()
+            job.completed_at = datetime.datetime.now(datetime.timezone.utc)
             job.safe_error_message = clean_err
             
             # If an analysis was created and failed, associate it

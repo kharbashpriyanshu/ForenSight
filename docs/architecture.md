@@ -11,6 +11,56 @@ ForenSight follows a modern decoupled architecture, separating the client-side p
    - **Local Development Fallback**: Eager in-process task execution (`CELERY_TASK_ALWAYS_EAGER=true`) when Redis broker is absent.
 4. **Database**: SQLAlchemy ORM with support for PostgreSQL (production containerized) and SQLite (local development).
 
+### Architecture & Trust Boundaries Diagram
+
+```text
+                    ┌───────────────────────────┐
+                    │          Browser          │
+                    │   React 19 / Vite SPA     │
+                    └─────────────┬─────────────┘
+                                  │
+                                  │ HTTPS / REST (Bearer JWT Auth)
+                                  ▼
+═══════════════════════════ TRUST BOUNDARY ═══════════════════════════
+                    ┌───────────────────────────┐
+                    │          FastAPI          │
+                    │   API Gateway & Auth / RBAC│
+                    └──────┬──────────┬─────────┘
+                           │          │
+           ┌───────────────┘          └────────────────┐
+           ▼                                           ▼
+┌──────────────────────┐                    ┌─────────────────────┐
+│      PostgreSQL      │                    │     Redis 7.0       │
+│ Relational Database  │                    │ Message Broker /    │
+│ (Cases/Evidence/Jobs)│                    │ Result Backend      │
+└──────────▲───────────┘                    └──────────┬──────────┘
+           │                                           │
+           │                                           ▼
+           │                                ┌─────────────────────┐
+           │                                │    Celery Worker    │
+           │                                │ Background Consumer │
+           │                                └──────────┬──────────┘
+           │                                           │
+           │         ┌─────────────────────────────────┘
+           │         ▼
+┌──────────┴───────────────────┐            ┌─────────────────────┐
+│   Frozen Forensic Engines    │───────────►│  Artifact Storage   │
+│ (Metadata, ELA, Noise, DCT,  │  Persists  │  (storage/evidence, │
+│  Copy-Move, Fusion 7B-v1)    │  Artifacts │   Protected Maps)   │
+└──────────────────────────────┘            └─────────────────────┘
+```
+
+### Trust Boundary Analysis
+1. **Public Boundary (Browser &rarr; API Gateway)**:
+   - All inbound requests must cross the authentication gateway. Unauthenticated requests are rejected (`401 Unauthorized`).
+   - Role-Based Access Control (RBAC) restricts investigators strictly to cases they own (`403 Forbidden` on cross-case).
+   - Artifact downloads (`GET /api/artifacts/{path}`) enforce token validation, case ownership verification, and directory traversal checks.
+2. **Internal Worker Boundary (FastAPI &rarr; Redis &rarr; Celery)**:
+   - Celery tasks carry minimal parameter payloads (`job_id`, `evidence_id`, `analysis_type`) rather than arbitrary code execution payloads.
+   - Workers query the database directly using scoped sessions.
+3. **Storage Boundary (Filesystem Isolation)**:
+   - Raw evidence files and generated artifacts are stored with strict path sanitization. No client-supplied path can escape `storage/evidence`.
+
 ## Backend/Frontend Separation
 
 The system maintains a strict separation of concerns:
