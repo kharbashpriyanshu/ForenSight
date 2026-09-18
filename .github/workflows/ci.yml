@@ -32,6 +32,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Verify Scientific Core Freeze Invariant
+        run: |
+          cd backend
+          python scripts/verify_scientific_freeze.py
+
+      - name: Generate and Verify Forensic Test Fixtures
+        run: |
+          cd backend
+          python tests/fixtures/generate_fixtures.py
+
       - name: Run Complete Backend Pytest Suite
         run: |
           cd backend

@@ -8,7 +8,13 @@ from app.api.jobs import router as jobs_router
 from app.api.audit import router as audit_router
 from app.api.reports import router as reports_router
 from app.api.fusion import router as fusion_router
+from app.api.correlation import router as correlation_router
 from app.api.auth import router as auth_router
+from app.api.batch import router as batch_router
+from app.api.cross_correlation import router as cross_correlation_router
+from app.api.heatmap import router as heatmap_router
+from app.api.assistant import router as assistant_router
+from app.api.custody import router as custody_router
 from app.db.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
@@ -42,4 +48,10 @@ app.include_router(jobs_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(fusion_router, prefix="/api")
+app.include_router(correlation_router, prefix="/api")
+app.include_router(batch_router, prefix="/api")
+app.include_router(cross_correlation_router, prefix="/api")
+app.include_router(heatmap_router, prefix="/api")
+app.include_router(assistant_router, prefix="/api")
+app.include_router(custody_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])

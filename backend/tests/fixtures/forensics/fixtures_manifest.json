@@ -1,0 +1,182 @@
+{
+  "clean_reference.jpg": {
+    "fixture_id": "FIX-001",
+    "format": "JPEG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "PIL RGB canvas single-pass compression at Q=95",
+    "ground_truth": "CLEAN_REFERENCE",
+    "known_limitations": "Synthetic flat gradient; baseline for unmanipulated noise/compression.",
+    "sha256": "15612a05ccdd5c1df1cb98a922a06dc7eebfba3a9bf0bfb994fd39db1c35a0d8",
+    "file_size_bytes": 2074
+  },
+  "clean_reference.png": {
+    "fixture_id": "FIX-002",
+    "format": "PNG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "PIL RGB canvas lossless PNG compression",
+    "ground_truth": "CLEAN_REFERENCE",
+    "known_limitations": "Lossless container; frequency DCT and ELA compression analyses are mathematically inapplicable.",
+    "sha256": "f16724d644c76937e86cbdfb7bd8e785f1ce2b714d85d8e7a233d67b9e20aa7f",
+    "file_size_bytes": 914
+  },
+  "clean_reference.webp": {
+    "fixture_id": "FIX-003",
+    "format": "WEBP",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "PIL WebP lossy compression at Q=90",
+    "ground_truth": "CLEAN_REFERENCE",
+    "known_limitations": "WebP compression differs from standard JPEG DCT tables.",
+    "sha256": "7fef28393b809fc35e10ad21de259592ae5c4f2b1efc965c88ec3d6c7f31c999",
+    "file_size_bytes": 246
+  },
+  "metadata_known_camera.jpg": {
+    "fixture_id": "FIX-004",
+    "format": "JPEG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "PIL JPEG with explicit hardware EXIF tags (Canon EOS 80D)",
+    "ground_truth": "KNOWN_CAMERA_METADATA",
+    "known_limitations": "Simulated EXIF headers without proprietary maker note blocks.",
+    "sha256": "2c6d26d014f9d0afac67cf6aa13da167c98fcd6d08888cad2db8f134233c3363",
+    "file_size_bytes": 2173
+  },
+  "metadata_stripped.jpg": {
+    "fixture_id": "FIX-005",
+    "format": "JPEG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "PIL JPEG saved without EXIF dictionary",
+    "ground_truth": "STRIPPED_METADATA",
+    "known_limitations": "Absence of EXIF is characteristic of web optimization or privacy stripping.",
+    "sha256": "64b16981a98a81b99928580bce59ae93edc34bc6c1a1e6aaa9bfd8e7bb4c0dcf",
+    "file_size_bytes": 2072
+  },
+  "recompressed_double_jpeg.jpg": {
+    "fixture_id": "FIX-006",
+    "format": "JPEG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "Two-pass JPEG compression (Q=70 then Q=90)",
+    "ground_truth": "DOUBLE_JPEG_RECOMPRESSION",
+    "known_limitations": "Global uniform recompression without spatial splicing.",
+    "sha256": "16af0ce6252a0159c8af87d261f660857b5e4d5d28965aba063b7788176b854d",
+    "file_size_bytes": 14258
+  },
+  "synthetic_copy_move.jpg": {
+    "fixture_id": "FIX-007",
+    "format": "JPEG",
+    "dimensions": [
+      400,
+      400
+    ],
+    "creation_method": "Synthetic cloned feature patch placed at (40,40) and (220,220)",
+    "ground_truth": "CONTROLLED_SYNTHETIC_COPY_MOVE",
+    "known_limitations": "Zero-rotation, zero-scaling synthetic patch copy.",
+    "sha256": "9c550b9e0ddac5a882de3b0097fca20438a1be696861b11d757d93f366f9393d",
+    "file_size_bytes": 28197
+  },
+  "localized_splice_ela.jpg": {
+    "fixture_id": "FIX-008",
+    "format": "JPEG",
+    "dimensions": [
+      300,
+      300
+    ],
+    "creation_method": "Q=60 background spliced with uncompressed patch and saved at Q=95",
+    "ground_truth": "CONTROLLED_SYNTHETIC_SPLICING",
+    "known_limitations": "High contrast boundary designed for ELA error surface validation.",
+    "sha256": "ed6c48ebf782076261d9698c87bd95953d0148f5879c269a36ff54e23f12f724",
+    "file_size_bytes": 15293
+  },
+  "malformed_header.jpg": {
+    "fixture_id": "FIX-009",
+    "format": "CORRUPTED_JPEG",
+    "dimensions": null,
+    "creation_method": "Synthetic byte injection corrupting JPEG scan headers",
+    "ground_truth": "MALFORMED_INPUT",
+    "known_limitations": "Cannot be parsed by valid JPEG decoders.",
+    "sha256": "8f691459fe3f7c5fc58c26c7d4013127ef89f4840fa1c4ca3dc9036d87f4d15e",
+    "file_size_bytes": 45
+  },
+  "malformed_header.png": {
+    "fixture_id": "FIX-010",
+    "format": "CORRUPTED_PNG",
+    "dimensions": null,
+    "creation_method": "Invalid PNG IHDR chunk and bad CRC bytes",
+    "ground_truth": "MALFORMED_INPUT",
+    "known_limitations": "Cannot be parsed by valid PNG decoders.",
+    "sha256": "ebdf9bfeb139a3472d0897ccb242a1f82c8783822c0204976573a80aa163acf3",
+    "file_size_bytes": 36
+  },
+  "truncated.jpg": {
+    "fixture_id": "FIX-011",
+    "format": "TRUNCATED_JPEG",
+    "dimensions": null,
+    "creation_method": "Valid JPEG byte stream truncated at 33% length",
+    "ground_truth": "TRUNCATED_INPUT",
+    "known_limitations": "Missing EOI marker and incomplete entropy-coded scan data.",
+    "sha256": "eee962573a2e5ba42fc0b55b42060153febf23968f831676cd0d1bc6c8742622",
+    "file_size_bytes": 691
+  },
+  "zero_byte.bin": {
+    "fixture_id": "FIX-012",
+    "format": "EMPTY",
+    "dimensions": null,
+    "creation_method": "0-byte file",
+    "ground_truth": "ZERO_BYTE",
+    "known_limitations": "Boundary test for upload validation.",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "file_size_bytes": 0
+  },
+  "unsupported.txt": {
+    "fixture_id": "FIX-013",
+    "format": "TEXT",
+    "dimensions": null,
+    "creation_method": "Standard ASCII text file",
+    "ground_truth": "UNSUPPORTED_FORMAT",
+    "known_limitations": "MIME type text/plain must be rejected by image ingest.",
+    "sha256": "18b0b4ad843c084868f89e25709f91239d94b99d8bf834df2197dc5452c268d2",
+    "file_size_bytes": 69
+  },
+  "tiny_2x2.png": {
+    "fixture_id": "FIX-014",
+    "format": "PNG",
+    "dimensions": [
+      2,
+      2
+    ],
+    "creation_method": "Minimal 2x2 dimension RGB PNG",
+    "ground_truth": "EXTREME_DIMENSION",
+    "known_limitations": "Sub-block geometry (smaller than 8x8 DCT grid or 16x16 noise block).",
+    "sha256": "de33ddc09a0ba9b83128b6b59461e3be59299575eb68ccf2c03984b504f9fa9c",
+    "file_size_bytes": 73
+  },
+  "unusual_aspect_10x1000.jpg": {
+    "fixture_id": "FIX-015",
+    "format": "JPEG",
+    "dimensions": [
+      10,
+      1000
+    ],
+    "creation_method": "Extreme aspect ratio 1:100 JPEG canvas",
+    "ground_truth": "EXTREME_ASPECT_RATIO",
+    "known_limitations": "High aspect ratio tests block partitioning and memory allocation boundaries.",
+    "sha256": "8428c4b39093eef7009ce2b5e744fac886c06a5c3da27fd2d6392e437dda2a8a",
+    "file_size_bytes": 882
+  }
+}

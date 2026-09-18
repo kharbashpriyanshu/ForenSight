@@ -1,0 +1,19 @@
+{
+  "error_image_path": "<NORMALIZED_PATH>",
+  "height": 300,
+  "input_format": "JPEG",
+  "jpeg_quality": 90,
+  "recompressed_image_path": "<NORMALIZED_PATH>",
+  "statistics": {
+    "max_error": 0.0,
+    "mean_error": 0.0,
+    "median_error": 0.0,
+    "percentiles": {
+      "90th": 0.0,
+      "95th": 0.0,
+      "99th": 0.0
+    },
+    "std_error": 0.0
+  },
+  "width": 300
+}

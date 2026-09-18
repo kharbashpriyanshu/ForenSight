@@ -11,8 +11,13 @@ import EvidenceDetail from './pages/EvidenceDetail';
 import AuditTimeline from './pages/AuditTimeline';
 import ReportsInterface from './pages/ReportsInterface';
 import EvidenceComparison from './pages/EvidenceComparison';
+import AnalystWorkspace from './pages/AnalystWorkspace';
 import SystemHealth from './pages/SystemHealth';
 import CasesList from './pages/CasesList';
+import InvestigationAssistant from './pages/InvestigationAssistant';
+import CrossImageCorrelation from './pages/CrossImageCorrelation';
+import ChainOfCustody from './pages/ChainOfCustody';
+import InvestigationGraphPage from './pages/InvestigationGraphPage';
 
 function App() {
   return (
@@ -31,6 +36,11 @@ function App() {
           <Route path="evidence" element={<EvidenceLibrary />} />
           <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
           <Route path="compare" element={<EvidenceComparison />} />
+          <Route path="cross-correlation" element={<CrossImageCorrelation />} />
+          <Route path="graph" element={<InvestigationGraphPage />} />
+          <Route path="assistant" element={<InvestigationAssistant />} />
+          <Route path="analyst" element={<AnalystWorkspace />} />
+          <Route path="custody" element={<ChainOfCustody />} />
           <Route path="audit" element={<AuditTimeline />} />
           <Route path="findings" element={<ReportsInterface />} />
           <Route path="reports" element={<ReportsInterface />} />

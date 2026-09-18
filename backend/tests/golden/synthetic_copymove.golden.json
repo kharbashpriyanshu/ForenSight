@@ -1,0 +1,68 @@
+{
+  "candidate_regions": {
+    "destination_bounding_box": [
+      223.0,
+      229.0,
+      70.0,
+      78.0
+    ],
+    "source_bounding_box": [
+      43.0,
+      49.0,
+      70.0,
+      78.0
+    ],
+    "supporting_matches": 34
+  },
+  "config": {
+    "descriptor_type": "float32",
+    "detector": "SIFT",
+    "matching_metric": "L2",
+    "min_spatial_separation": 30.0,
+    "ransac_threshold": 5.0,
+    "ratio_threshold": 0.75
+  },
+  "feature_statistics": {
+    "descriptors_generated": 102,
+    "keypoints_detected": 102
+  },
+  "geometry": {
+    "destination_centroid": [
+      261.0913,
+      269.3087
+    ],
+    "displacement": [
+      179.9846,
+      179.9725
+    ],
+    "source_centroid": [
+      81.1067,
+      89.3362
+    ],
+    "transformation_matrix": [
+      [
+        1.0002,
+        -0.0025,
+        180.1909
+      ],
+      [
+        0.0025,
+        1.0002,
+        179.7479
+      ]
+    ],
+    "transformation_type": "AffinePartial2D"
+  },
+  "image_info": {
+    "height": 400,
+    "width": 400
+  },
+  "matching_statistics": {
+    "geometric_inliers": 34,
+    "inlier_ratio": 0.85,
+    "ratio_filtered_matches": 79,
+    "raw_matches": 102,
+    "spatially_filtered_matches": 40
+  },
+  "visualization_artifact_path": "C:\\Users\\PRIYAN~1\\AppData\\Local\\Temp\\tmpyvfb3v0i\\copymove_map_12730c42.jpg"
+}

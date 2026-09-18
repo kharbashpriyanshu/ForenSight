@@ -169,7 +169,15 @@ def compare_evidence(
                         artifacts_dict[f"{a.analysis_type}_{k}"] = f"/api/artifacts/{v}"
         
         obs_records = db.query(EvidenceObservation).filter(EvidenceObservation.evidence_id == ev.id).all()
-        obs_list = [{"family": o.family, "description": o.description, "level": o.level} for o in obs_records]
+        obs_list = [
+            {
+                "modality": getattr(o, "modality", "UNKNOWN"),
+                "observation_type": getattr(o, "observation_type", ""),
+                "interpretation": getattr(o, "interpretation", ""),
+                "technical_reliability": getattr(o, "technical_reliability", "UNKNOWN"),
+            }
+            for o in obs_records
+        ]
 
         return EvidenceComparisonItem(
             id=ev.id,

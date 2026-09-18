@@ -1,0 +1,38 @@
+{
+  "filter_config": {
+    "kernel_size": 5,
+    "method": "Gaussian",
+    "sigma": 1.0
+  },
+  "global_statistics": {
+    "max_residual": 0.0,
+    "mean_residual": 0.0,
+    "median_residual": 0.0,
+    "percentiles": {
+      "90th": 0.0,
+      "95th": 0.0,
+      "99th": 0.0
+    },
+    "std_residual": 0.0
+  },
+  "height": 300,
+  "local_config": {
+    "aggregation_method": "Mean Absolute Residual",
+    "stride": 16,
+    "window_size": 16
+  },
+  "local_map_image_path": "<NORMALIZED_PATH>",
+  "local_statistics": {
+    "max_residual": 0.0,
+    "mean_residual": 0.0,
+    "median_residual": 0.0,
+    "percentiles": {
+      "90th": 0.0,
+      "95th": 0.0,
+      "99th": 0.0
+    },
+    "std_residual": 0.0
+  },
+  "residual_image_path": "<NORMALIZED_PATH>",
+  "width": 300
+}

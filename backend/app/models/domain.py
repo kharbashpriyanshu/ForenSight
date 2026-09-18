@@ -175,3 +175,56 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String, default="INVESTIGATOR")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+def generate_finding_id():
+    return f"FS-FND-{uuid.uuid4().hex[:8].upper()}"
+
+def generate_note_id():
+    return f"FS-NOTE-{uuid.uuid4().hex[:8].upper()}"
+
+class Finding(Base):
+    __tablename__ = "findings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    finding_identifier = Column(String, unique=True, index=True, default=generate_finding_id)
+    case_id = Column(String, index=True)
+    evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=True, index=True)
+    
+    finding_type = Column(String, index=True, default="CORRELATED_OBSERVATION")
+    severity_label = Column(String, default="OBSERVATION")
+    title = Column(String)
+    summary = Column(String)
+    
+    supporting_observations = Column(JSON, nullable=True)
+    supporting_analysis_ids = Column(JSON, nullable=True)
+    correlation_rule_id = Column(String, nullable=True, index=True)
+    correlation_rule_version = Column(String, nullable=True)
+    
+    interpretation = Column(String, nullable=True)
+    limitations = Column(String, nullable=True)
+    
+    status = Column(String, default="GENERATED", index=True)
+    reviewer = Column(String, nullable=True)
+    review_timestamp = Column(DateTime, nullable=True)
+    review_note = Column(String, nullable=True)
+    decision = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    
+    evidence = relationship("Evidence", backref="findings")
+
+class AnalystNote(Base):
+    __tablename__ = "analyst_notes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    note_identifier = Column(String, unique=True, index=True, default=generate_note_id)
+    case_id = Column(String, index=True)
+    author = Column(String, index=True)
+    target_type = Column(String, index=True)  # EVIDENCE, ANALYSIS, FINDING, CASE
+    target_id = Column(String, index=True)
+    content = Column(String)
+    
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+

@@ -1,0 +1,37 @@
+[
+  {
+    "description": "Evaluates consistency between EXIF/XMP processing history and underlying compression characteristics.",
+    "limitations": "Metadata can be stripped, forged, or altered in transit without modifying image pixel data. Third-party viewing tools may touch timestamps innocently.",
+    "rule_id": "CORR-META-001",
+    "title": "Metadata History & Encoding Characteristics Alignment",
+    "version": "1.0"
+  },
+  {
+    "description": "Correlates high-frequency Error Level Analysis error variances with discrete cosine transform quantization structures.",
+    "limitations": "High-contrast edges and multiple sequential resaves at varying quality factors naturally elevate error levels without localized splicing.",
+    "rule_id": "CORR-COMP-002",
+    "title": "Multi-Frequency Compression Variance (ELA & DCT)",
+    "version": "1.0"
+  },
+  {
+    "description": "Cross-references wavelet/median noise residual variances against spatial error distribution.",
+    "limitations": "In-camera noise reduction, varying scene luminance, and high sensor ISO produce localized SNR discrepancies under normal capture.",
+    "rule_id": "CORR-NOISE-003",
+    "title": "Sensor Noise Residual & High-Frequency Texture Consistency",
+    "version": "1.0"
+  },
+  {
+    "description": "Evaluates whether duplicate keypoint clusters exhibit spatial affine translation vectors characteristic of copy-move operations.",
+    "limitations": "Repetitive organic textures (grass, water ripples) and architectural motifs (window arrays) generate natural feature matches.",
+    "rule_id": "CORR-CLONE-004",
+    "title": "Geometric Keypoint Duplication & Spatial Consistency",
+    "version": "1.0"
+  },
+  {
+    "description": "Identifies format-incompatible analyses and enforces scientific distinction between negative evidence and absence of evidence.",
+    "limitations": "Absence of findings in non-applicable or high-threshold modalities must not be interpreted as evidence of authenticity.",
+    "rule_id": "CORR-CONFLICT-005",
+    "title": "Modality Applicability & Negative Evidence Disambiguation",
+    "version": "1.0"
+  }
+]

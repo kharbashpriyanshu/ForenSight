@@ -116,3 +116,41 @@ def verify_report_access(
         )
     return report
 
+def verify_finding_access(
+    db: Session, finding_id: Union[int, str], current_user: User
+):
+    from app.models.domain import Finding
+    if str(finding_id).isdigit():
+        finding = db.query(Finding).filter(Finding.id == int(finding_id)).first()
+    else:
+        finding = db.query(Finding).filter(Finding.finding_identifier == str(finding_id)).first()
+
+    if not finding:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Finding not found")
+
+    case = CaseService.get_case_by_identifier(db, finding.case_id) if finding.case_id.startswith("FS-CASE") else CaseService.get_case(db, int(finding.case_id))
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    if current_user.role != "ADMIN" and case.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this finding")
+
+    return finding, case
+
+def verify_note_access(
+    db: Session, note_id: int, current_user: User
+):
+    from app.models.domain import AnalystNote
+    note = db.query(AnalystNote).filter(AnalystNote.id == note_id).first()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    case = CaseService.get_case_by_identifier(db, note.case_id) if note.case_id.startswith("FS-CASE") else CaseService.get_case(db, int(note.case_id))
+    if not case:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    if current_user.role != "ADMIN" and case.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access this note")
+
+    return note, case
+

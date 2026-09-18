@@ -84,3 +84,14 @@ Every investigative action is logged to the immutable `audit_events` table:
 - Evidence fusion correlation
 - Forensic report generation and download
 - Audit records include timestamps, actor identity, action type, and sanitized metadata without sensitive payload storage.
+
+---
+
+## 8. Adversarial Validation & Fuzzing Resilience (Phase 7)
+
+In Phase 7, the platform underwent rigorous adversarial testing:
+- **Corrupted Input Fuzzing**: Validated that truncated byte streams, zero-byte uploads, malformed PNG/JPEG headers, and spoofed MIME types fail safely with `HTTP 400 Bad Request` without process crashes or stack trace leakage.
+- **Directory Traversal Fuzzing**: Path traversal attacks against `/api/artifacts/{path}` using `../`, `%2e%2e%2f`, Windows absolute paths, UNC shares, and null bytes are rejected with `HTTP 403 Forbidden`.
+- **Adversarial Case Isolation Matrix**: Audited across 17 distinct API surfaces, ensuring complete multi-tenant boundary enforcement.
+- **Investigation Replay & Tampering Detection**: An automated replay service recalculates on-disk SHA-256 hashes against original database assertions, immediately triggering an `INTEGRITY_VIOLATION` if any byte on disk has been altered.
+

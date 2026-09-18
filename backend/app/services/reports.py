@@ -62,6 +62,45 @@ class ReportService:
         evidence_list = db.query(Evidence).filter(Evidence.case_id == case.id).all()
         evidence_data = []
 
+        from app.models.domain import Finding, AnalystNote
+        findings_records = db.query(Finding).filter(
+            (Finding.case_id == case.case_identifier) | (Finding.case_id == str(case.id))
+        ).all()
+        notes_records = db.query(AnalystNote).filter(
+            (AnalystNote.case_id == case.case_identifier) | (AnalystNote.case_id == str(case.id))
+        ).all()
+
+        findings_data = []
+        for f in findings_records:
+            findings_data.append({
+                "finding_identifier": f.finding_identifier,
+                "evidence_id": f.evidence_id,
+                "rule_id": f.correlation_rule_id or "N/A",
+                "rule_version": f.correlation_rule_version or "1.0",
+                "finding_type": f.finding_type,
+                "severity_label": f.severity_label,
+                "title": f.title,
+                "summary": f.summary,
+                "interpretation": f.interpretation or "",
+                "limitations": f.limitations or "",
+                "status": f.status,
+                "reviewer": f.reviewer or "Unreviewed",
+                "decision": f.decision or "Pending Review",
+                "review_note": f.review_note or "",
+                "review_timestamp": str(f.review_timestamp) if f.review_timestamp else "N/A",
+            })
+
+        notes_data = []
+        for n in notes_records:
+            notes_data.append({
+                "note_identifier": n.note_identifier,
+                "author": n.author,
+                "target_type": n.target_type,
+                "target_id": n.target_id,
+                "content": n.content,
+                "created_at": str(n.created_at),
+            })
+
         for ev in evidence_list:
             analyses = (
                 db.query(Analysis)
@@ -137,7 +176,7 @@ class ReportService:
                 "analyses": an_list,
                 "jobs": job_list,
                 "assessments": ass_list,
-                "observations": [{"family": o.family, "description": o.description, "level": o.level} for o in observations],
+                "observations": [{"modality": o.modality, "observation_type": o.observation_type, "direction": o.direction, "interpretation": o.interpretation} for o in observations],
             })
 
         audit_events = (
@@ -157,24 +196,44 @@ class ReportService:
                 "event_type": a.event_type,
             })
 
+        # V3 additions: Investigation Assistant decision support and Chain of Custody
+        from app.services.assistant import AssistantService
+        from app.services.custody import CustodyService
+        assistant_support = AssistantService.generate_case_decision_support(db, case)
+        custody_overview = CustodyService.get_chain_of_custody(db, case)
+
         report_payload = {
             "report_identifier": report_identifier,
             "generated_at": now_str,
             "author": author_username,
-            "software_version": "ForenSight v2.1 (V1 Frozen Core)",
-            "rule_version": "7B-v1",
+            "software_version": "ForenSight V3 (Digital Evidence Operating System)",
+            "rule_version": "V3.0",
             "case_information": {
                 "case_identifier": case.case_identifier,
                 "title": case.title,
                 "status": case.status,
                 "created_at": case.created_at.strftime("%Y-%m-%d %H:%M:%S") if case.created_at else "N/A",
             },
+            "investigation_assistant": {
+                "what_was_found": assistant_support.what_was_found_summary,
+                "why_it_matters": assistant_support.why_it_matters_summary,
+                "investigative_next_steps": [s.model_dump() for s in assistant_support.investigative_next_steps],
+                "counter_hypotheses": [h.model_dump() for h in assistant_support.counter_hypotheses],
+                "overall_completeness_percentage": assistant_support.overall_completeness_percentage,
+            },
+            "chain_of_custody_status": {
+                "all_hashes_intact": custody_overview.all_hashes_intact,
+                "total_evidence_items": custody_overview.total_evidence_items,
+            },
+            "correlated_findings": findings_data,
+            "analyst_notes": notes_data,
             "evidence": evidence_data,
             "audit_trail_summary": audit_summary[:20],
             "disclaimer": (
-                "SCIENTIFIC INTEGRITY NOTICE: ForenSight provides deterministic physical and computational "
+                "SCIENTIFIC INTEGRITY NOTICE: ForenSight V3 provides deterministic physical and computational "
                 "measurements. It strictly rejects probabilistic 'fake percentages'. The findings describe processing "
-                "history and statistical anomalies, which must be interpreted in context by a qualified human forensic analyst."
+                "history, physical compression characteristics, and statistical anomalies. OBSERVATION != PROOF. "
+                "ANOMALY != MANIPULATION. Final forensic judgment remains exclusively with the human investigator."
             ),
         }
 
@@ -425,8 +484,61 @@ class ReportService:
 
             story.append(Spacer(1, 8))
 
-        # Technical Integrity & Audit Trail
-        story.append(Paragraph("3. TECHNICAL CHAIN OF CUSTODY & AUDIT RECORD", h2_style))
+        # 3. Cross-Modality Correlated Findings (Phase 6)
+        corr_findings = data.get("correlated_findings", [])
+        story.append(Paragraph("3. CROSS-MODALITY CORRELATED FINDINGS & CONFLICT ANALYSIS", h2_style))
+        if not corr_findings:
+            story.append(Paragraph("No cross-modality correlation rules triggered for this case.", body_style))
+        else:
+            fnd_headers = ["Rule ID", "Finding Title", "Severity", "Lifecycle Status", "Analyst Review"]
+            fnd_rows = [[Paragraph(f"<b>{h}</b>", body_style) for h in fnd_headers]]
+            for f in corr_findings:
+                rev_text = f"{f['decision']} by {f['reviewer']}" if f['reviewer'] != 'Unreviewed' else "Pending"
+                fnd_rows.append([
+                    Paragraph(f['rule_id'], body_bold),
+                    Paragraph(f['title'], body_style),
+                    Paragraph(f['severity_label'], body_style),
+                    Paragraph(f['status'], body_style),
+                    Paragraph(rev_text, body_style),
+                ])
+            t_fnd = Table(fnd_rows, colWidths=[80, 160, 95, 95, 100])
+            t_fnd.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(t_fnd)
+
+        story.append(Spacer(1, 10))
+
+        # 4. Analyst Notes & Annotations (Phase 6)
+        notes = data.get("analyst_notes", [])
+        if notes:
+            story.append(Paragraph("4. ANALYST CASE ANNOTATIONS & NOTES", h2_style))
+            note_headers = ["Timestamp", "Author", "Target", "Note Content"]
+            note_rows = [[Paragraph(f"<b>{h}</b>", body_style) for h in note_headers]]
+            for n in notes[:10]:
+                note_rows.append([
+                    Paragraph(n['created_at'][:19], body_style),
+                    Paragraph(n['author'], body_bold),
+                    Paragraph(f"{n['target_type']} #{n['target_id']}", body_style),
+                    Paragraph(n['content'], body_style),
+                ])
+            t_note = Table(note_rows, colWidths=[100, 80, 90, 260])
+            t_note.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(t_note)
+            story.append(Spacer(1, 10))
+
+        # 5. Technical Integrity & Audit Trail
+        story.append(Paragraph("5. TECHNICAL CHAIN OF CUSTODY & AUDIT RECORD", h2_style))
         audits = data["audit_trail_summary"]
         if audits:
             aud_headers = ["Timestamp (UTC)", "Actor", "Investigative Action"]
@@ -449,8 +561,8 @@ class ReportService:
 
         story.append(Spacer(1, 10))
 
-        # Scientific Limitations & Legal Notice
-        story.append(Paragraph("4. SCIENTIFIC LIMITATIONS & REPRODUCIBILITY", h2_style))
+        # 6. Scientific Limitations & Reproducibility Notice
+        story.append(Paragraph("6. SCIENTIFIC LIMITATIONS & REPRODUCIBILITY", h2_style))
         disclaimer_box = [
             [Paragraph("<b>SCIENTIFIC LIMITATIONS NOTICE & DEFENSE STATEMENT:</b>", body_bold)],
             [Paragraph(data["disclaimer"], disclaimer_style)],

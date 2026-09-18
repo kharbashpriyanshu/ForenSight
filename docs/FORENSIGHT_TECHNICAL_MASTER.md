@@ -998,13 +998,15 @@ Used to accommodate highly variable forensic outputs (e.g., heatmaps vs. quantiz
 "ForenSight resolves the problem of evaluating digital image integrity by orchestrating multiple isolated mathematical engines without relying on opaque machine learning. The FastAPI backend ingests media, guarantees integrity via SHA-256, and routes data to algorithms like Error Level Analysis, high-frequency Noise Residual mapping, and RANSAC-verified Copy-Move detection. I heavily utilized NumPy `einsum` tensor operations for performance. To prevent analytical overload, I engineered a relational Database schema using SQLAlchemy that normalizes disparate algorithm JSON outputs into canonical 'Evidence Observations'. A deterministic Fusion Rule Engine then correlates these observations to prevent double-counting phenomena (like combining ELA and DCT into a single 'Compression' family), culminating in a scientifically transparent Qualitative Assessment via a responsive React/Vite dashboard."
 
 ### Resume technical stack
-**Backend:** Python, FastAPI, SQLAlchemy, SQLite, Pydantic, pytest
-**Forensics:** NumPy, OpenCV, SciPy, Pillow
-**Frontend:** React, TypeScript, Vite
-**Security:** SHA-256 Hashing, Path Traversal Protection, CORS
+**Backend:** Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Redis, Celery, Alembic, Pydantic v2, pytest
+**Forensics:** NumPy, OpenCV, SciPy, Pillow (5 Frozen Classical Engines + Fusion 7B-v1)
+**Frontend:** React 19, TypeScript, Vite, SVG Graph Visualizations
+**Security & QA:** JWT Auth, RBAC Case Isolation, SHA-256 Chain of Custody, Directory Traversal Fuzzing, Investigation Replay
 
 ### Key engineering achievements
 - Engineered a high-performance 8x8 DCT vectorization engine using NumPy tensor operations (`np.einsum`).
-- Built a deterministic Rule Engine (7B-v1) to fuse disparate forensic algorithms into contextual assessments.
-- Designed a strictly isolated artifact storage architecture, ensuring mathematically verifiable SHA-256 evidence immutability.
-- Successfully achieved 100% test coverage (49/49) across integration, mathematical, and security test suites.
+- Built a deterministic Cross-Modality Correlation Engine (`CORR-META-001` through `CORR-CONFLICT-005`) with human analyst review state machine and observation graph tracing.
+- Built an automated Investigation Replay Service detecting single-bit evidence tampering and maintaining cryptographic SHA-256 chain of custody across upload, analysis, and reporting.
+- Designed and validated an adversarial testing suite across 17 API endpoints, fuzzing corrupted byte streams, directory traversal, and multi-tenant case isolation boundaries.
+- Maintained 100% test coverage with 92 passing backend pytest tests and 0 TypeScript errors in a production CI/CD containerized pipeline.
+

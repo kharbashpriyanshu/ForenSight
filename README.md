@@ -1,20 +1,20 @@
-# ForenSight V2.1
+# ForenSight V2.2
 
-An explainable digital image forensic analysis platform combining classical image processing, evidence provenance, asynchronous analysis workloads, and deterministic cross-modality correlation.
+An explainable digital image forensic analysis platform combining classical image processing, evidence provenance, asynchronous analysis workloads, deterministic cross-modality correlation, and a systematically validated adversarial QA framework.
 
 ## 1. What is ForenSight?
 ForenSight is an explainable digital image forensic investigation platform. Instead of relying on mathematically indefensible "fake/real" probabilistic outputs or black-box machine learning classifiers, ForenSight focuses on deterministic measurements, immutable provenance, and qualitative contextual assessments.
 
 ## 2. Engineering Highlights
-ForenSight V2.1 demonstrates robust Software Engineering practices tailored for production forensic environments:
+ForenSight V2.2 demonstrates robust Software Engineering practices tailored for production forensic environments:
 - **Asynchronous Workloads**: Heavy computer vision tasks (Copy-Move, ELA) are executed off the main thread via a Redis/Celery worker architecture.
-- **Evidence Provenance**: Cryptographic SHA-256 fingerprinting at ingestion guarantees an immutable chain of custody.
-- **Storage Isolation**: Evidence files are segregated using UUID-based storage isolation, preventing unauthorized cross-tenant access.
+- **Evidence Provenance & Immutability**: Cryptographic SHA-256 fingerprinting at ingestion guarantees an immutable chain of custody verified by an automated Investigation Replay service.
+- **Storage & Tenant Isolation**: Evidence files are segregated using UUID-based storage isolation, preventing unauthorized cross-tenant access audited across 17 API endpoints.
 - **Security & Authorization**: Implements strict Role-Based Access Control (RBAC) via JWT authentication and route-level dependency injection for case-level authorization.
 - **Auditability**: An immutable, chronological audit trail automatically logs every meaningful investigative action.
-- **Evidence Correlation**: Uses deterministic Evidence Fusion (Rule 7B-v1) rather than heuristics to evaluate multi-modality data.
-- **Scientific Safeguards**: Actively prevents "Fake Scores." Observations yield explainable assessment levels rather than probabilities.
-- **Infrastructure**: Configured for reproducible containerized deployment via Docker Compose, validated by a GitHub Actions CI pipeline.
+- **Evidence Correlation & Analyst Workflow**: Deterministic cross-modality correlation rules (`CORR-META-001` through `CORR-CONFLICT-005`), finding lifecycle state machines, contemporaneous analyst notes, and full-text investigation search.
+- **Forensic Validation & Determinism**: Validated against a 15-fixture controlled forensic corpus with golden output regression snapshots and automated scientific freeze verification in CI.
+- **Infrastructure**: Configured for reproducible containerized deployment via Docker Compose, validated by a GitHub Actions CI pipeline with 92 passing backend tests.
 
 ## 3. Architecture
 

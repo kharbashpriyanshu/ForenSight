@@ -112,3 +112,96 @@ class AnalysisJobResponse(BaseModel):
     safe_error_message: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+# Phase 6 Schemas: Findings, Notes, Graph, Provenance, and Search
+
+class FindingResponse(BaseModel):
+    id: int
+    finding_identifier: str
+    case_id: str
+    evidence_id: Optional[int] = None
+    finding_type: str
+    severity_label: str
+    title: str
+    summary: str
+    supporting_observations: Optional[Any] = None
+    supporting_analysis_ids: Optional[Any] = None
+    correlation_rule_id: Optional[str] = None
+    correlation_rule_version: Optional[str] = None
+    interpretation: Optional[str] = None
+    limitations: Optional[str] = None
+    status: str
+    reviewer: Optional[str] = None
+    review_timestamp: Optional[datetime] = None
+    review_note: Optional[str] = None
+    decision: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class FindingReviewRequest(BaseModel):
+    status: str  # REVIEW_REQUIRED, ACKNOWLEDGED, CONFIRMED_BY_ANALYST, DISMISSED, INCONCLUSIVE
+    review_note: Optional[str] = None
+    decision: Optional[str] = None
+
+class AnalystNoteResponse(BaseModel):
+    id: int
+    note_identifier: str
+    case_id: str
+    author: str
+    target_type: str
+    target_id: str
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AnalystNoteCreateRequest(BaseModel):
+    target_type: str  # EVIDENCE, ANALYSIS, FINDING, CASE
+    target_id: str
+    content: str
+
+class GraphNode(BaseModel):
+    id: str
+    type: str  # CASE, EVIDENCE, ANALYSIS, OBSERVATION, FINDING, ARTIFACT, REPORT
+    label: str
+    metadata: Dict[str, Any] = {}
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    type: str  # CONTAINS, ANALYZED_BY, PRODUCED, SUPPORTS, CONTRADICTS, GENERATED, REFERENCES
+
+class ObservationGraphResponse(BaseModel):
+    case_id: str
+    nodes: List[GraphNode]
+    edges: List[GraphEdge]
+
+class ProvenanceItem(BaseModel):
+    id: str
+    type: str
+    label: str
+    sha256: Optional[str] = None
+    timestamp: Optional[str] = None
+    details: Dict[str, Any] = {}
+    children: List["ProvenanceItem"] = []
+
+class ProvenanceResponse(BaseModel):
+    case_id: str
+    root_evidence: List[ProvenanceItem]
+
+class InvestigationSearchHit(BaseModel):
+    entity_type: str  # EVIDENCE, ANALYSIS, JOB, FINDING, NOTE, REPORT
+    entity_id: str
+    title: str
+    snippet: str
+    case_id: str
+    metadata: Dict[str, Any] = {}
+
+class InvestigationSearchResponse(BaseModel):
+    query: str
+    total_hits: int
+    hits: List[InvestigationSearchHit]
+

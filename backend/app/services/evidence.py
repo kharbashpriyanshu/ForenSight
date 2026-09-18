@@ -46,9 +46,10 @@ class EvidenceService:
             image = Image.open(BytesIO(file_bytes))
             image.verify()
             image = Image.open(BytesIO(file_bytes))
+            image.load()
             width, height = image.size
             image_format = image.format
-        except (UnidentifiedImageError, SyntaxError):
+        except (UnidentifiedImageError, SyntaxError, OSError):
             raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
 
         safe_filename = f"{uuid.uuid4().hex}{ext}"
