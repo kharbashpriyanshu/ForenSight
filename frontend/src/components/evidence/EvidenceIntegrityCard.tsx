@@ -51,7 +51,7 @@ export default function EvidenceIntegrityCard({ evidence }: any) {
                             Bitstream Unaltered Since Ingestion
                         </span>
                     </div>
-                    <div style={{ fontFamily: 'monospace', background: '#0a0a0c', padding: '0.85rem', borderRadius: '0.25rem', wordBreak: 'break-all', fontSize: '0.95rem', border: '1px solid var(--border-color)', color: '#10b981', marginTop: '0.35rem' }}>
+                    <div style={{ fontFamily: 'var(--font-mono, monospace)', background: '#ffffff', padding: '0.85rem', borderRadius: '6px', wordBreak: 'break-all', fontSize: '0.9rem', border: '1px solid var(--border-color)', color: '#047857', marginTop: '0.35rem', fontWeight: 600, letterSpacing: '0.02em' }}>
                         {evidence.sha256_hash}
                     </div>
                 </div>

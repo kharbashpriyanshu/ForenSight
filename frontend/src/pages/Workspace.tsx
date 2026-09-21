@@ -10,12 +10,12 @@ const Workspace: React.FC = () => {
     <div className="app-container">
       <aside className="sidebar" style={{ width: '250px', borderRight: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
         <div className="sidebar-brand" style={{ padding: '1.25rem 1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800 }}>
+          <div style={{ background: '#1e3a8a', width: '32px', height: '32px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800, fontSize: '0.85rem' }}>
             FS
           </div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-color)' }}>ForenSight V3</div>
-            <div style={{ fontSize: '0.65rem', color: '#3b82f6', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
+            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-color)' }}>ForenSight</div>
+            <div style={{ fontSize: '0.65rem', color: '#1d4ed8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
           </div>
         </div>
         
@@ -61,48 +61,49 @@ const Workspace: React.FC = () => {
 
         <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
           <div>Scientific Freeze: <strong>Enforced</strong></div>
-          <div style={{ color: '#10b981', marginTop: '0.2rem' }}>Observation != Proof</div>
+          <div style={{ color: '#059669', marginTop: '0.2rem', fontWeight: 600 }}>Observation != Proof</div>
         </div>
       </aside>
       
       <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.5rem', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Link to="/cases" style={{ color: 'var(--primary-color)', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 600 }}>
+            <Link to="/cases" style={{ color: '#1d4ed8', fontSize: '0.85rem', textDecoration: 'none', fontWeight: 600 }}>
               &larr; All Cases
             </Link>
             <span style={{ color: 'var(--border-color)' }}>|</span>
             <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.85rem' }}>
-              Active Case: <code style={{ color: 'var(--primary-color)', background: 'var(--surface-color-light)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{caseId}</code>
+              Active Case: <code style={{ color: '#1e3a8a', background: 'var(--surface-color-light)', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{caseId}</code>
             </div>
             <span style={{ 
               fontSize: '0.65rem', 
               fontWeight: 700, 
-              background: 'rgba(59, 130, 246, 0.1)', 
-              color: '#3b82f6', 
-              border: '1px solid rgba(59, 130, 246, 0.25)', 
+              background: 'rgba(37, 99, 235, 0.08)', 
+              color: '#1d4ed8', 
+              border: '1px solid rgba(37, 99, 235, 0.2)', 
               padding: '0.15rem 0.45rem', 
               borderRadius: '9999px',
               letterSpacing: '0.05em'
             }}>
-              V3 EVIDENCE OS
+              EVIDENCE OS
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontSize: '0.75rem' }}>
+            <span className="status-badge" style={{ fontSize: '0.75rem' }}>
               RBAC Guard Active
             </span>
             <button 
               id="logout-button"
               onClick={logout} 
               style={{ 
-                background: 'transparent', 
+                background: '#ffffff', 
                 border: '1px solid var(--border-color)', 
                 color: 'var(--text-muted)', 
-                padding: '0.3rem 0.65rem', 
-                borderRadius: '0.25rem',
+                padding: '0.35rem 0.75rem', 
+                borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: '0.8rem'
+                fontSize: '0.85rem',
+                fontWeight: 500
               }}
             >
               Logout

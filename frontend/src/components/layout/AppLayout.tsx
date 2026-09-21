@@ -11,10 +11,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 12h4l3-9 5 18 3-9h5" />
-          </svg>
-          ForenSight
+          <div style={{ background: '#1e3a8a', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', fontWeight: 800, fontSize: '0.8rem' }}>
+            FS
+          </div>
+          <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>ForenSight</span>
         </div>
         <nav className="sidebar-nav">
           <div className="nav-item active">
@@ -26,36 +26,37 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <header className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ fontWeight: 600, color: 'var(--text-color)', fontSize: '0.95rem' }}>
-              ForenSight V2.1
+              ForenSight Evidence OS
             </div>
             <span style={{ 
               fontSize: '0.7rem', 
               fontWeight: 700, 
-              background: 'rgba(245, 158, 11, 0.15)', 
-              color: '#f59e0b', 
-              border: '1px solid rgba(245, 158, 11, 0.3)', 
+              background: 'rgba(37, 99, 235, 0.08)', 
+              color: '#1d4ed8', 
+              border: '1px solid rgba(37, 99, 235, 0.2)', 
               padding: '0.2rem 0.6rem', 
               borderRadius: '9999px',
               letterSpacing: '0.05em'
             }}>
-              DEMO ENVIRONMENT
+              STATION WORKSPACE
             </span>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span className="status-badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+            <span className="status-badge">
               Multi-User RBAC Active
             </span>
             <button 
               id="logout-button"
               onClick={logout} 
               style={{ 
-                background: 'transparent', 
+                background: '#ffffff', 
                 border: '1px solid var(--border-color)', 
                 color: 'var(--text-muted)', 
                 padding: '0.35rem 0.75rem', 
-                borderRadius: '0.25rem',
+                borderRadius: '6px',
                 cursor: 'pointer',
-                fontSize: '0.85rem'
+                fontSize: '0.85rem',
+                fontWeight: 500
               }}
             >
               Logout

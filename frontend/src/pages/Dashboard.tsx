@@ -301,7 +301,7 @@ export default function Dashboard() {
               placeholder="New Case Title" 
               value={newCaseTitle}
               onChange={e => setNewCaseTitle(e.target.value)}
-              style={{ flex: 1, padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', background: 'var(--surface-color-light)', color: 'white' }}
+              style={{ flex: 1, padding: '0.5rem', borderRadius: '0.25rem', border: '1px solid var(--border-color)', background: 'var(--surface-color-light)', color: 'var(--text-main)' }}
             />
             <button className="btn btn-primary" onClick={handleCreateCase}>Create</button>
           </div>

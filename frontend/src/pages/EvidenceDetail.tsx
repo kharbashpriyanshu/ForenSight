@@ -429,28 +429,31 @@ export default function EvidenceDetail() {
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <button 
-                className="btn btn-primary" 
+                className="btn" 
                 onClick={handleNormalize}
                 disabled={normalizing}
-                style={{ background: '#8b5cf6', color: 'white', padding: '1rem' }}
+                style={{ background: '#1e3a8a', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: normalizing ? 'not-allowed' : 'pointer', opacity: normalizing ? 0.7 : 1 }}
               >
                 {normalizing ? 'Normalizing Observations...' : '1. Normalize Observations'}
               </button>
               <button 
-                className="btn btn-primary" 
+                className="btn" 
                 onClick={handleCorrelate}
                 disabled={correlating}
-                style={{ background: '#ec4899', color: 'white', padding: '1rem' }}
+                style={{ background: '#0284c7', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: correlating ? 'not-allowed' : 'pointer', opacity: correlating ? 0.7 : 1 }}
               >
                 {correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}
               </button>
             </div>
             
             {results.correlate && (
-              <div style={{ marginTop: '1.5rem', background: 'var(--surface-color-light)', padding: '1.5rem', borderRadius: '0.5rem', borderLeft: '4px solid #ec4899' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#ec4899' }}>Assessment Result</h3>
-                <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{results.correlate.assessment?.level}</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)' }}>{results.correlate.assessment?.summary}</div>
+              <div style={{ marginTop: '1.5rem', background: 'var(--surface-color-light)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', borderLeft: '4px solid #0284c7' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>Correlated Forensic Assessment</h3>
+                  <span className="status-badge">{results.correlate.assessment?.level}</span>
+                </div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.25rem' }}>{results.correlate.assessment?.level}</div>
+                <div style={{ marginTop: '0.5rem', color: 'var(--text-body)', lineHeight: 1.5 }}>{results.correlate.assessment?.summary}</div>
               </div>
             )}
           </div>
