@@ -34,9 +34,9 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **Blocking Artifact Inconsistency** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`BLOCKING-ARTIFACT`, v1.0.0) | Evaluates 8x8 block boundary discontinuities (Wang 2002 / Fan 2003 / Li 2009) relative to intra-block texture gradients; calculates boundary-to-internal energy ratios, harmonic periodicity peaks, 2D spatial heatmap (`blocking_artifact_map.png`), and z-score candidate region clustering. | Non-JPEG returns `NOT_APPLICABLE`. Detects localized boundary step divergence and grid misalignments. |
 | **Aligned Double JPEG (ADJPEG)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`ADJPEG`, v1.0.0) | Aligned double-JPEG compression detector evaluating $8 \times 8$ block DCT coefficient histograms across 8 primary AC frequency modes, 1D FFT periodicity peak ratio calculation against the spectral noise floor, and 2-panel diagnostic histogram/spectrum plotting. | Non-JPEG returns `NOT_APPLICABLE`. Detects double quantization comb artifacts. |
 | **Non-Aligned Double JPEG (NADJPEG)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`NADJPEG`, v1.0.0) | Non-aligned double-JPEG compression detector calculating inter-pixel boundary discontinuity gradients across all 64 candidate phase shifts $[0..7] \times [0..7]$ (Li 2008 / Bianchi 2011), candidate spatial shift $(\Delta r^*, \Delta c^*)$ extraction, and 64-cell energy matrix visualization. | Non-JPEG returns `NOT_APPLICABLE`. Detects shifted compression grids from cropping/resaving. |
-| **Color Histogram Analysis** | **NOT IMPLEMENTED** | **PLANNED** (`HISTOGRAM`, v1.0.0) | Contract specified in manifest; channel distribution analysis for comb artifacts and dynamic range gaps. | Planned for future implementation. |
-| **Color Channel Discrepancy** | **NOT IMPLEMENTED** | **PLANNED** (`COLOR-CHANNEL`, v1.0.0) | Contract specified in manifest; inter-channel correlation matrices and lateral chromatic aberration modeling. | Planned for future implementation. |
-| **Fourier / 2D FFT Spectrum** | **NOT IMPLEMENTED** | **PLANNED** (`FOURIER`, v1.0.0) | Contract specified in manifest; 2D FFT magnitude spectrum to isolate periodic frequency spikes from resampling. | Planned for future implementation. |
+| **Color Histogram Analysis** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`HISTOGRAM`, v1.0.0) | Multi-channel intensity distributions, Shannon entropy, CDF, dynamic range spread, clipping ratios, and comb-like gaps characteristic of non-linear contrast stretching (Stamm & Liu 2010). | Supports JPEG, PNG, WebP, TIFF. Generates `histogram_analysis.png` and `histogram_analysis.json`. |
+| **Color Channel Discrepancy** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`COLOR-CHANNEL`, v1.0.0) | Spatial inter-channel Pearson correlations ($\rho_{RG}, \rho_{RB}, \rho_{GB}$), composite difference maps ($|R-G|, |R-B|, |G-B|$), and block-level z-score candidate anomaly clustering (Ng et al. 2005 / Riess 2010). | Supports JPEG, PNG, WebP, TIFF. Generates `color_channel_analysis.png`, `color_channel_maps.png`, and `color_channel_analysis.json`. |
+| **Fourier / 2D FFT Spectrum** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`FOURIER`, v1.0.0) | Zero-centered 2D Fast Fourier Transform (FFT) on luminance, radial frequency band energy partitioning (low/mid/high), spectral entropy, and discrete periodic harmonic peak detection (Popescu & Farid 2005). | Supports JPEG, PNG, WebP, TIFF. Generates `fourier_spectrum.png` and `fourier_analysis.json`. |
 | **Advanced Multiscale Noise** | **NOT IMPLEMENTED** | **PLANNED** (`ADVANCED-NOISE`, v1.0.0) | Contract specified in manifest; wavelet subband decomposition for localized noise variance mapping. | Planned for future implementation. |
 | **Resampling & Interpolation** | **NOT IMPLEMENTED** | **PLANNED** (`RESAMPLING`, v1.0.0) | Contract specified in manifest; linear predictor error mapping and p-spectrum periodic artifact analysis. | Planned for future implementation. |
 | **Block-Based Clone Detection** | **NOT IMPLEMENTED** | **PLANNED** (`CLONE-BLOCK`, v1.0.0) | Contract specified in manifest; sliding window lexicographical sorting of DCT block descriptors. | Planned for future implementation. |
@@ -50,12 +50,14 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 4 implements the seventh production forensic engine under the V4 Extension Architecture:
-1. `BLOCKING-ARTIFACT` (Blocking Artifact Inconsistency Analysis)
+ForenSight V4 Step 5 implements three additional production forensic engines under the V4 Extension Architecture:
+1. `HISTOGRAM` (Color Histogram & Dynamic Range Analysis)
+2. `COLOR-CHANNEL` (Color Channel Discrepancy Analysis)
+3. `FOURIER` (Fourier 2D Frequency Spectrum Analysis)
 
-Alongside the Phase 2A engines (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`) and Phase 2B engines (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), seven production V4 engines are now fully operational.
+Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), and Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), **ten production V4 engines** are now fully operational.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY BLOCKING-ARTIFACT WAS IMPLEMENTED IN STEP 4.**  
-- All other 11 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
+- **ONLY HISTOGRAM, COLOR-CHANNEL, AND FOURIER WERE IMPLEMENTED IN STEP 5.**  
+- All other 8 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).

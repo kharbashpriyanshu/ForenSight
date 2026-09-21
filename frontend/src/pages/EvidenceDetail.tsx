@@ -7,6 +7,9 @@ import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 import AdvancedJpegViewer from '../components/evidence/AdvancedJpegViewer';
 import CompressionHistoryViewer from '../components/evidence/CompressionHistoryViewer';
 import BlockingArtifactViewer from '../components/evidence/BlockingArtifactViewer';
+import HistogramViewer from '../components/evidence/HistogramViewer';
+import ColorChannelViewer from '../components/evidence/ColorChannelViewer';
+import FourierViewer from '../components/evidence/FourierViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -431,6 +434,36 @@ export default function EvidenceDetail() {
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 blockingResult={results['blocking-artifact'] || results['blocking_artifact']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 5: Histogram Distribution Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <HistogramViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                histogramResult={results['histogram']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 5: Color Channel Discrepancy Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <ColorChannelViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                colorChannelResult={results['color-channel'] || results['color_channel']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 5: Fourier 2D Frequency Spectrum Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <FourierViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                fourierResult={results['fourier']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>

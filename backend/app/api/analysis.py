@@ -236,6 +236,60 @@ def trigger_blocking_artifact_analysis(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Blocking Artifact failure: {str(e)}")
 
+@router.post("/evidence/{evidence_id}/analysis/histogram", response_model=AnalysisResponse)
+def trigger_histogram_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "HISTOGRAM")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Histogram failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/color-channel", response_model=AnalysisResponse)
+def trigger_color_channel_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "COLOR-CHANNEL")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Color Channel failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/fourier", response_model=AnalysisResponse)
+def trigger_fourier_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "FOURIER")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Fourier failure: {str(e)}")
+
 @router.get("/artifacts/{artifact_path:path}")
 def get_artifact(
     artifact_path: str,

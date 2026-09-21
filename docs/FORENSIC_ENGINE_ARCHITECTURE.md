@@ -213,4 +213,22 @@ The following production engine was implemented and verified in V4 Step 4 under 
 1. **`BLOCKING-ARTIFACT` (v1.0.0)**: Genuine 8×8 DCT block boundary discontinuity analyzer (Wang 2002 / Fan & de Queiroz 2003 / Li 2009). Evaluates horizontal and vertical block boundary step excesses relative to local texture gradients, calculates global boundary-to-internal ratios and grid periodicity harmonic peaks, generates 2D spatial blocking maps (`blocking_artifact_map.png`), and detects deterministic candidate regions via spatial z-score clustering.  
    *Reference Documentation:* [docs/BLOCKING_ARTIFACT_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/BLOCKING_ARTIFACT_ANALYSIS.md)
 
-*Note:* All other 11 future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+---
+
+## 13. Implemented V4 Forensic Engines (Phase 2D: Distribution, Color & Frequency Forensics)
+
+The following production engines were implemented and verified in V4 Step 5:
+
+1. **`HISTOGRAM` (v1.0.0)**: Evaluates multi-channel tonal and chromatic distributions across Luminance, Red, Green, and Blue bands. Computes 256-bin counts, PDFs, CDFs, moments, percentiles, Shannon information entropy, dynamic range span, shadow/highlight clipping percentages, and comb-like zero-bin gaps characteristic of non-linear contrast stretching (Stamm & Liu 2010 / Gonzalez & Woods 2018).  
+   *Location:* `backend/app/engine_extensions/distribution/`  
+   *Reference Documentation:* [docs/HISTOGRAM_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/HISTOGRAM_ANALYSIS.md)
+
+2. **`COLOR-CHANNEL` (v1.0.0)**: Evaluates spatial inter-channel Pearson correlations ($\rho_{RG}, \rho_{RB}, \rho_{GB}$), absolute channel difference maps ($|R-G|, |R-B|, |G-B|$), and normalized chromaticity coordinates. Performs block-based spatial channel deviation and z-score mapping to cluster candidate anomaly regions with unusual inter-channel disparity (Ng et al. 2005 / Riess & Angelopoulou 2010 / Carvalho et al. 2013).  
+   *Location:* `backend/app/engine_extensions/color/`  
+   *Reference Documentation:* [docs/COLOR_CHANNEL_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/COLOR_CHANNEL_ANALYSIS.md)
+
+3. **`FOURIER` (v1.0.0)**: Computes zero-centered 2D Fast Fourier Transform (FFT) magnitude and power spectra on luminance float32 signals. Partitions radial frequency energy into low ($[0, 0.15]$), mid ($(0.15, 0.50]$), and high ($(0.50, 1.0]$) bands, calculates spectral entropy, and isolates discrete periodic harmonic spikes with $(u, v)$ coordinates, orientation angles, and prominence sigmas (Popescu & Farid 2005 / Gonzalez & Woods 2018).  
+   *Location:* `backend/app/engine_extensions/frequency/`  
+   *Reference Documentation:* [docs/FOURIER_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/FOURIER_ANALYSIS.md)
+
+*Note:* All other 8 future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.

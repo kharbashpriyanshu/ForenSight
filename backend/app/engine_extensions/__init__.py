@@ -45,6 +45,18 @@ from .blocking import (
     BlockingArtifactEngine,
     BlockingArtifactParameters,
 )
+from .distribution import (
+    HistogramEngine,
+    HistogramParameters,
+)
+from .color import (
+    ColorChannelEngine,
+    ColorChannelParameters,
+)
+from .frequency import (
+    FourierEngine,
+    FourierParameters,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -65,6 +77,11 @@ engine_registry.register(NADJPEGEngine())
 
 # Register V4 Step 4 Blocking Artifact engine
 engine_registry.register(BlockingArtifactEngine())
+
+# Register V4 Step 5 Distribution, Color, and Frequency engines
+engine_registry.register(HistogramEngine())
+engine_registry.register(ColorChannelEngine())
+engine_registry.register(FourierEngine())
 
 from .runner import V4EngineRunner
 
@@ -100,5 +117,11 @@ __all__ = [
     "NADJPEGEngine",
     "BlockingArtifactEngine",
     "BlockingArtifactParameters",
+    "HistogramEngine",
+    "HistogramParameters",
+    "ColorChannelEngine",
+    "ColorChannelParameters",
+    "FourierEngine",
+    "FourierParameters",
     "V4EngineRunner",
 ]

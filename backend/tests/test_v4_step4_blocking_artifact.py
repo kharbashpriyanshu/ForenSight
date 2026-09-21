@@ -577,8 +577,9 @@ def test_api_blocking_artifact_cross_case_isolation(client: TestClient, db_sessi
     res = client.post(f"/api/evidence/{ev_a.id}/analysis/blocking-artifact")
     assert res.status_code == 403
 
-    # Reset override
-    app.dependency_overrides.pop(get_current_user, None)
+    # Reset override to conftest default
+    from conftest import override_get_current_user
+    app.dependency_overrides[get_current_user] = override_get_current_user
 
 
 def test_api_blocking_artifact_path_traversal_protection(client: TestClient):
