@@ -62,7 +62,7 @@ This document outlines a 3–5 minute demonstration workflow designed to highlig
 
 ## 03:40 - Generate Report
 - Generate the final PDF/JSON report.
-- **Talking Point:** Show how the report encapsulates the original SHA-256 hash, all generated artifacts, the fusion logic, and the final assessment, creating a court-ready document.
+- **Talking Point:** Show how the report encapsulates the original SHA-256 hash, all generated artifacts, the fusion logic, and the final assessment, creating comprehensive, audit-verified forensic documentation.
 
 ## 04:10 - Show System Health
 - Navigate to the System Health dashboard (if available) or explain the infrastructure.

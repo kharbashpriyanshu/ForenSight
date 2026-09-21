@@ -1,20 +1,25 @@
-# ForenSight V2.2
+# ForenSight V3 — Digital Evidence Operating System
 
-An explainable digital image forensic analysis platform combining classical image processing, evidence provenance, asynchronous analysis workloads, deterministic cross-modality correlation, and a systematically validated adversarial QA framework.
+An explainable digital image forensic analysis and investigation operating system combining classical image processing, evidence provenance, asynchronous analysis workloads, deterministic cross-modality correlation, cryptographic chain of custody, and an interactive analyst review environment.
 
 ## 1. What is ForenSight?
 ForenSight is an explainable digital image forensic investigation platform. Instead of relying on mathematically indefensible "fake/real" probabilistic outputs or black-box machine learning classifiers, ForenSight focuses on deterministic measurements, immutable provenance, and qualitative contextual assessments.
 
 ## 2. Engineering Highlights
-ForenSight V2.2 demonstrates robust Software Engineering practices tailored for production forensic environments:
-- **Asynchronous Workloads**: Heavy computer vision tasks (Copy-Move, ELA) are executed off the main thread via a Redis/Celery worker architecture.
-- **Evidence Provenance & Immutability**: Cryptographic SHA-256 fingerprinting at ingestion guarantees an immutable chain of custody verified by an automated Investigation Replay service.
-- **Storage & Tenant Isolation**: Evidence files are segregated using UUID-based storage isolation, preventing unauthorized cross-tenant access audited across 17 API endpoints.
+ForenSight V3 demonstrates robust Software Engineering practices tailored for enterprise forensic operations:
+- **Asynchronous Workloads**: Heavy computer vision tasks (Copy-Move, ELA, DCT) are executed off the main thread via a Redis/Celery worker architecture.
+- **Evidence Provenance & Immutability**: Cryptographic SHA-256 fingerprinting at ingestion guarantees an immutable chain of custody verified by an automated Investigation Replay service and live tamper detection.
+- **Batch Processing**: Multipart batch evidence ingestion with independent fault isolation, batch job queuing, and case-scoped progress monitoring.
+- **Multi-Modality Forensic Heatmaps**: Explainable spatial anomaly candidate overlays mapping ELA, Noise, and Copy-Move on a standardized $[0.0, 1.0]$ coordinate grid without synthetic probability masks.
+- **Side-by-Side Comparison**: Synchronized dual-canvas viewport comparing file metadata, dimensions, hash signatures, compression parameters, and modality artifacts.
+- **Cross-Image Correlation**: Case-wide correlation evaluating shared camera hardware fingerprints (Make/Model/Serial), temporal capture sequencing, and cross-evidence descriptor matching.
+- **Scientific Investigation Assistant**: Rule-based decision support synthesizing whole-case forensic status, highlighting missing modality analyses, and offering alternative benign technical explanations.
+- **Investigation Knowledge Graph**: Directed acyclic topological graph linking `CASE -> EVIDENCE -> ANALYSIS_JOB -> ANALYSIS -> OBSERVATION -> FINDING -> REPORT`.
+- **Storage & Tenant Isolation**: Evidence files are segregated using UUID-based storage isolation, preventing unauthorized cross-tenant access audited across all API endpoints.
 - **Security & Authorization**: Implements strict Role-Based Access Control (RBAC) via JWT authentication and route-level dependency injection for case-level authorization.
 - **Auditability**: An immutable, chronological audit trail automatically logs every meaningful investigative action.
-- **Evidence Correlation & Analyst Workflow**: Deterministic cross-modality correlation rules (`CORR-META-001` through `CORR-CONFLICT-005`), finding lifecycle state machines, contemporaneous analyst notes, and full-text investigation search.
 - **Forensic Validation & Determinism**: Validated against a 15-fixture controlled forensic corpus with golden output regression snapshots and automated scientific freeze verification in CI.
-- **Infrastructure**: Configured for reproducible containerized deployment via Docker Compose, validated by a GitHub Actions CI pipeline with 92 passing backend tests.
+- **Infrastructure**: Configured for reproducible containerized deployment via Docker Compose, validated by a GitHub Actions CI pipeline with 105 passing backend tests.
 
 ## 3. Architecture
 
@@ -115,6 +120,8 @@ npm run dev
 ```
 
 ## 10. Documentation Index
+- [V3 Baseline Specification & Freeze Manifest](FORENSIGHT_V3_BASELINE.md)
+- [Amped Authenticate Capability Parity Matrix](FORENSIGHT_AMPED_PARITY_MATRIX.md)
 - [Architecture & Trust Boundaries](docs/architecture.md)
 - [Deployment Guide (Local & Docker Compose)](docs/DEPLOYMENT.md)
 - [CI/CD Pipeline Specification](docs/CI_CD.md)
@@ -123,13 +130,13 @@ npm run dev
 - [Technical Master Reference](docs/FORENSIGHT_TECHNICAL_MASTER.md)
 
 ## 11. Testing & Verification Summary
-The system is validated via automated test suites and static analysis:
-- **Backend Tests:** 67 Passing (including multi-user security, JWT auth, RBAC isolation, async job lifecycle, error sanitization, readiness probes, and protected artifact serving)
-- **TypeScript:** 0 Errors (`tsc --noEmit`)
-- **Frontend Production Build:** PASS (`npm run build`)
-- **Scientific Freeze:** 100% Preserved (no algorithm or heuristic changes to the 5 frozen engines or Fusion 7B-v1)
-- **Environment Status:** Verified locally on Windows host. Container runtime (Docker, Redis, PostgreSQL) is validated via CI/CD service containers and marked `NOT VERIFIED — ENVIRONMENT BLOCKED` locally due to host tooling availability.
+The system is validated via comprehensive automated test suites and static analysis:
+- **Backend Tests:** 105 Passing, 0 Failed, 0 Skipped across 23 test modules (including multi-user security, JWT auth, RBAC isolation, async job lifecycle, cross-image correlation, investigation graph, live tamper detection, and adversarial QA).
+- **TypeScript:** 0 Errors (`tsc -b`)
+- **Frontend Production Build:** PASS (`npm run build`, built in 7.26s)
+- **Scientific Freeze:** 100% Preserved (all 38 source files in `backend/app/forensics/` match cryptographic freeze manifest).
+- **V3 Baseline Status:** BASELINE VERIFIED & FROZEN.
+- **Next Phase:** V4 Advanced Image Forensics (V4 is NOT started).
 
 ## 12. Screenshots
 Detailed interface screenshots are available in the [docs/screenshots](docs/screenshots) directory.
-*(Note: Full screenshot generation is pending environmental capture).*

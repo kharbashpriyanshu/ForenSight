@@ -26,6 +26,8 @@ class BatchUploadResponse(BaseModel):
     uploaded_count: int
     total_size_bytes: int
     items: List[BatchUploadItemResult]
+    failed_count: int = 0
+    failed_items: List[Dict[str, str]] = []
     ingest_timestamp: datetime
     message: str
 

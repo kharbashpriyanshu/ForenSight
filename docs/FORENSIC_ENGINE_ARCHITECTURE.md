@@ -1,0 +1,180 @@
+# ForenSight V4 — Forensic Engine Extension Architecture
+
+**Version:** 4.0.0-STEP1-ARCHITECTURE  
+**Status:** ARCHITECTURAL SPECIFICATION & FRAMEWORK  
+**Date:** 2026-09-21  
+
+---
+
+## 1. Executive Summary
+
+ForenSight V4 introduces the **Forensic Engine Extension Architecture**, an open, standardized framework designed to integrate diverse physical, frequency, and statistical forensic analytical engines. 
+
+This architecture guarantees:
+1. **Scientific Honesty**: Enforces the non-negotiable rule that `NOT_APPLICABLE != NEGATIVE_EVIDENCE`. Incompatible container formats or dimensions are rejected with explicit technical justifications rather than false negative verdicts.
+2. **Frozen Core Preservation**: The 38-file V3 forensic core (`metadata`, `ela`, `noise`, `jpeg_dct`, `copy_move`, `fusion`) remains 100% frozen and unmodified. Legacy engines are exposed to the new extension contract through non-invasive adapters.
+3. **Additive Modularity**: Future engines can be introduced without destructive schema migrations, preserving complete provenance, audit, graph, and reporting integration.
+4. **Planned Cataloging Without Fake Science**: Future analytical engines are formally inventoried under `STATUS = PLANNED` with zero placeholder algorithms or fabricated scientific citations.
+
+---
+
+## 2. Core Engine Contract
+
+All forensic engines in V4 inherit from the abstract base class `BaseForensicEngine` located in [`backend/app/engine_extensions/contract.py`](file:///d:/Project%20Resume/ForenSight/backend/app/engine_extensions/contract.py).
+
+```python
+class BaseForensicEngine(ABC):
+    engine_id: str                      # Unique uppercase identifier (e.g., "JPEG_DCT", "PRNU")
+    engine_name: str                    # Human-readable title
+    engine_version: str = "1.0.0"       # Semantic versioning
+    category: EngineCategory            # Standardized algorithmic taxonomy
+    description: str                    # Methodological scope
+    input_requirements: InputRequirements # Supported formats, dimensions, color channels
+    limitations: List[str]              # Documented false-positive / false-negative constraints
+    scientific_references: List[ScientificReference] # Literature and standard citations
+
+    parameter_schema: Type[BaseModel]   # Pydantic schema for serializable parameters
+    observation_schema: Type[BaseModel] # Pydantic schema for empirical measurements
+
+    def check_applicability(self, context: ExecutionContext) -> ApplicabilityResult:
+        """Evaluates container format and resolution prerequisites."""
+        ...
+
+    @abstractmethod
+    def execute(self, context: ExecutionContext) -> EngineExecutionResult:
+        """Executes analysis and generates normalized observations and artifacts."""
+        ...
+```
+
+### Key Subordinate Structures
+
+- **`InputRequirements`**: Defines supported image formats (e.g. `["JPEG", "JPG"]` or `["ALL"]`), minimum pixel dimensions, maximum dimension bounds, color space requirements, and whether lossy compression history is required.
+- **`ApplicabilityResult`**: Explicit boolean flag with descriptive rationale and the required forensic guardrail notice.
+- **`ExecutionContext`**: Immutable input packet including evidence IDs, storage file paths, SHA-256 hash, image geometry, execution parameters, and output directories.
+- **`EngineExecutionResult`**: Standardized output payload carrying status, execution time in milliseconds, list of `NormalizedObservation`s, list of `EngineArtifactMetadata`s, structured findings, and inapplicability payloads.
+
+---
+
+## 3. Standard Engine Status & The Scientific Safeguard
+
+Analytical outcomes are governed by the `EngineExecutionStatus` enumeration:
+
+| Status | Definition | Scientific Meaning |
+| :--- | :--- | :--- |
+| `APPLIED` / `COMPLETED` | Algorithm executed and computed empirical metrics. | Measurements are recorded for analyst interpretation. |
+| `NOT_APPLICABLE` | Input fails mathematical/container prerequisites (e.g. DCT on PNG). | **NOT NEGATIVE EVIDENCE.** The method cannot be applied; does NOT prove authenticity. |
+| `FAILED` | Process error, truncated input, or unexpected exception. | Systemic failure; no scientific inference can be drawn. |
+| `PENDING` / `RUNNING` | In queue or actively computing. | Non-terminal scheduling states. |
+
+### The Critical Inapplicability Rule: `NOT_APPLICABLE != NEGATIVE_EVIDENCE`
+When an image container or structure does not meet the mathematical requirements of a forensic engine (e.g., attempting JPEG frequency analysis on a lossless PNG image), the engine **MUST** return `status = NOT_APPLICABLE`.
+
+The engine contract embeds the following non-negotiable scientific guardrail notice in all inapplicability payloads:
+> *"CRITICAL FORENSIC NOTICE: Method inapplicability is NOT negative evidence. The target image container or structure does not meet the mathematical requirements of this forensic filter. The absence of findings under this method MUST NOT be cited as evidence of image authenticity or absence of manipulation."*
+
+---
+
+## 4. Engine Categories Taxonomy
+
+The `EngineCategory` enum defines seven orthogonal analytical domains:
+
+1. **`FILE_ANALYSIS`**: Container headers, EXIF/XMP/IPTC metadata, structural markers, and format integrity.
+2. **`GLOBAL_ANALYSIS`**: Whole-image frequency spectra (2D FFT), DCT coefficient distributions, and histogram anomalies.
+3. **`LOCAL_ANALYSIS`**: Localized spatial variances, error-level analysis (ELA), spatial noise residuals, and blocking artifacts.
+4. **`CAMERA_IDENTIFICATION`**: Physical sensor pattern noise (PRNU), color filter array (CFA) demosaicing, and optical lens distortions.
+5. **`GEOMETRIC_ANALYSIS`**: Perspective geometry, shadow consistency, keypoint cloning (SIFT/ORB), and block-matching clone detection.
+6. **`AI_SCREENING`**: Deep-learning screening, generative diffusion checkerboard artifacts, and synthetic face indicators.
+7. **`VIDEO_FORENSICS`**: Temporal frame coherence, GOP compression cadence, and inter-frame optical flow vectors.
+
+---
+
+## 5. Normalized Observation & Artifact Contracts
+
+### Normalized Observation Model
+Observations generated by engines adhere to `NormalizedObservation` ([`observation.py`](file:///d:/Project%20Resume/ForenSight/backend/app/engine_extensions/observation.py)):
+- `evidence_id`: Target evidence asset.
+- `analysis_id`: Linked analysis record.
+- `engine_id` & `engine_version`: Originating engine identity and semantic version.
+- `status`: Execution status (`APPLIED`, `NOT_APPLICABLE`, `FAILED`).
+- `observation_type`: Category identifier (e.g., `COMPRESSION_ERROR`, `NOISE_RESIDUAL`).
+- `metric_name`: Specific measurement (e.g., `MEAN_ERROR`, `HIST_ENERGY`).
+- `raw_value`: Unscaled string representation.
+- `normalized_value`: Scaled scalar in $[0.0, 1.0]$ when mathematically defensible.
+- `direction`: `elevated`, `consistent`, or `informational`.
+- `technical_reliability`: `HIGH`, `MEDIUM`, or `CONDITIONAL`.
+- `interpretation`: Factual, objective description of physical phenomenon.
+- `limitations`: Explicit list of caveats.
+- `parameters_used`: Record of all configuration inputs.
+
+To integrate seamlessly with the existing database schema, `NormalizedObservation.to_domain_observation()` maps directly to the SQLAlchemy `EvidenceObservation` model.
+
+### Standard Artifact Metadata Model
+Artifacts generated by engines (heatmaps, spectra, plots, masks) adhere to `EngineArtifactMetadata` ([`artifact.py`](file:///d:/Project%20Resume/ForenSight/backend/app/engine_extensions/artifact.py)):
+- `artifact_type`: `HEATMAP`, `PLOT`, `VISUALIZATION`, `MASK`, `SPECTRUM`, `TABLE`, `JSON`, `DERIVED_IMAGE`.
+- `storage_path`: Relative path under `backend/storage/`.
+- `sha256_hash`: Cryptographic digest of the generated artifact file.
+- `width`, `height`, `mime_type`: Geometric and format properties.
+- `to_legacy_artifact_dict()`: Maps to `Analysis.structured_findings["artifacts"]` for graph and report consumption.
+
+---
+
+## 6. Engine Registry & Discovery
+
+The singleton `ForensicEngineRegistry` ([`registry.py`](file:///d:/Project%20Resume/ForenSight/backend/app/engine_extensions/registry.py)) maintains an in-memory catalog of active engines:
+- `register(engine)`: Registers an active engine instance.
+- `get_engine(engine_id)`: Fetches an engine by case-insensitive ID.
+- `list_engines(category)`: Lists active engines with optional category filtering.
+- `filter_by_format(format)`: Discovers engines supporting a given image container.
+- `check_applicability(engine_id, context)`: Pre-execution capability check.
+- `get_planned_manifest()`: Returns the catalog of planned future engines.
+
+**Execution Boundary:** The registry is strictly a discovery mechanism. It does NOT automatically trigger execution; execution orchestration remains under the governance of the API gateway and Celery worker pipeline.
+
+---
+
+## 7. Authenticated Discovery API
+
+The extension architecture exposes authenticated, read-only endpoints via `/api/engines`:
+
+| Method | Endpoint | Description |
+| :---: | :--- | :--- |
+| `GET` | `/api/engines` | Lists all active registered engines (supports `?category=` and `?container_format=`). |
+| `GET` | `/api/engines/categories` | Returns all 7 engine categories and their descriptions. |
+| `GET` | `/api/engines/planned` | Returns the formal catalog of 18 planned future engines. |
+| `GET` | `/api/engines/{engine_id}` | Retrieves full metadata, input requirements, limitations, and citations. |
+
+All endpoints enforce JWT authentication via `get_current_user`.
+
+---
+
+## 8. Provenance, Investigation Graph & Report Compatibility
+
+The V4 Extension Architecture adheres strictly to the existing investigation provenance pipeline:
+
+```
+CASE
+ → EVIDENCE (SHA-256 Fingerprint)
+   → ANALYSIS_JOB (Async Scheduling)
+     → ANALYSIS (Engine Record, Parameters & Version)
+       → OBSERVATION (Normalized Observation Metrics)
+       → ARTIFACT (Heatmaps, Spectra, Error Maps)
+         → FINDING (Correlated Rule Findings & Analyst Decisions)
+           → REPORT (PDF / JSON Export Documentation)
+```
+
+1. **Investigation Graph**: Artifacts generated by new engines are registered under `Analysis.structured_findings["artifacts"]`, automatically generating `ARTIFACT` nodes in `GET /api/cases/{case_id}/graph`.
+2. **Correlation Engine**: Normalized observations feed directly into the existing `EvidenceObservation` table, allowing the Correlation Engine (`Rule 7B-v1`) to ingest new measurements without code rewriting.
+3. **Audit Ledger & Chain of Custody**: Job dispatches and completions continue to be logged to `AuditEvent`, maintaining byte-level traceability.
+4. **Reports**: Reporting services extract engine name, semantic version, parameters, limitations, and artifact paths directly from `Analysis` records.
+
+---
+
+## 9. How Future Engines Should Be Added
+
+When a future engine is ready for implementation in a subsequent phase (e.g., V4 Step 2):
+1. **Implement Engine**: Create a subclass of `BaseForensicEngine` in a new module under `backend/app/engine_extensions/modules/<engine_id>/`.
+2. **Specify Contract**: Define `InputRequirements`, explicit `parameter_schema`, `limitations`, and peer-reviewed `scientific_references`.
+3. **Implement Execution**: Implement `execute(context)` producing `NormalizedObservation`s and `EngineArtifactMetadata`s.
+4. **Register**: Add the engine instance to `engine_registry.register(MyEngine())`.
+5. **Update Manifest**: Transition the engine in `manifest.py` from `status="PLANNED"` to `status="VERIFIED"`.
+6. **Add Unit Tests**: Write unit tests covering determinism, applicability, and parameter validation.

@@ -24,48 +24,67 @@ class BatchService:
         actor: str = "System"
     ) -> BatchUploadResponse:
         results = []
+        failed_items = []
         total_bytes = 0
 
         for file in files:
-            evidence = EvidenceService.process_and_store_evidence(db, case.id, file)
-            total_bytes += (evidence.file_size or 0)
+            try:
+                evidence = EvidenceService.process_and_store_evidence(db, case.id, file)
+                total_bytes += (evidence.file_size or 0)
+                AuditService.log_event(
+                    db=db,
+                    case_id=case.case_identifier,
+                    event_type="EVIDENCE_UPLOADED",
+                    evidence_id=evidence.id,
+                    actor=actor,
+                    metadata={"filename": file.filename, "file_size": evidence.file_size}
+                )
+                results.append(BatchUploadItemResult(
+                    id=evidence.id,
+                    evidence_identifier=evidence.evidence_identifier,
+                    original_filename=evidence.original_filename,
+                    mime_type=evidence.mime_type,
+                    file_size=evidence.file_size,
+                    sha256_hash=evidence.sha256_hash,
+                    image_format=evidence.image_format or "UNKNOWN",
+                    width=evidence.width,
+                    height=evidence.height,
+                    created_at=evidence.created_at,
+                    status="INGESTED"
+                ))
+            except Exception as e:
+                err_msg = getattr(e, "detail", str(e)) if hasattr(e, "detail") else "Invalid or unsupported evidence file"
+                failed_items.append({
+                    "filename": file.filename or "unknown",
+                    "error": str(err_msg)
+                })
+                AuditService.log_event(
+                    db=db,
+                    case_id=case.case_identifier,
+                    event_type="EVIDENCE_INGESTION_FAILED",
+                    actor=actor,
+                    metadata={"filename": file.filename, "error": str(err_msg)}
+                )
+
+        if len(results) > 0:
             AuditService.log_event(
                 db=db,
                 case_id=case.case_identifier,
-                event_type="EVIDENCE_UPLOADED",
-                evidence_id=evidence.id,
+                event_type="BATCH_EVIDENCE_INGESTED",
                 actor=actor,
-                metadata={"filename": file.filename, "file_size": evidence.file_size}
+                metadata={"file_count": len(results), "failed_count": len(failed_items), "total_bytes": total_bytes}
             )
-            results.append(BatchUploadItemResult(
-                id=evidence.id,
-                evidence_identifier=evidence.evidence_identifier,
-                original_filename=evidence.original_filename,
-                mime_type=evidence.mime_type,
-                file_size=evidence.file_size,
-                sha256_hash=evidence.sha256_hash,
-                image_format=evidence.image_format or "UNKNOWN",
-                width=evidence.width,
-                height=evidence.height,
-                created_at=evidence.created_at,
-                status="INGESTED"
-            ))
 
-        AuditService.log_event(
-            db=db,
-            case_id=case.case_identifier,
-            event_type="BATCH_EVIDENCE_INGESTED",
-            actor=actor,
-            metadata={"file_count": len(results), "total_bytes": total_bytes}
-        )
-
+        msg = f"Batch ingestion complete: {len(results)} succeeded, {len(failed_items)} failed."
         return BatchUploadResponse(
             case_identifier=case.case_identifier,
             uploaded_count=len(results),
             total_size_bytes=total_bytes,
             items=results,
+            failed_count=len(failed_items),
+            failed_items=failed_items,
             ingest_timestamp=datetime.datetime.now(datetime.timezone.utc),
-            message=f"Successfully ingested batch of {len(results)} digital evidence files."
+            message=msg
         )
 
     @staticmethod

@@ -48,4 +48,4 @@ Access the workspace via the frontend at `/cases/:caseId/analyst` or by clicking
    - Evaluate empirical metrics, heatmaps, and limitations.
    - Record formal review decisions (`CONFIRMED`, `DISMISSED`, or `INCONCLUSIVE`) with detailed justifications.
 5. **Add Contemporaneous Notes**: Document any supplementary investigative context or external intelligence.
-6. **Generate Final Forensic Report**: Export the comprehensive court-ready PDF or JSON report containing findings, review decisions, analyst notes, and complete provenance trees.
+6. **Generate Final Forensic Report**: Export the comprehensive professional forensic investigation PDF or JSON report containing findings, review decisions, analyst notes, and complete provenance trees.

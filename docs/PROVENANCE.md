@@ -43,7 +43,7 @@ The Observation Graph endpoint (`GET /api/cases/{case_id}/graph`) outputs standa
 - `JOB_PRODUCED_ANALYSIS`: Successful completion of modality execution.
 - `ANALYSIS_EXTRACTED_OBSERVATION`: Generation of discrete empirical metric.
 - `OBSERVATION_SUPPORTS_FINDING`: Contribution of empirical metric to a deterministic correlation rule.
-- `FINDING_INCLUDED_IN_REPORT`: Incorporation of audited finding into court-ready report.
+- `FINDING_INCLUDED_IN_REPORT`: Incorporation of audited finding into professional forensic investigation report.
 
 ---
 
