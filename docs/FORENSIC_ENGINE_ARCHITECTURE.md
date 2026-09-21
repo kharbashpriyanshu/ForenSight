@@ -231,4 +231,19 @@ The following production engines were implemented and verified in V4 Step 5:
    *Location:* `backend/app/engine_extensions/frequency/`  
    *Reference Documentation:* [docs/FOURIER_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/FOURIER_ANALYSIS.md)
 
-*Note:* All other 8 future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+---
+
+## 14. Implemented V4 Forensic Engines (Phase 2E: Advanced Noise & Resampling Forensics)
+
+The following two production engines were implemented and verified in V4 Step 6:
+
+1. **`ADVANCED-NOISE` (v1.0.0)**: Extracts deterministic high-frequency noise residuals using Gaussian low-pass spatial subtraction with reflect border handling. Computes global residual moments, robust scale estimators ($\text{MAD}$ and $\hat{\sigma} = 1.4826 \cdot \text{MAD}$), Shannon entropy, and radial frequency band energy decomposition. Evaluates localized $32 \times 32$ block noise variance consistency, robust z-score deviation, and clusters candidate noise-inconsistency regions (Pan et al. 2012 / Mahdian & Saic 2009 / Lyu et al. 2014).  
+   *Location:* `backend/app/engine_extensions/noise/`  
+   *Reference Documentation:* [docs/ADVANCED_NOISE_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/ADVANCED_NOISE_ANALYSIS.md)
+
+2. **`RESAMPLING` (v1.0.0)**: Evaluates directional second-order spatial derivative spectra ($D_{xx}, D_{yy}$) to detect periodic interpolation dependencies resulting from image scaling, rotation, or affine manipulation. Computes 1D Fourier power spectra, peak-to-baseline strength ratios within configurable period search intervals $[1.5, 8.0]$, directional asymmetry, and local block-level curvature consistency mapping to cluster candidate resampling-consistent regions (Popescu & Farid 2005 / Mahdian & Saic 2008 / Gallagher & Chen 2008).  
+   *Location:* `backend/app/engine_extensions/resampling/`  
+   *Reference Documentation:* [docs/RESAMPLING_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/RESAMPLING_ANALYSIS.md)
+
+*Note:* Exactly 12 V4 forensic engines are now fully operational. The 6 remaining future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+

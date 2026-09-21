@@ -1,7 +1,7 @@
 # ForenSight V3 vs. Amped Authenticate — Forensic Capability Parity Matrix
 
-**Document Version:** 4.0.0-STEP4  
-**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 4 BLOCKING ARTIFACT ENGINE IMPLEMENTED  
+**Document Version:** 4.0.0-STEP6  
+**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 6 ADVANCED NOISE & RESAMPLING ENGINES IMPLEMENTED  
 **Date:** 2026-09-21  
 
 This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, and the V4 Forensic Engine Extension Architecture without speculative claims or synthetic indicators.
@@ -37,8 +37,8 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **Color Histogram Analysis** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`HISTOGRAM`, v1.0.0) | Multi-channel intensity distributions, Shannon entropy, CDF, dynamic range spread, clipping ratios, and comb-like gaps characteristic of non-linear contrast stretching (Stamm & Liu 2010). | Supports JPEG, PNG, WebP, TIFF. Generates `histogram_analysis.png` and `histogram_analysis.json`. |
 | **Color Channel Discrepancy** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`COLOR-CHANNEL`, v1.0.0) | Spatial inter-channel Pearson correlations ($\rho_{RG}, \rho_{RB}, \rho_{GB}$), composite difference maps ($|R-G|, |R-B|, |G-B|$), and block-level z-score candidate anomaly clustering (Ng et al. 2005 / Riess 2010). | Supports JPEG, PNG, WebP, TIFF. Generates `color_channel_analysis.png`, `color_channel_maps.png`, and `color_channel_analysis.json`. |
 | **Fourier / 2D FFT Spectrum** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`FOURIER`, v1.0.0) | Zero-centered 2D Fast Fourier Transform (FFT) on luminance, radial frequency band energy partitioning (low/mid/high), spectral entropy, and discrete periodic harmonic peak detection (Popescu & Farid 2005). | Supports JPEG, PNG, WebP, TIFF. Generates `fourier_spectrum.png` and `fourier_analysis.json`. |
-| **Advanced Multiscale Noise** | **NOT IMPLEMENTED** | **PLANNED** (`ADVANCED-NOISE`, v1.0.0) | Contract specified in manifest; wavelet subband decomposition for localized noise variance mapping. | Planned for future implementation. |
-| **Resampling & Interpolation** | **NOT IMPLEMENTED** | **PLANNED** (`RESAMPLING`, v1.0.0) | Contract specified in manifest; linear predictor error mapping and p-spectrum periodic artifact analysis. | Planned for future implementation. |
+| **Advanced Multiscale Noise** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`ADVANCED-NOISE`, v1.0.0) | High-frequency noise residual extraction via Gaussian low-pass subtraction, global variance, robust MAD scales ($\hat{\sigma} = 1.4826 \cdot \text{MAD}$), Shannon entropy, radial frequency decomposition, and spatial block z-score clustering (Pan et al. 2012 / Mahdian & Saic 2009 / Lyu et al. 2014). | Supports JPEG, PNG, WebP, TIFF. Generates `advanced_noise_map.png`, `advanced_noise_analysis.png`, and `advanced_noise_analysis.json`. |
+| **Resampling & Interpolation** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`RESAMPLING`, v1.0.0) | Directional second-order derivative filtering ($D_{xx}, D_{yy}$), 1D Fourier power spectra, dominant peak period and strength estimation within $[1.5, 8.0]$ px, directional asymmetry, and spatial block curvature consistency mapping (Popescu & Farid 2005 / Mahdian & Saic 2008 / Gallagher & Chen 2008). | Supports JPEG, PNG, WebP, TIFF. Generates `resampling_map.png`, `resampling_analysis.png`, and `resampling_analysis.json`. |
 | **Block-Based Clone Detection** | **NOT IMPLEMENTED** | **PLANNED** (`CLONE-BLOCK`, v1.0.0) | Contract specified in manifest; sliding window lexicographical sorting of DCT block descriptors. | Planned for future implementation. |
 | **Keypoint-Based Geometric Cloning**| **NOT IMPLEMENTED** | **PLANNED** (`CLONE-KEYPOINT`, v1.0.0) | Contract specified in manifest; affine-invariant keypoint matching resilient to rotation and scaling. | Planned for future implementation. |
 | **Photo Response Non-Uniformity (PRNU)** | **NOT IMPLEMENTED** | **PLANNED** (`PRNU`, v1.0.0) | Contract specified in manifest; sensor noise pattern extraction for device fingerprinting and PCE calculation. | Planned for future implementation. |
@@ -50,14 +50,13 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 5 implements three additional production forensic engines under the V4 Extension Architecture:
-1. `HISTOGRAM` (Color Histogram & Dynamic Range Analysis)
-2. `COLOR-CHANNEL` (Color Channel Discrepancy Analysis)
-3. `FOURIER` (Fourier 2D Frequency Spectrum Analysis)
+ForenSight V4 Step 6 implements two additional production forensic engines under the V4 Extension Architecture:
+1. `ADVANCED-NOISE` (Advanced Spatial Noise Residual Forensics)
+2. `RESAMPLING` (Periodic Resampling & Interpolation Forensics)
 
-Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), and Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), **ten production V4 engines** are now fully operational.
+Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), and Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), **twelve production V4 engines** are now fully operational.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY HISTOGRAM, COLOR-CHANNEL, AND FOURIER WERE IMPLEMENTED IN STEP 5.**  
-- All other 8 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
+- **ONLY ADVANCED-NOISE AND RESAMPLING WERE IMPLEMENTED IN STEP 6.**  
+- All other 6 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).

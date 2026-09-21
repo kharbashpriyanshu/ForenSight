@@ -10,6 +10,8 @@ import BlockingArtifactViewer from '../components/evidence/BlockingArtifactViewe
 import HistogramViewer from '../components/evidence/HistogramViewer';
 import ColorChannelViewer from '../components/evidence/ColorChannelViewer';
 import FourierViewer from '../components/evidence/FourierViewer';
+import { AdvancedNoiseViewer } from '../components/evidence/AdvancedNoiseViewer';
+import { ResamplingViewer } from '../components/evidence/ResamplingViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -464,6 +466,26 @@ export default function EvidenceDetail() {
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 fourierResult={results['fourier']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 6: Advanced Spatial Noise Residual Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <AdvancedNoiseViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                advancedNoiseResult={results['advanced-noise'] || results['advanced_noise']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 6: Periodic Resampling & Interpolation Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <ResamplingViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                resamplingResult={results['resampling']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>

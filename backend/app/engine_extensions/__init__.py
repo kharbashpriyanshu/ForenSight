@@ -57,6 +57,14 @@ from .frequency import (
     FourierEngine,
     FourierParameters,
 )
+from .noise import (
+    AdvancedNoiseEngine,
+    AdvancedNoiseParameters,
+)
+from .resampling import (
+    ResamplingEngine,
+    ResamplingParameters,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -82,6 +90,10 @@ engine_registry.register(BlockingArtifactEngine())
 engine_registry.register(HistogramEngine())
 engine_registry.register(ColorChannelEngine())
 engine_registry.register(FourierEngine())
+
+# Register V4 Step 6 Advanced Noise and Resampling engines
+engine_registry.register(AdvancedNoiseEngine())
+engine_registry.register(ResamplingEngine())
 
 from .runner import V4EngineRunner
 
@@ -123,5 +135,9 @@ __all__ = [
     "ColorChannelParameters",
     "FourierEngine",
     "FourierParameters",
+    "AdvancedNoiseEngine",
+    "AdvancedNoiseParameters",
+    "ResamplingEngine",
+    "ResamplingParameters",
     "V4EngineRunner",
 ]
