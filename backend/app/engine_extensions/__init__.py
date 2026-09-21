@@ -41,6 +41,10 @@ from .compression import (
     ADJPEGEngine,
     NADJPEGEngine,
 )
+from .blocking import (
+    BlockingArtifactEngine,
+    BlockingArtifactParameters,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -58,6 +62,9 @@ engine_registry.register(JPEGHuffmanEngine())
 engine_registry.register(JPEGGhostEngine())
 engine_registry.register(ADJPEGEngine())
 engine_registry.register(NADJPEGEngine())
+
+# Register V4 Step 4 Blocking Artifact engine
+engine_registry.register(BlockingArtifactEngine())
 
 from .runner import V4EngineRunner
 
@@ -91,5 +98,7 @@ __all__ = [
     "JPEGGhostEngine",
     "ADJPEGEngine",
     "NADJPEGEngine",
+    "BlockingArtifactEngine",
+    "BlockingArtifactParameters",
     "V4EngineRunner",
 ]

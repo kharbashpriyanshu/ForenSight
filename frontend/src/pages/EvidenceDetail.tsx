@@ -6,6 +6,7 @@ import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 import AdvancedJpegViewer from '../components/evidence/AdvancedJpegViewer';
 import CompressionHistoryViewer from '../components/evidence/CompressionHistoryViewer';
+import BlockingArtifactViewer from '../components/evidence/BlockingArtifactViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -420,6 +421,16 @@ export default function EvidenceDetail() {
                 ghostResult={results['jpeg-ghost'] || results['jpeg_ghost']}
                 adjpegResult={results['adjpeg']}
                 nadjpegResult={results['nadjpeg']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 4: JPEG 8×8 Blocking Artifact Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <BlockingArtifactViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                blockingResult={results['blocking-artifact'] || results['blocking_artifact']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>

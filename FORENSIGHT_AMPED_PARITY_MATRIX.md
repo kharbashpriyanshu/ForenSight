@@ -1,7 +1,7 @@
 # ForenSight V3 vs. Amped Authenticate — Forensic Capability Parity Matrix
 
-**Document Version:** 4.0.0-STEP2  
-**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 2 ADVANCED JPEG ENGINES IMPLEMENTED  
+**Document Version:** 4.0.0-STEP4  
+**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 4 BLOCKING ARTIFACT ENGINE IMPLEMENTED  
 **Date:** 2026-09-21  
 
 This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, and the V4 Forensic Engine Extension Architecture without speculative claims or synthetic indicators.
@@ -31,7 +31,7 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **JPEG Quantization Table Analysis** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`JPEG-QT`, v1.0.0) | Direct DQT segment extraction, 8x8 matrix reconstruction, deterministic statistics (min, max, mean, variance, DC/AC split), SHA-256 table fingerprints, component associations, and calibrated IJG quality factor curve fitting with explicit scientific disclaimer. | Validated across multiple tables and custom profiles. Non-IJG tables return `NOT_ESTIMATED`. |
 | **JPEG Huffman Coding Analysis** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`JPEG-HUFFMAN`, v1.0.0) | Direct DHT segment extraction, DC/AC separation, 16-bin code length distributions, symbol cardinality counts, SHA-256 fingerprints, and comparison against ITU-T T.81 Annex K standard baseline tables. | Distinguishes standard baseline tables from custom/optimized tables without inferring malicious intent. |
 | **JPEG Ghost Detection** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`JPEG-GHOST`, v1.0.0) | Controlled recompression sweep across quality spectrum $[q_{\min}, q_{\max}]$ (Farid 2009), global response curve calculation, localized candidate spliced region detection via IQR thresholding, and pseudo-color Viridis difference heatmap generation. | Non-JPEG returns `NOT_APPLICABLE` (not negative evidence). Evaluates compression history variations; does not output fake probability. |
-| **Blocking Artifact Inconsistency** | **NOT IMPLEMENTED** | **PLANNED** (`BLOCKING-ARTIFACT`, v1.0.0) | Contract specified in manifest; 8x8 block boundary gradient discontinuities and grid displacement. | Planned for future implementation. |
+| **Blocking Artifact Inconsistency** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`BLOCKING-ARTIFACT`, v1.0.0) | Evaluates 8x8 block boundary discontinuities (Wang 2002 / Fan 2003 / Li 2009) relative to intra-block texture gradients; calculates boundary-to-internal energy ratios, harmonic periodicity peaks, 2D spatial heatmap (`blocking_artifact_map.png`), and z-score candidate region clustering. | Non-JPEG returns `NOT_APPLICABLE`. Detects localized boundary step divergence and grid misalignments. |
 | **Aligned Double JPEG (ADJPEG)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`ADJPEG`, v1.0.0) | Aligned double-JPEG compression detector evaluating $8 \times 8$ block DCT coefficient histograms across 8 primary AC frequency modes, 1D FFT periodicity peak ratio calculation against the spectral noise floor, and 2-panel diagnostic histogram/spectrum plotting. | Non-JPEG returns `NOT_APPLICABLE`. Detects double quantization comb artifacts. |
 | **Non-Aligned Double JPEG (NADJPEG)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`NADJPEG`, v1.0.0) | Non-aligned double-JPEG compression detector calculating inter-pixel boundary discontinuity gradients across all 64 candidate phase shifts $[0..7] \times [0..7]$ (Li 2008 / Bianchi 2011), candidate spatial shift $(\Delta r^*, \Delta c^*)$ extraction, and 64-cell energy matrix visualization. | Non-JPEG returns `NOT_APPLICABLE`. Detects shifted compression grids from cropping/resaving. |
 | **Color Histogram Analysis** | **NOT IMPLEMENTED** | **PLANNED** (`HISTOGRAM`, v1.0.0) | Contract specified in manifest; channel distribution analysis for comb artifacts and dynamic range gaps. | Planned for future implementation. |
@@ -50,14 +50,12 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 3 implements the next three real forensic engines under the V4 Extension Architecture:
-1. `JPEG-GHOST` (JPEG Ghost Detection)
-2. `ADJPEG` (Aligned Double JPEG Compression Analysis)
-3. `NADJPEG` (Non-Aligned Double JPEG Compression Analysis)
+ForenSight V4 Step 4 implements the seventh production forensic engine under the V4 Extension Architecture:
+1. `BLOCKING-ARTIFACT` (Blocking Artifact Inconsistency Analysis)
 
-Alongside the Phase 2A engines (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), six production V4 engines are now fully operational.
+Alongside the Phase 2A engines (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`) and Phase 2B engines (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), seven production V4 engines are now fully operational.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY THESE THREE ENGINES WERE IMPLEMENTED IN STEP 3.**  
-- All other 12 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
+- **ONLY BLOCKING-ARTIFACT WAS IMPLEMENTED IN STEP 4.**  
+- All other 11 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).

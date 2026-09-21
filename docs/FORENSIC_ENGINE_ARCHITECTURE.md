@@ -204,4 +204,13 @@ The following three production engines were implemented and verified in V4 Step 
 3. **`NADJPEG` (v1.0.0)**: Non-aligned double-JPEG compression detector calculating inter-pixel boundary discontinuity gradients across all 64 candidate phase shifts $[0..7] \times [0..7]$ (Li 2008 / Bianchi 2011), candidate spatial shift $(\Delta r^*, \Delta c^*)$ extraction, and 64-cell energy matrix visualization.  
    *Reference Documentation:* [docs/NADJPEG_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/NADJPEG_ANALYSIS.md)
 
-*Note:* All other 12 future engines remain in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+---
+
+## 12. Implemented V4 Forensic Engines (Phase 2C: Blocking Artifact Forensics)
+
+The following production engine was implemented and verified in V4 Step 4 under `backend/app/engine_extensions/blocking/`:
+
+1. **`BLOCKING-ARTIFACT` (v1.0.0)**: Genuine 8×8 DCT block boundary discontinuity analyzer (Wang 2002 / Fan & de Queiroz 2003 / Li 2009). Evaluates horizontal and vertical block boundary step excesses relative to local texture gradients, calculates global boundary-to-internal ratios and grid periodicity harmonic peaks, generates 2D spatial blocking maps (`blocking_artifact_map.png`), and detects deterministic candidate regions via spatial z-score clustering.  
+   *Reference Documentation:* [docs/BLOCKING_ARTIFACT_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/BLOCKING_ARTIFACT_ANALYSIS.md)
+
+*Note:* All other 11 future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
