@@ -1,7 +1,7 @@
 # ForenSight V3 vs. Amped Authenticate — Forensic Capability Parity Matrix
 
-**Document Version:** 4.0.0-STEP6  
-**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 6 ADVANCED NOISE & RESAMPLING ENGINES IMPLEMENTED  
+**Document Version:** 4.0.0-STEP7  
+**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 7 COPY-MOVE ENGINES (CLONE-BLOCK & CLONE-KEYPOINT) IMPLEMENTED  
 **Date:** 2026-09-21  
 
 This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, and the V4 Forensic Engine Extension Architecture without speculative claims or synthetic indicators.
@@ -39,8 +39,8 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **Fourier / 2D FFT Spectrum** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`FOURIER`, v1.0.0) | Zero-centered 2D Fast Fourier Transform (FFT) on luminance, radial frequency band energy partitioning (low/mid/high), spectral entropy, and discrete periodic harmonic peak detection (Popescu & Farid 2005). | Supports JPEG, PNG, WebP, TIFF. Generates `fourier_spectrum.png` and `fourier_analysis.json`. |
 | **Advanced Multiscale Noise** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`ADVANCED-NOISE`, v1.0.0) | High-frequency noise residual extraction via Gaussian low-pass subtraction, global variance, robust MAD scales ($\hat{\sigma} = 1.4826 \cdot \text{MAD}$), Shannon entropy, radial frequency decomposition, and spatial block z-score clustering (Pan et al. 2012 / Mahdian & Saic 2009 / Lyu et al. 2014). | Supports JPEG, PNG, WebP, TIFF. Generates `advanced_noise_map.png`, `advanced_noise_analysis.png`, and `advanced_noise_analysis.json`. |
 | **Resampling & Interpolation** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`RESAMPLING`, v1.0.0) | Directional second-order derivative filtering ($D_{xx}, D_{yy}$), 1D Fourier power spectra, dominant peak period and strength estimation within $[1.5, 8.0]$ px, directional asymmetry, and spatial block curvature consistency mapping (Popescu & Farid 2005 / Mahdian & Saic 2008 / Gallagher & Chen 2008). | Supports JPEG, PNG, WebP, TIFF. Generates `resampling_map.png`, `resampling_analysis.png`, and `resampling_analysis.json`. |
-| **Block-Based Clone Detection** | **NOT IMPLEMENTED** | **PLANNED** (`CLONE-BLOCK`, v1.0.0) | Contract specified in manifest; sliding window lexicographical sorting of DCT block descriptors. | Planned for future implementation. |
-| **Keypoint-Based Geometric Cloning**| **NOT IMPLEMENTED** | **PLANNED** (`CLONE-KEYPOINT`, v1.0.0) | Contract specified in manifest; affine-invariant keypoint matching resilient to rotation and scaling. | Planned for future implementation. |
+| **Block-Based Clone Detection** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`CLONE-BLOCK`, v1.0.0) | Dense sliding-window block decomposition (default $16 \times 16$, stride $8$), compact 14-dimensional low-frequency 2D DCT descriptors, lexicographical sorting, spatial exclusion constraint ($\ge 32$ px), cosine similarity thresholding ($\ge 0.96$), and displacement vector $(\Delta x, \Delta y)$ clustering with bounding box localization (Fridrich et al. 2003 / Popescu & Farid 2004 / Christlein et al. 2012). | Supports JPEG, PNG, WebP, TIFF. Generates `clone_block_map.png`, `clone_block_analysis.png`, and `clone_block_analysis.json`. |
+| **Keypoint-Based Geometric Cloning**| **NOT IMPLEMENTED** | **IMPLEMENTED** (`CLONE-KEYPOINT`, v1.0.0) | Independent ORB keypoint extraction (`cv2.setRNGSeed(42)`), Hamming distance self-matching with spatial separation constraint ($\ge 30$ px), Lowe's ratio test ($\le 0.75$), and affine RANSAC geometric consistency modeling estimating scale, rotation angle, translation vector, and reprojection error (Amerini et al. 2011 / Silva et al. 2015 / Rublee et al. 2011). | Supports JPEG, PNG, WebP, TIFF. Generates `clone_keypoint_map.png`, `clone_keypoint_analysis.png`, and `clone_keypoint_analysis.json`. |
 | **Photo Response Non-Uniformity (PRNU)** | **NOT IMPLEMENTED** | **PLANNED** (`PRNU`, v1.0.0) | Contract specified in manifest; sensor noise pattern extraction for device fingerprinting and PCE calculation. | Planned for future implementation. |
 | **Camera Hardware Identification** | **NOT IMPLEMENTED** | **PLANNED** (`CAMERA-ID`, v1.0.0) | Contract specified in manifest; sensor noise, CFA demosaicing traces, and DQT clustering to identify hardware make/model. | Planned for future implementation. |
 | **Synthetic & AI Screening** | **NOT IMPLEMENTED** | **PLANNED** (`AI-SCREENING`, v1.0.0) | Contract specified in manifest; spectral checkerboard artifacts and physical rendering anomalies of generative models. | Planned for future implementation. |
@@ -50,13 +50,14 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 6 implements two additional production forensic engines under the V4 Extension Architecture:
-1. `ADVANCED-NOISE` (Advanced Spatial Noise Residual Forensics)
-2. `RESAMPLING` (Periodic Resampling & Interpolation Forensics)
+ForenSight V4 Step 7 implements two additional production forensic engines under the V4 Extension Architecture:
+1. `CLONE-BLOCK` (Dense Block-Based Copy-Move Clone Forensics)
+2. `CLONE-KEYPOINT` (Keypoint-Based Geometric Copy-Move Clone Forensics)
 
-Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), and Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), **twelve production V4 engines** are now fully operational.
+Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), and Phase 2F (`CLONE-BLOCK`, `CLONE-KEYPOINT`), **fourteen production V4 engines** are now fully operational.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY ADVANCED-NOISE AND RESAMPLING WERE IMPLEMENTED IN STEP 6.**  
-- All other 6 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
+- **ONLY CLONE-BLOCK AND CLONE-KEYPOINT WERE IMPLEMENTED IN STEP 7.**  
+- All other 4 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).
+

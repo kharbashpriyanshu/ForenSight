@@ -65,6 +65,14 @@ from .resampling import (
     ResamplingEngine,
     ResamplingParameters,
 )
+from .clone_block import (
+    CloneBlockEngine,
+    CloneBlockParameters,
+)
+from .clone_keypoint import (
+    CloneKeypointEngine,
+    CloneKeypointParameters,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -94,6 +102,10 @@ engine_registry.register(FourierEngine())
 # Register V4 Step 6 Advanced Noise and Resampling engines
 engine_registry.register(AdvancedNoiseEngine())
 engine_registry.register(ResamplingEngine())
+
+# Register V4 Step 7 Copy-Move engines
+engine_registry.register(CloneBlockEngine())
+engine_registry.register(CloneKeypointEngine())
 
 from .runner import V4EngineRunner
 
@@ -139,5 +151,10 @@ __all__ = [
     "AdvancedNoiseParameters",
     "ResamplingEngine",
     "ResamplingParameters",
+    "CloneBlockEngine",
+    "CloneBlockParameters",
+    "CloneKeypointEngine",
+    "CloneKeypointParameters",
     "V4EngineRunner",
 ]
+

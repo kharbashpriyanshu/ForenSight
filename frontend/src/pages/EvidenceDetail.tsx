@@ -12,6 +12,8 @@ import ColorChannelViewer from '../components/evidence/ColorChannelViewer';
 import FourierViewer from '../components/evidence/FourierViewer';
 import { AdvancedNoiseViewer } from '../components/evidence/AdvancedNoiseViewer';
 import { ResamplingViewer } from '../components/evidence/ResamplingViewer';
+import { CloneBlockViewer } from '../components/evidence/CloneBlockViewer';
+import { CloneKeypointViewer } from '../components/evidence/CloneKeypointViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -489,6 +491,27 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+
+            {/* V4 Step 7: Block-Based Copy-Move Clone Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <CloneBlockViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                cloneBlockResult={results['clone-block'] || results['clone_block']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 7: Keypoint-Based Copy-Move Clone Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <CloneKeypointViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                cloneKeypointResult={results['clone-keypoint'] || results['clone_keypoint']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
             
             <h2 className="card-title" style={{ marginTop: '2rem', marginBottom: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
               FUSION & ASSESSMENT

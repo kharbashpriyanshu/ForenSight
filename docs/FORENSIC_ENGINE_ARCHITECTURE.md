@@ -245,5 +245,20 @@ The following two production engines were implemented and verified in V4 Step 6:
    *Location:* `backend/app/engine_extensions/resampling/`  
    *Reference Documentation:* [docs/RESAMPLING_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/RESAMPLING_ANALYSIS.md)
 
-*Note:* Exactly 12 V4 forensic engines are now fully operational. The 6 remaining future engines remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+---
+
+## 15. Implemented V4 Forensic Engines (Phase 2F: Copy-Move Clone Forensics)
+
+The following two production engines were implemented and verified in V4 Step 7:
+
+1. **`CLONE-BLOCK` (v1.0.0)**: Dense sliding-window block similarity analyzer for copy-move cloning detection across smooth and low-contrast regions. Decomposes spatial luminance into overlapping $B \times B$ windows (default $16 \times 16$, stride $8$), computes compact 14-dimensional low-frequency 2D DCT feature vectors, performs lexicographical sorting to identify proximate descriptors, enforces spatial separation exclusion ($\ge 32\text{px}$), and clusters candidate pairs into coherent translation displacement vectors $(\Delta x, \Delta y)$ with bounding box localization (Fridrich et al. 2003 / Popescu & Farid 2004 / Christlein et al. 2012).  
+   *Location:* `backend/app/engine_extensions/clone_block/`  
+   *Reference Documentation:* [docs/CLONE_BLOCK_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/CLONE_BLOCK_ANALYSIS.md)
+
+2. **`CLONE-KEYPOINT` (v1.0.0)**: Independent keypoint-based copy-move analysis detecting cloned fragments undergoing geometric transformations (rotation, scaling, translation). Extracts deterministic ORB features (`cv2.setRNGSeed(42)`), performs Hamming distance self-matching with spatial separation constraints ($\ge 30\text{px}$), filters ambiguous matches via Lowe's ratio test ($\le 0.75$), models geometric consensus using partial affine RANSAC, extracts scale factor, rotation angle, translation vector, and mean reprojection error, and synthesizes source/target bounding boxes (Amerini et al. 2011 / Silva et al. 2015 / Rublee et al. 2011).  
+   *Location:* `backend/app/engine_extensions/clone_keypoint/`  
+   *Reference Documentation:* [docs/CLONE_KEYPOINT_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/CLONE_KEYPOINT_ANALYSIS.md)
+
+*Note:* Exactly 14 V4 forensic engines are now fully operational. The 4 remaining future engines (`PRNU`, `CAMERA-ID`, `AI-SCREENING`, `VIDEO-FORENSICS`) remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+
 
