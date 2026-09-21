@@ -171,10 +171,37 @@ CASE
 
 ## 9. How Future Engines Should Be Added
 
-When a future engine is ready for implementation in a subsequent phase (e.g., V4 Step 2):
-1. **Implement Engine**: Create a subclass of `BaseForensicEngine` in a new module under `backend/app/engine_extensions/modules/<engine_id>/`.
+When a future engine is ready for implementation in a subsequent phase:
+1. **Implement Engine**: Create a subclass of `BaseForensicEngine` under `backend/app/engine_extensions/`.
 2. **Specify Contract**: Define `InputRequirements`, explicit `parameter_schema`, `limitations`, and peer-reviewed `scientific_references`.
 3. **Implement Execution**: Implement `execute(context)` producing `NormalizedObservation`s and `EngineArtifactMetadata`s.
 4. **Register**: Add the engine instance to `engine_registry.register(MyEngine())`.
-5. **Update Manifest**: Transition the engine in `manifest.py` from `status="PLANNED"` to `status="VERIFIED"`.
-6. **Add Unit Tests**: Write unit tests covering determinism, applicability, and parameter validation.
+5. **Add Unit Tests**: Write unit tests covering determinism, applicability, and parameter validation.
+
+---
+
+## 10. Implemented V4 Forensic Engines (Phase 2A: Advanced JPEG)
+
+The following three production engines were implemented and verified in V4 Step 2 under `backend/app/engine_extensions/jpeg/`:
+
+1. **`JPEG-STRUCTURE` (v1.0.0)**: Low-overhead binary parser for ITU-T T.81 marker sequences, segment offsets, frame geometry, component sampling factors, and structural anomaly detection.  
+   *Reference Documentation:* [docs/JPEG_STRUCTURE_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/JPEG_STRUCTURE_ANALYSIS.md)
+2. **`JPEG-QT` (v1.0.0)**: Direct DQT segment parsing, $8 \times 8$ matrix reconstruction, deterministic statistics (DC/AC split, min, max, mean, variance), SHA-256 table fingerprints, and calibrated IJG quality factor estimation.  
+   *Reference Documentation:* [docs/JPEG_QUANTIZATION_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/JPEG_QUANTIZATION_ANALYSIS.md)
+3. **`JPEG-HUFFMAN` (v1.0.0)**: DHT segment parsing, DC/AC separation, 16-element code length histograms, symbol counts, table fingerprints, and ITU-T T.81 Annex K baseline compliance checking.  
+   *Reference Documentation:* [docs/JPEG_HUFFMAN_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/JPEG_HUFFMAN_ANALYSIS.md)
+
+---
+
+## 11. Implemented V4 Forensic Engines (Phase 2B: JPEG Compression History)
+
+The following three production engines were implemented and verified in V4 Step 3 under `backend/app/engine_extensions/compression/`:
+
+1. **`JPEG-GHOST` (v1.0.0)**: Iterative recompression residual sweep across quality spectrum $[q_{\min}, q_{\max}]$ (Farid 2009), global response curve calculation, localized candidate spliced region detection via IQR thresholding, and pseudo-color Viridis difference heatmap generation.  
+   *Reference Documentation:* [docs/JPEG_GHOST_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/JPEG_GHOST_ANALYSIS.md)
+2. **`ADJPEG` (v1.0.0)**: Aligned double-JPEG compression detector evaluating $8 \times 8$ block DCT coefficient histograms across 8 primary AC frequency modes, 1D FFT periodicity peak ratio calculation against the spectral noise floor, and 2-panel diagnostic histogram/spectrum plotting.  
+   *Reference Documentation:* [docs/ADJPEG_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/ADJPEG_ANALYSIS.md)
+3. **`NADJPEG` (v1.0.0)**: Non-aligned double-JPEG compression detector calculating inter-pixel boundary discontinuity gradients across all 64 candidate phase shifts $[0..7] \times [0..7]$ (Li 2008 / Bianchi 2011), candidate spatial shift $(\Delta r^*, \Delta c^*)$ extraction, and 64-cell energy matrix visualization.  
+   *Reference Documentation:* [docs/NADJPEG_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/NADJPEG_ANALYSIS.md)
+
+*Note:* All other 12 future engines remain in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.

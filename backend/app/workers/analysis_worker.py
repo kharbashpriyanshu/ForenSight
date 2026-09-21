@@ -52,6 +52,24 @@ def run_analysis_task(self, job_id: int):
                 analysis = JPEGDCTAnalyzer.run_analysis(db, evidence.id)
             elif analysis_type in ("copy-move", "copy_move"):
                 analysis = CopyMoveAnalyzer.run_analysis(db, evidence.id)
+            elif analysis_type in ("jpeg-structure", "jpeg_structure"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "JPEG-STRUCTURE")
+            elif analysis_type in ("jpeg-qt", "jpeg_qt"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "JPEG-QT")
+            elif analysis_type in ("jpeg-huffman", "jpeg_huffman"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "JPEG-HUFFMAN")
+            elif analysis_type in ("jpeg-ghost", "jpeg_ghost"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "JPEG-GHOST")
+            elif analysis_type in ("adjpeg",):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "ADJPEG")
+            elif analysis_type in ("nadjpeg",):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "NADJPEG")
             else:
                 raise ValueError(f"Unknown analysis type {analysis_type}")
                 

@@ -31,6 +31,16 @@ from .adapters import (
     LegacyJPEGDCTAdapter,
     LegacyCopyMoveAdapter,
 )
+from .jpeg import (
+    JPEGStructureEngine,
+    JPEGQuantizationTableEngine,
+    JPEGHuffmanEngine,
+)
+from .compression import (
+    JPEGGhostEngine,
+    ADJPEGEngine,
+    NADJPEGEngine,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -38,6 +48,18 @@ engine_registry.register(LegacyELAAdapter())
 engine_registry.register(LegacyNoiseAdapter())
 engine_registry.register(LegacyJPEGDCTAdapter())
 engine_registry.register(LegacyCopyMoveAdapter())
+
+# Register V4 Step 2 JPEG engines
+engine_registry.register(JPEGStructureEngine())
+engine_registry.register(JPEGQuantizationTableEngine())
+engine_registry.register(JPEGHuffmanEngine())
+
+# Register V4 Step 3 Compression History engines
+engine_registry.register(JPEGGhostEngine())
+engine_registry.register(ADJPEGEngine())
+engine_registry.register(NADJPEGEngine())
+
+from .runner import V4EngineRunner
 
 __all__ = [
     "EngineCategory",
@@ -63,4 +85,11 @@ __all__ = [
     "LegacyNoiseAdapter",
     "LegacyJPEGDCTAdapter",
     "LegacyCopyMoveAdapter",
+    "JPEGStructureEngine",
+    "JPEGQuantizationTableEngine",
+    "JPEGHuffmanEngine",
+    "JPEGGhostEngine",
+    "ADJPEGEngine",
+    "NADJPEGEngine",
+    "V4EngineRunner",
 ]

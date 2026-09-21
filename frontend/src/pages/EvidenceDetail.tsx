@@ -4,6 +4,8 @@ import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
+import AdvancedJpegViewer from '../components/evidence/AdvancedJpegViewer';
+import CompressionHistoryViewer from '../components/evidence/CompressionHistoryViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -73,12 +75,14 @@ export default function EvidenceDetail() {
           const jobsMap: any = {};
           jobsList.forEach(j => {
             const key = j.analysis_type.toLowerCase();
+            const hypKey = key.replace(/_/g, '-');
             jobsMap[key] = j;
+            jobsMap[hypKey] = j;
             if (j.status === 'COMPLETED' && j.analysis_id) {
               fetchApi(`/analysis/${j.analysis_id}`)
                 .then(r => r.json())
                 .then(resData => {
-                  setResults((prev: any) => ({ ...prev, [key]: resData }));
+                  setResults((prev: any) => ({ ...prev, [key]: resData, [hypKey]: resData }));
                 })
                 .catch(() => {});
             }
@@ -394,6 +398,30 @@ export default function EvidenceDetail() {
               <AnalysisJobCard job={jobs['noise']} analysisType="Noise Residual" result={results['noise']} onRun={() => runAsyncJob('noise')} disabled={false} />
               <AnalysisJobCard job={jobs['jpeg-dct']} analysisType="JPEG / DCT" result={results['jpeg-dct']} onRun={() => runAsyncJob('jpeg-dct')} disabled={false} />
               <AnalysisJobCard job={jobs['copy-move']} analysisType="Copy-Move" result={results['copy-move']} onRun={() => runAsyncJob('copy-move')} disabled={false} />
+            </div>
+
+            {/* V4 Step 2: Advanced JPEG & File Forensics Extension Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <AdvancedJpegViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                structureResult={results['jpeg-structure'] || results['jpeg_structure']}
+                qtResult={results['jpeg-qt'] || results['jpeg_qt']}
+                huffmanResult={results['jpeg-huffman'] || results['jpeg_huffman']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 3: JPEG Compression History Forensics Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <CompressionHistoryViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                ghostResult={results['jpeg-ghost'] || results['jpeg_ghost']}
+                adjpegResult={results['adjpeg']}
+                nadjpegResult={results['nadjpeg']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
             </div>
             
             <h2 className="card-title" style={{ marginTop: '2rem', marginBottom: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>

@@ -110,6 +110,114 @@ def trigger_copy_move_analysis(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal Copy-Move Analysis failure")
 
+@router.post("/evidence/{evidence_id}/analysis/jpeg-structure", response_model=AnalysisResponse)
+def trigger_jpeg_structure_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "JPEG-STRUCTURE")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal JPEG Structure failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/jpeg-qt", response_model=AnalysisResponse)
+def trigger_jpeg_qt_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "JPEG-QT")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal JPEG Quantization failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/jpeg-huffman", response_model=AnalysisResponse)
+def trigger_jpeg_huffman_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "JPEG-HUFFMAN")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal JPEG Huffman failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/jpeg-ghost", response_model=AnalysisResponse)
+def trigger_jpeg_ghost_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "JPEG-GHOST")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal JPEG Ghost failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/adjpeg", response_model=AnalysisResponse)
+def trigger_adjpeg_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "ADJPEG")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal ADJPEG failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/nadjpeg", response_model=AnalysisResponse)
+def trigger_nadjpeg_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "NADJPEG")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal NADJPEG failure: {str(e)}")
+
 @router.get("/artifacts/{artifact_path:path}")
 def get_artifact(
     artifact_path: str,
