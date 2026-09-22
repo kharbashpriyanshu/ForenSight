@@ -73,6 +73,17 @@ from .clone_keypoint import (
     CloneKeypointEngine,
     CloneKeypointParameters,
 )
+from .prnu import (
+    PRNUEngine,
+    PRNUParameters,
+    PRNUFingerprintMetadata,
+)
+from .camera import (
+    CameraIDEngine,
+    CameraIDParameters,
+    CameraReferenceMetadata,
+    CameraReferenceLibrary,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -106,6 +117,10 @@ engine_registry.register(ResamplingEngine())
 # Register V4 Step 7 Copy-Move engines
 engine_registry.register(CloneBlockEngine())
 engine_registry.register(CloneKeypointEngine())
+
+# Register V4 Step 8 PRNU and Camera-ID engines
+engine_registry.register(PRNUEngine())
+engine_registry.register(CameraIDEngine())
 
 from .runner import V4EngineRunner
 
@@ -155,6 +170,14 @@ __all__ = [
     "CloneBlockParameters",
     "CloneKeypointEngine",
     "CloneKeypointParameters",
+    "PRNUEngine",
+    "PRNUParameters",
+    "PRNUFingerprintMetadata",
+    "CameraIDEngine",
+    "CameraIDParameters",
+    "CameraReferenceMetadata",
+    "CameraReferenceLibrary",
     "V4EngineRunner",
 ]
+
 

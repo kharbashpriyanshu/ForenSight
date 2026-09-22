@@ -14,6 +14,8 @@ import { AdvancedNoiseViewer } from '../components/evidence/AdvancedNoiseViewer'
 import { ResamplingViewer } from '../components/evidence/ResamplingViewer';
 import { CloneBlockViewer } from '../components/evidence/CloneBlockViewer';
 import { CloneKeypointViewer } from '../components/evidence/CloneKeypointViewer';
+import { PRNUViewer } from '../components/evidence/PRNUViewer';
+import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -512,7 +514,27 @@ export default function EvidenceDetail() {
               />
             </div>
 
-            
+            {/* V4 Step 8: PRNU Sensor Pattern Analysis Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <PRNUViewer
+                evidenceId={uploadResult.id}
+                containerFormat={uploadResult.file_format || ''}
+                prnuResult={results['prnu']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
+            {/* V4 Step 8: Source Camera Identification Viewer */}
+            <div style={{ marginTop: '2rem' }}>
+              <CameraIdViewer
+                evidenceId={uploadResult.id}
+                caseId={uploadResult.case_id || caseId || 'default'}
+                containerFormat={uploadResult.file_format || ''}
+                cameraIdResult={results['camera-id'] || results['camera_id']}
+                onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+              />
+            </div>
+
             <h2 className="card-title" style={{ marginTop: '2rem', marginBottom: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
               FUSION & ASSESSMENT
             </h2>

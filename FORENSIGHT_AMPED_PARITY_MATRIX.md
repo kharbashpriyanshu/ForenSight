@@ -1,8 +1,8 @@
 # ForenSight V3 vs. Amped Authenticate — Forensic Capability Parity Matrix
 
-**Document Version:** 4.0.0-STEP7  
-**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 7 COPY-MOVE ENGINES (CLONE-BLOCK & CLONE-KEYPOINT) IMPLEMENTED  
-**Date:** 2026-09-21  
+**Document Version:** 4.0.0-STEP8  
+**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 8 CAMERA IDENTIFICATION ENGINES (PRNU & CAMERA-ID) IMPLEMENTED  
+**Date:** 2026-09-22  
 
 This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, and the V4 Forensic Engine Extension Architecture without speculative claims or synthetic indicators.
 
@@ -41,8 +41,8 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **Resampling & Interpolation** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`RESAMPLING`, v1.0.0) | Directional second-order derivative filtering ($D_{xx}, D_{yy}$), 1D Fourier power spectra, dominant peak period and strength estimation within $[1.5, 8.0]$ px, directional asymmetry, and spatial block curvature consistency mapping (Popescu & Farid 2005 / Mahdian & Saic 2008 / Gallagher & Chen 2008). | Supports JPEG, PNG, WebP, TIFF. Generates `resampling_map.png`, `resampling_analysis.png`, and `resampling_analysis.json`. |
 | **Block-Based Clone Detection** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`CLONE-BLOCK`, v1.0.0) | Dense sliding-window block decomposition (default $16 \times 16$, stride $8$), compact 14-dimensional low-frequency 2D DCT descriptors, lexicographical sorting, spatial exclusion constraint ($\ge 32$ px), cosine similarity thresholding ($\ge 0.96$), and displacement vector $(\Delta x, \Delta y)$ clustering with bounding box localization (Fridrich et al. 2003 / Popescu & Farid 2004 / Christlein et al. 2012). | Supports JPEG, PNG, WebP, TIFF. Generates `clone_block_map.png`, `clone_block_analysis.png`, and `clone_block_analysis.json`. |
 | **Keypoint-Based Geometric Cloning**| **NOT IMPLEMENTED** | **IMPLEMENTED** (`CLONE-KEYPOINT`, v1.0.0) | Independent ORB keypoint extraction (`cv2.setRNGSeed(42)`), Hamming distance self-matching with spatial separation constraint ($\ge 30$ px), Lowe's ratio test ($\le 0.75$), and affine RANSAC geometric consistency modeling estimating scale, rotation angle, translation vector, and reprojection error (Amerini et al. 2011 / Silva et al. 2015 / Rublee et al. 2011). | Supports JPEG, PNG, WebP, TIFF. Generates `clone_keypoint_map.png`, `clone_keypoint_analysis.png`, and `clone_keypoint_analysis.json`. |
-| **Photo Response Non-Uniformity (PRNU)** | **NOT IMPLEMENTED** | **PLANNED** (`PRNU`, v1.0.0) | Contract specified in manifest; sensor noise pattern extraction for device fingerprinting and PCE calculation. | Planned for future implementation. |
-| **Camera Hardware Identification** | **NOT IMPLEMENTED** | **PLANNED** (`CAMERA-ID`, v1.0.0) | Contract specified in manifest; sensor noise, CFA demosaicing traces, and DQT clustering to identify hardware make/model. | Planned for future implementation. |
+| **Photo Response Non-Uniformity (PRNU)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`PRNU`, v1.0.0) | Adaptive local variance noise residual extraction, zero-mean row/column demosaicing artifact suppression, empirical suitability index screening (saturation, dynamic range, residual energy), and multi-image Maximum Likelihood Estimation (MLE) sensor fingerprint aggregation (Lukas et al. 2006 / Chen et al. 2008 / Goljan et al. 2009). | Supports JPEG, PNG, WebP, TIFF. Generates `prnu_residual.png`, `prnu_analysis.png`, and `prnu_analysis.json`. |
+| **Camera Hardware Identification** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`CAMERA-ID`, v1.0.0) | Physical device attribution via 2D circular cross-correlation surfaces and Peak-to-Correlation Energy (PCE) statistical thresholding ($\ge 50.0$) against case-scoped camera reference libraries; computes spatial shift offsets and candidate PCE margins (Chen et al. 2008 / Goljan et al. 2009 / Kang et al. 2012). | Supports JPEG, PNG, WebP, TIFF. Generates `camera_id_analysis.png`, `camera_id_comparison.png`, and `camera_id_analysis.json`. |
 | **Synthetic & AI Screening** | **NOT IMPLEMENTED** | **PLANNED** (`AI-SCREENING`, v1.0.0) | Contract specified in manifest; spectral checkerboard artifacts and physical rendering anomalies of generative models. | Planned for future implementation. |
 | **Video Forensics** | **NOT IMPLEMENTED** | **PLANNED** (`VIDEO-FORENSICS`, v1.0.0) | Contract specified in manifest; video container atom inspection, GOP cadence, and optical flow vectors. | Planned for future implementation. |
 
@@ -50,14 +50,15 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 7 implements two additional production forensic engines under the V4 Extension Architecture:
-1. `CLONE-BLOCK` (Dense Block-Based Copy-Move Clone Forensics)
-2. `CLONE-KEYPOINT` (Keypoint-Based Geometric Copy-Move Clone Forensics)
+ForenSight V4 Step 8 implements two additional production forensic engines under the V4 Extension Architecture:
+1. `PRNU` (Photo-Response Non-Uniformity Sensor Pattern Forensics)
+2. `CAMERA-ID` (Source Camera Hardware Identification Forensics)
 
-Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), and Phase 2F (`CLONE-BLOCK`, `CLONE-KEYPOINT`), **fourteen production V4 engines** are now fully operational.
+Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), Phase 2F (`CLONE-BLOCK`, `CLONE-KEYPOINT`), and Phase 2G (`PRNU`, `CAMERA-ID`), **sixteen production V4 engines** are now fully operational.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY CLONE-BLOCK AND CLONE-KEYPOINT WERE IMPLEMENTED IN STEP 7.**  
-- All other 4 future forensic modules remain strictly cataloged with `STATUS = PLANNED`.  
+- **ONLY PRNU AND CAMERA-ID WERE IMPLEMENTED IN STEP 8.**  
+- Exactly 2 future forensic modules remain strictly cataloged with `STATUS = PLANNED` (`AI-SCREENING`, `VIDEO-FORENSICS`).  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).
+
 

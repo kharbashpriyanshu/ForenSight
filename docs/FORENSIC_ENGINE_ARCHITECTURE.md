@@ -259,6 +259,19 @@ The following two production engines were implemented and verified in V4 Step 7:
    *Location:* `backend/app/engine_extensions/clone_keypoint/`  
    *Reference Documentation:* [docs/CLONE_KEYPOINT_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/CLONE_KEYPOINT_ANALYSIS.md)
 
-*Note:* Exactly 14 V4 forensic engines are now fully operational. The 4 remaining future engines (`PRNU`, `CAMERA-ID`, `AI-SCREENING`, `VIDEO-FORENSICS`) remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+## 16. Implemented V4 Forensic Engines (Phase 2G: Sensor Pattern Noise & Camera Identification Forensics)
+
+The following two production engines were implemented and verified in V4 Step 8:
+
+1. **`PRNU` (v1.0.0)**: Extracts physical sensor pattern noise residuals (Photo-Response Non-Uniformity) resulting from microscopic silicon manufacturing imperfections. Employs a Wiener-type adaptive local variance spatial filter, subtracts row and column sensor readout means to eliminate linear banding and CFA demosaicing contamination, computes an empirical suitability index screening for dynamic range and shadow/highlight saturation, and provides multi-image Maximum Likelihood Estimation (MLE) reference aggregation (Lukas et al. 2006 / Chen et al. 2008 / Goljan et al. 2009).  
+   *Location:* `backend/app/engine_extensions/prnu/`  
+   *Reference Documentation:* [docs/PRNU_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/PRNU_ANALYSIS.md)
+
+2. **`CAMERA-ID` (v1.0.0)**: Evaluates forensic device attribution by comparing query PRNU noise residuals against case-scoped camera reference fingerprints using 2D FFT circular cross-correlation surfaces and Peak-to-Correlation Energy (PCE). Computes sub-pixel spatial shift offsets $(\Delta y, \Delta x)$, classifies candidates against standard PCE thresholds ($\ge 50.0$), evaluates the discriminability margin ($\Delta\text{PCE}$) between top and runner-up candidate devices, and maintains strict case isolation and qualified forensic language (Chen et al. 2008 / Goljan et al. 2009 / Kang et al. 2012).  
+   *Location:* `backend/app/engine_extensions/camera/`  
+   *Reference Documentation:* [docs/CAMERA_ID_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/CAMERA_ID_ANALYSIS.md)
+
+*Note:* Exactly 16 V4 forensic engines are now fully operational. The 2 remaining future engines (`AI-SCREENING`, `VIDEO-FORENSICS`) remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+
 
 
