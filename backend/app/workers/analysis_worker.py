@@ -70,8 +70,20 @@ def run_analysis_task(self, job_id: int):
             elif analysis_type in ("nadjpeg",):
                 from app.engine_extensions.runner import V4EngineRunner
                 analysis = V4EngineRunner.run_engine(db, evidence.id, "NADJPEG")
+            elif analysis_type in ("geometry-perspective", "geometry_perspective"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "GEOMETRY-PERSPECTIVE")
+            elif analysis_type in ("physics-lighting", "physics_lighting"):
+                from app.engine_extensions.runner import V4EngineRunner
+                analysis = V4EngineRunner.run_engine(db, evidence.id, "PHYSICS-LIGHTING")
             else:
-                raise ValueError(f"Unknown analysis type {analysis_type}")
+                from app.engine_extensions.registry import engine_registry
+                from app.engine_extensions.runner import V4EngineRunner
+                hyp_engine_id = analysis_type.upper().replace("_", "-")
+                if engine_registry.get_engine(hyp_engine_id):
+                    analysis = V4EngineRunner.run_engine(db, evidence.id, hyp_engine_id)
+                else:
+                    raise ValueError(f"Unknown analysis type {analysis_type}")
                 
             if analysis:
                 job.analysis_id = analysis.id

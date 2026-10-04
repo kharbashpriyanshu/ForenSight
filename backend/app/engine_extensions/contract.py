@@ -86,6 +86,14 @@ class EngineExecutionResult(BaseModel):
     limitations: List[str] = Field(default_factory=list)
     inapplicability_data: Optional[Dict[str, Any]] = None
 
+    @property
+    def findings(self) -> Dict[str, Any]:
+        return self.structured_findings
+
+    @property
+    def execution_time_seconds(self) -> float:
+        return self.execution_time_ms / 1000.0
+
 
 class BaseForensicEngine(ABC):
     """

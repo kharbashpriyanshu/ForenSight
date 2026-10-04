@@ -17,6 +17,8 @@ import { CloneKeypointViewer } from '../components/evidence/CloneKeypointViewer'
 import { PRNUViewer } from '../components/evidence/PRNUViewer';
 import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
 import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
+import { PerspectiveForensicsViewer } from '../components/evidence/PerspectiveForensicsViewer';
+import { LightingSolarForensicsViewer } from '../components/evidence/LightingSolarForensicsViewer';
 
 interface HeatmapRegion {
   modality: string;
@@ -74,7 +76,7 @@ export default function EvidenceDetail() {
   const [custodyResult, setCustodyResult] = useState<any | null>(null);
 
   // Categorized Forensic Workbench active tab
-  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
+  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
 
 
   const fetchEvidenceAndJobs = (evId: string) => {
@@ -226,11 +228,13 @@ export default function EvidenceDetail() {
   const noiseResamplingCount = ['advanced-noise', 'resampling'].filter(k => hasResult(k)).length;
   const cloningCount = ['clone-block', 'clone-keypoint'].filter(k => hasResult(k)).length;
   const cameraCount = ['prnu', 'camera-id'].filter(k => hasResult(k)).length;
-  const totalCompleted = coreCount + compressionCount + colorCount + noiseResamplingCount + cloningCount + cameraCount;
+  const physicsGeometryCount = ['geometry-perspective', 'physics-lighting'].filter(k => hasResult(k)).length;
+  const totalCompleted = coreCount + compressionCount + colorCount + noiseResamplingCount + cloningCount + cameraCount + physicsGeometryCount;
 
   const workbenchTabs = [
     { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', count: heatmap?.composite_regions_count || 0, suffix: 'zones' },
     { id: 'visual_inspection', label: 'Interactive Microscopy & Loupe', icon: '🔬', count: 1, suffix: 'active' },
+    { id: 'physics_geometry', label: 'Physics & Geometry', icon: '📐', count: physicsGeometryCount, suffix: '/2' },
     { id: 'core', label: 'Core DIP Engines', icon: '⚙️', count: coreCount, suffix: '/5' },
     { id: 'compression', label: 'Container & Compression', icon: '🗜️', count: compressionCount, suffix: '/3' },
     { id: 'color_spectrum', label: 'Color & Spectrum', icon: '🌈', count: colorCount, suffix: '/3' },
@@ -615,6 +619,95 @@ export default function EvidenceDetail() {
                 cameraIdResult={results['camera-id'] || results['camera_id']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
+            </div>
+          )}
+
+          {/* TAB 8: PHYSICS & GEOMETRY FORENSICS */}
+          {(workbenchTab === 'physics_geometry' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Perspective Analysis */}
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                      📐 Perspective & Vanishing Point Geometry
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Evaluates 3D linear perspective convergence, vanishing points, and detects spliced composite outliers.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => runAsyncJob('geometry-perspective')}
+                    disabled={jobs['geometry-perspective']?.status === 'RUNNING'}
+                    style={{
+                      background: 'var(--primary-color)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.45rem 0.9rem',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                      cursor: jobs['geometry-perspective']?.status === 'RUNNING' ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {jobs['geometry-perspective']?.status === 'RUNNING' ? 'Computing Geometry...' : 'Run Perspective Analysis'}
+                  </button>
+                </div>
+
+                {(results['geometry-perspective']?.structured_findings || results['geometry_perspective']?.structured_findings) ? (
+                  <PerspectiveForensicsViewer
+                    evidenceId={uploadResult.id}
+                    findings={results['geometry-perspective']?.structured_findings || results['geometry_perspective']?.structured_findings}
+                    rawImageSrc={`/api/evidence/${uploadResult.id}/raw`}
+                  />
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                    Perspective analysis has not been executed yet for this evidence. Click <strong>Run Perspective Analysis</strong> to compute vanishing points and detect geometric inconsistencies.
+                  </div>
+                )}
+              </div>
+
+              {/* Lighting & Solar Analysis */}
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+                      ☀️ Physical Lighting, Shadow & NOAA Solar Ephemeris
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Measures 2D illuminant vectors, cast shadow rays, and cross-checks EXIF timestamp/GPS with NOAA solar ephemeris.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => runAsyncJob('physics-lighting')}
+                    disabled={jobs['physics-lighting']?.status === 'RUNNING'}
+                    style={{
+                      background: 'var(--primary-color)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.45rem 0.9rem',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                      cursor: jobs['physics-lighting']?.status === 'RUNNING' ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {jobs['physics-lighting']?.status === 'RUNNING' ? 'Evaluating Solar Physics...' : 'Run Lighting & Solar Analysis'}
+                  </button>
+                </div>
+
+                {(results['physics-lighting']?.structured_findings || results['physics_lighting']?.structured_findings) ? (
+                  <LightingSolarForensicsViewer
+                    evidenceId={uploadResult.id}
+                    findings={results['physics-lighting']?.structured_findings || results['physics_lighting']?.structured_findings}
+                    rawImageSrc={`/api/evidence/${uploadResult.id}/raw`}
+                  />
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                    Lighting & Solar ephemeris analysis has not been executed yet. Click <strong>Run Lighting & Solar Analysis</strong> to compute illuminant vectors and astronomical sun position.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

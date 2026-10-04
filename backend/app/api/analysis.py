@@ -403,6 +403,42 @@ def trigger_camera_id_analysis(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal Camera-ID failure: {str(e)}")
 
+@router.post("/evidence/{evidence_id}/analysis/geometry-perspective", response_model=AnalysisResponse)
+def trigger_geometry_perspective_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "GEOMETRY-PERSPECTIVE")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Perspective failure: {str(e)}")
+
+@router.post("/evidence/{evidence_id}/analysis/physics-lighting", response_model=AnalysisResponse)
+def trigger_physics_lighting_analysis(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    try:
+        from app.engine_extensions.runner import V4EngineRunner
+        analysis = V4EngineRunner.run_engine(db, evidence_id, "PHYSICS-LIGHTING")
+        return analysis
+    except ValueError as e:
+        if "not found" in str(e).lower() or "missing" in str(e).lower():
+            raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Lighting failure: {str(e)}")
+
 @router.get("/cases/{case_id}/camera-references")
 def list_case_camera_references(
     case_id: str,
