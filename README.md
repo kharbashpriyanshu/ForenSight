@@ -1,27 +1,31 @@
-# ForenSight V3 — Digital Evidence Operating System
+# ForenSight — Image Forensics Investigation Platform
 
-An explainable digital image forensic analysis and investigation operating system combining classical image processing, evidence provenance, asynchronous analysis workloads, deterministic cross-modality correlation, cryptographic chain of custody, and an interactive analyst review environment.
+ForenSight is an explainable digital image-forensics investigation platform. It combines classical image analysis, evidence provenance, asynchronous analysis jobs, cross-modality correlation, chain of custody, analyst review, and a reproducible benchmark harness.
 
-## 1. What is ForenSight?
-ForenSight is an explainable digital image forensic investigation platform. Instead of relying on mathematically indefensible "fake/real" probabilistic outputs or black-box machine learning classifiers, ForenSight focuses on deterministic measurements, immutable provenance, and qualitative contextual assessments.
+It is intentionally focused on **digital image evidence**; it is not a disk-imaging, mobile-device, video, or generative-AI detection suite. Measurements and candidate anomalies are investigative signals, not proof of manipulation or authenticity.
 
-## 2. Engineering Highlights
-ForenSight V3 demonstrates robust Software Engineering practices tailored for enterprise forensic operations:
+## Capabilities
 - **Asynchronous Workloads**: Heavy computer vision tasks (Copy-Move, ELA, DCT) are executed off the main thread via a Redis/Celery worker architecture.
-- **Evidence Provenance & Immutability**: Cryptographic SHA-256 fingerprinting at ingestion guarantees an immutable chain of custody verified by an automated Investigation Replay service and live tamper detection.
+- **Evidence Provenance**: SHA-256 fingerprinting at ingestion, chain-of-custody records, replay verification, and tamper checks.
 - **Batch Processing**: Multipart batch evidence ingestion with independent fault isolation, batch job queuing, and case-scoped progress monitoring.
-- **Multi-Modality Forensic Heatmaps**: Explainable spatial anomaly candidate overlays mapping ELA, Noise, and Copy-Move on a standardized $[0.0, 1.0]$ coordinate grid without synthetic probability masks.
+- **Image Examination**: Metadata, ELA, noise, JPEG structure/compression, copy-move, resampling, color/frequency analysis, and PRNU-related tooling. Applicability depends on the input and method.
+- **Multi-Modality Heatmaps**: Spatial anomaly candidate overlays without synthetic probability masks.
 - **Side-by-Side Comparison**: Synchronized dual-canvas viewport comparing file metadata, dimensions, hash signatures, compression parameters, and modality artifacts.
 - **Cross-Image Correlation**: Case-wide correlation evaluating shared camera hardware fingerprints (Make/Model/Serial), temporal capture sequencing, and cross-evidence descriptor matching.
-- **Scientific Investigation Assistant**: Rule-based decision support synthesizing whole-case forensic status, highlighting missing modality analyses, and offering alternative benign technical explanations.
+- **Investigation Assistant**: Rule-based decision support highlighting missing analyses and possible benign explanations; it is not an AI/ML classifier.
 - **Investigation Knowledge Graph**: Directed acyclic topological graph linking `CASE -> EVIDENCE -> ANALYSIS_JOB -> ANALYSIS -> OBSERVATION -> FINDING -> REPORT`.
-- **Storage & Tenant Isolation**: Evidence files are segregated using UUID-based storage isolation, preventing unauthorized cross-tenant access audited across all API endpoints.
-- **Security & Authorization**: Implements strict Role-Based Access Control (RBAC) via JWT authentication and route-level dependency injection for case-level authorization.
+- **Benchmarking**: Controlled fixtures, dataset manifests and integrity checks, per-engine evaluation reports, reproducibility checks, and external-dataset benchmark workflows.
+- **Security & Authorization**: JWT authentication, role checks, case-scoped access, upload validation, and UUID-based evidence storage.
 - **Auditability**: An immutable, chronological audit trail automatically logs every meaningful investigative action.
-- **Forensic Validation & Determinism**: Validated against a 15-fixture controlled forensic corpus with golden output regression snapshots and automated scientific freeze verification in CI.
-- **Infrastructure**: Configured for reproducible containerized deployment via Docker Compose, validated by a GitHub Actions CI pipeline with 105 passing backend tests.
+- **CI**: GitHub Actions workflows cover backend tests, scientific-core freeze verification, frontend type/build checks, Docker build/config validation, and PostgreSQL/Redis integration.
 
-## 3. Architecture
+## Current Validation Snapshot
+
+The checked-in controlled benchmark report at [`backend/datasets/benchmark/benchmark_report.md`](backend/datasets/benchmark/benchmark_report.md) records **11 images and 22 evaluations across ADVANCED-NOISE and RESAMPLING**. It verifies three-run determinism and reports runtime and execution status. That artifact does **not** include localization metrics, and it is not evidence of broad real-world accuracy.
+
+External-dataset benchmarking is implemented as a workflow, but real external data must be separately obtained, licensed, registered, and evaluated. The repository includes protocols and adapters; it does not include the CASIA, Columbia, or NIST OpenMFC image collections. Do not interpret synthetic/controlled fixture performance as field performance.
+
+## Architecture
 
 ```mermaid
 graph TD
@@ -44,7 +48,7 @@ graph LR
     EvidenceAssessment --> Report
 ```
 
-## 4. Forensic Capabilities
+## Forensic Methods & Limitations
 
 | Module | Method | What it measures | Limitation |
 |--------|--------|------------------|------------|
@@ -54,14 +58,14 @@ graph LR
 | **JPEG/DCT** | 8x8 block quantization | Analyzes frequency statistics and quantization tables. | Multiple saves in authentic software will trigger anomalies. |
 | **Copy-Move** | SIFT / RANSAC | Identifies candidate spatial correspondences and transformations. | Can flag legitimate repeated textures (e.g., brick walls). |
 
-## 5. Async Job Architecture
+## Analysis Jobs
 Synchronous execution of SIFT, DCT, or Noise workloads blocks API workers, resulting in request timeouts and degraded performance. ForenSight resolves this by decoupling the analysis engines:
 - FastAPI submits jobs to a Redis broker.
 - Celery workers execute computationally expensive jobs in the background.
 - Job states transition deterministically through: `QUEUED` → `RUNNING` → `COMPLETED` (or `FAILED`).
 - The frontend asynchronously polls the Job API to update the UI without blocking the user workspace.
 
-## 6. Authentication & Security
+## Authentication & Security
 - **Authentication**: JWT tokens signed via `python-jose`, passwords hashed with `bcrypt` (pinned to 3.2.0 via `passlib`).
 - **RBAC**: Administrative and investigator roles enforced at the endpoint layer.
 - **Case Ownership**: Users are restricted to accessing only their authorized cases.
@@ -69,7 +73,7 @@ Synchronous execution of SIFT, DCT, or Noise workloads blocks API workers, resul
 - **Path Traversal Protection**: Explicit `pathlib.Path.relative_to` checks prevent breakouts. Absolute paths are suppressed in all API responses.
 - **Secret Management**: Environment-based secret injection, mitigating hardcoded credentials.
 
-## 7. Scientific Integrity
+## Scientific Interpretation
 ForenSight prioritizes transparency. It explicitly rejects the premise that an image can be deterministically labeled "fake."
 - ELA ≠ proof of manipulation.
 - High residual ≠ manipulation.
@@ -79,26 +83,28 @@ ForenSight prioritizes transparency. It explicitly rejects the premise that an i
 
 The platform treats ELA and JPEG/DCT as related compression evidence, preventing statistical double-counting of a single processing event.
 
-## 8. Technology Stack
+## Technology Stack
 | Layer | Technology |
 |---|---|
-| **Frontend** | React / TypeScript / Vite / TailwindCSS |
+| **Frontend** | React / TypeScript / Vite / CSS |
 | **Backend** | Python / FastAPI / Pydantic V2 |
 | **Database** | PostgreSQL / SQLAlchemy / Alembic |
 | **Task Queue** | Celery / Redis |
 | **Forensics** | NumPy / OpenCV / Pillow |
 | **Infrastructure**| Docker Compose / GitHub Actions CI |
 
-## 9. Installation & Deployment
+## Run Locally
 
 ### Standard Installation (Docker Compose)
 *Ensure Docker and Docker Compose are installed.*
 ```bash
 git clone https://github.com/kharbashpriyanshu/ForenSight.git
 cd ForenSight
-docker-compose up -d --build
+cp .env.example .env
+# Set a strong SECRET_KEY in .env before using this outside a local demo.
+docker compose up -d --build
 ```
-Access the platform at `http://localhost:5173`.
+Access the containerized platform at `http://localhost` (port 80). Local Vite development uses `http://localhost:5173`.
 
 ### Local Development Installation
 *For environments without Docker:*
@@ -119,8 +125,8 @@ npm install
 npm run dev
 ```
 
-## 10. Documentation Index
-- [V3 Baseline Specification & Freeze Manifest](FORENSIGHT_V3_BASELINE.md)
+## Documentation
+- [V3 Baseline Specification & Freeze Manifest](FORENSIGHT_V3_BASELINE.md) (describes the frozen V3 core, not the complete current product)
 - [Amped Authenticate Capability Parity Matrix](FORENSIGHT_AMPED_PARITY_MATRIX.md)
 - [Architecture & Trust Boundaries](docs/architecture.md)
 - [Deployment Guide (Local & Docker Compose)](docs/DEPLOYMENT.md)
@@ -128,15 +134,27 @@ npm run dev
 - [Security Architecture & RBAC Policy](docs/SECURITY.md)
 - [Demonstration Workflow Script](docs/demo-workflow.md)
 - [Technical Master Reference](docs/FORENSIGHT_TECHNICAL_MASTER.md)
+- [Benchmark Harness Guide](docs/FORENSIGHT_BENCHMARKING.md)
+- [External Benchmark Protocol](docs/EXTERNAL_BENCHMARK_PROTOCOL.md)
+- [Forensic Validation Framework](docs/FORENSIC_VALIDATION.md)
 
-## 11. Testing & Verification Summary
-The system is validated via comprehensive automated test suites and static analysis:
-- **Backend Tests:** 105 Passing, 0 Failed, 0 Skipped across 23 test modules (including multi-user security, JWT auth, RBAC isolation, async job lifecycle, cross-image correlation, investigation graph, live tamper detection, and adversarial QA).
-- **TypeScript:** 0 Errors (`tsc -b`)
-- **Frontend Production Build:** PASS (`npm run build`, built in 7.26s)
-- **Scientific Freeze:** 100% Preserved (all 38 source files in `backend/app/forensics/` match cryptographic freeze manifest).
-- **V3 Baseline Status:** BASELINE VERIFIED & FROZEN.
-- **Next Phase:** V4 Advanced Image Forensics (V4 is NOT started).
+## Tests
 
-## 12. Screenshots
-Detailed interface screenshots are available in the [docs/screenshots](docs/screenshots) directory.
+Run backend tests from `backend/`:
+
+```bash
+pytest tests/ -v
+```
+
+Run frontend checks from `frontend/`:
+
+```bash
+npm ci
+npm run build
+```
+
+The CI workflow additionally verifies the frozen V3 core and exercises Docker and PostgreSQL/Redis paths. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the authoritative current commands. Test totals may change; use the latest CI run rather than a hard-coded count.
+
+## Screenshots
+
+Interface screenshots and capture status are listed in [`docs/screenshots`](docs/screenshots).

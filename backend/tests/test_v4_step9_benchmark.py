@@ -406,6 +406,9 @@ def test_report_content_structure():
         assert "**EVALUATED**:" in content
         assert "**INTERPRETATION**:" in content
         assert "**LIMITATION**:" in content
+        assert "registered dataset 'struct-test' (CONTROLLED)" in content
+        assert "NOT_EVALUATED (no localization metrics were produced in this run)" in content
+        assert "controlled and registered external datasets" not in content
 
 
 # =========================================================================

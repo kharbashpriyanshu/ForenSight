@@ -5,24 +5,57 @@ import { fetchApi } from '../api';
 export default function SystemHealth() {
   const [health, setHealth] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
-    fetchApi('/health')
-      .then(res => res.json())
-      .then(data => {
-        setHealth(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setHealth({ status: 'UNAVAILABLE', components: { db: 'UNAVAILABLE', redis: 'UNAVAILABLE', celery: 'UNAVAILABLE' } });
-        setLoading(false);
-      });
-  }, []);
+    let active = true;
+    const controller = new AbortController();
 
-  if (loading) return <div>Checking system health...</div>;
+    fetchApi('/health', { signal: controller.signal })
+      .then(async res => {
+        if (!res.ok) throw new Error(`Health check failed (${res.status}).`);
+        return res.json();
+      })
+      .then(data => {
+        if (active) {
+          setHealth(data);
+          setLoading(false);
+        }
+      })
+      .catch((err: Error) => {
+        if (active) {
+          setHealth({ status: 'UNAVAILABLE', database: 'UNAVAILABLE', redis: 'UNAVAILABLE', celery_worker: 'UNAVAILABLE', storage: 'UNAVAILABLE' });
+          setError(err.message || 'Could not reach the health service.');
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [retryKey]);
+
+  const retryHealthCheck = () => {
+    setLoading(true);
+    setError('');
+    setRetryKey(key => key + 1);
+  };
+
+  if (loading) return <div className="card" role="status">Checking system health...</div>;
+
+  const apiStatus = String(health?.status || 'unknown').toUpperCase();
+  const apiAvailable = apiStatus !== 'UNAVAILABLE' && apiStatus !== 'UNHEALTHY';
 
   return (
     <div className="card">
+      {error && (
+        <div className="error-banner" role="alert" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+          <span>{error}</span>
+          <button className="btn btn-secondary" onClick={retryHealthCheck}>Retry</button>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h2 className="card-title" style={{ margin: 0 }}>System Health & Observability</h2>
         <span className="status-badge" style={{ textTransform: 'uppercase' }}>
@@ -34,8 +67,8 @@ export default function SystemHealth() {
         {/* 1. API Gateway */}
         <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem', textAlign: 'center', background: 'var(--surface-color-light)' }}>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>API GATEWAY</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: health?.status !== 'unhealthy' ? 'var(--primary-color)' : 'var(--danger-color)' }}>
-            {health?.status !== 'unhealthy' ? (health?.status === 'degraded' ? 'DEGRADED' : 'HEALTHY') : 'UNAVAILABLE'}
+          <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: apiAvailable ? 'var(--success-color)' : 'var(--danger-color)' }}>
+            {apiAvailable ? apiStatus : 'UNAVAILABLE'}
           </div>
           <div style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--text-muted)' }}>FastAPI Gateway</div>
         </div>

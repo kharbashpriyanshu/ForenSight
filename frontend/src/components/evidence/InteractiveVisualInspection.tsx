@@ -21,6 +21,8 @@ type FilterMode =
 
 type ColorChannel = 'red' | 'green' | 'blue' | 'luminance_y' | 'chroma_cb' | 'chroma_cr' | 'invert';
 
+const MAX_FILTER_PREVIEW_DIMENSION = 2048;
+
 export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionProps> = ({
   evidenceId,
   filename
@@ -67,6 +69,13 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
   const loupeCanvasRef = useRef<HTMLCanvasElement>(null);
   const imageElementRef = useRef<HTMLImageElement | null>(null);
   const autoSweepIntervalRef = useRef<any>(null);
+  const previewScale = Math.min(
+    1,
+    MAX_FILTER_PREVIEW_DIMENSION / Math.max(imgNaturalSize.width, imgNaturalSize.height, 1)
+  );
+  const previewWidth = Math.max(1, Math.round(imgNaturalSize.width * previewScale));
+  const previewHeight = Math.max(1, Math.round(imgNaturalSize.height * previewScale));
+  const activeFilterLabel = filterMode === 'clahe_contrast' ? 'GAMMA_VIEW' : filterMode.toUpperCase();
 
   // 1. Fetch raw authenticated image
   useEffect(() => {
@@ -75,7 +84,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     setLoading(true);
     setError(null);
 
-    fetchApi(`/evidence/${evidenceId}/raw`)
+    fetchApi(`/evidence/${evidenceId}/raw`, {}, 120000)
       .then(async (res) => {
         if (!res.ok) throw new Error(`Evidence retrieval failed (${res.status})`);
         const blob = await res.blob();
@@ -141,10 +150,10 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
   // 3. Pixel Processing Pipeline
   const applyFilterToImageData = useCallback((
-    srcData: ImageData, 
-    targetData: ImageData, 
-    mode: FilterMode, 
-    width: number, 
+    srcData: ImageData,
+    targetData: ImageData,
+    mode: FilterMode,
+    width: number,
     height: number
   ) => {
     const src = srcData.data;
@@ -157,7 +166,6 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     }
 
     if (mode === 'level_sweep') {
-      // Hex to RGB for highlight
       const rH = parseInt(levelHighlightColor.slice(1, 3), 16) || 184;
       const gH = parseInt(levelHighlightColor.slice(3, 5), 16) || 135;
       const bH = parseInt(levelHighlightColor.slice(5, 7), 16) || 42;
@@ -165,19 +173,16 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       for (let i = 0; i < len; i += 4) {
         const lum = Math.round(0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2]);
         if (lum >= levelMin && lum <= levelMax) {
-          // Highlight in band
           dst[i] = rH;
           dst[i + 1] = gH;
           dst[i + 2] = bH;
-          dst[i + 3] = 255;
         } else {
-          // Attenuated monochrome backdrop
           const att = Math.floor(lum * 0.25);
           dst[i] = att;
           dst[i + 1] = att;
           dst[i + 2] = att;
-          dst[i + 3] = 255;
         }
+        dst[i + 3] = 255;
       }
       return;
     }
@@ -185,10 +190,9 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     if (mode === 'bit_plane') {
       const mask = 1 << bitPlane;
       for (let i = 0; i < len; i += 4) {
-        const rBit = (src[i] & mask) ? 255 : 0;
-        const gBit = (src[i + 1] & mask) ? 255 : 0;
-        const bBit = (src[i + 2] & mask) ? 255 : 0;
-        // Output as high contrast grayscale
+        const rBit = src[i] & mask;
+        const gBit = src[i + 1] & mask;
+        const bBit = src[i + 2] & mask;
         const mono = (rBit || gBit || bBit) ? 255 : 0;
         dst[i] = mono;
         dst[i + 1] = mono;
@@ -205,29 +209,29 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
         const b = src[i + 2];
 
         if (selectedChannel === 'red') {
-          dst[i] = r; dst[i + 1] = 0; dst[i + 2] = 0; dst[i + 3] = 255;
+          dst[i] = r; dst[i + 1] = 0; dst[i + 2] = 0;
         } else if (selectedChannel === 'green') {
-          dst[i] = 0; dst[i + 1] = g; dst[i + 2] = 0; dst[i + 3] = 255;
+          dst[i] = 0; dst[i + 1] = g; dst[i + 2] = 0;
         } else if (selectedChannel === 'blue') {
-          dst[i] = 0; dst[i + 1] = 0; dst[i + 2] = b; dst[i + 3] = 255;
+          dst[i] = 0; dst[i + 1] = 0; dst[i + 2] = b;
         } else if (selectedChannel === 'luminance_y') {
           const y = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-          dst[i] = y; dst[i + 1] = y; dst[i + 2] = y; dst[i + 3] = 255;
+          dst[i] = y; dst[i + 1] = y; dst[i + 2] = y;
         } else if (selectedChannel === 'chroma_cb') {
           const cb = Math.round(128 - 0.168736 * r - 0.331264 * g + 0.5 * b);
-          dst[i] = cb; dst[i + 1] = cb; dst[i + 2] = 255 - cb; dst[i + 3] = 255;
+          dst[i] = cb; dst[i + 1] = cb; dst[i + 2] = 255 - cb;
         } else if (selectedChannel === 'chroma_cr') {
           const cr = Math.round(128 + 0.5 * r - 0.418688 * g - 0.081312 * b);
-          dst[i] = cr; dst[i + 1] = 255 - cr; dst[i + 2] = cr; dst[i + 3] = 255;
-        } else if (selectedChannel === 'invert') {
-          dst[i] = 255 - r; dst[i + 1] = 255 - g; dst[i + 2] = 255 - b; dst[i + 3] = 255;
+          dst[i] = cr; dst[i + 1] = 255 - cr; dst[i + 2] = cr;
+        } else {
+          dst[i] = 255 - r; dst[i + 1] = 255 - g; dst[i + 2] = 255 - b;
         }
+        dst[i + 3] = 255;
       }
       return;
     }
 
     if (mode === 'gradient_sobel') {
-      // 3x3 Sobel edge derivative
       const lum = new Uint8ClampedArray(width * height);
       for (let i = 0, j = 0; i < len; i += 4, j++) {
         lum[j] = Math.round(0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2]);
@@ -236,21 +240,16 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
           const idx = y * width + x;
-          // Sobel X kernel: [-1 0 1, -2 0 2, -1 0 1]
-          const gx = 
+          const gx =
             (-1 * lum[idx - width - 1]) + (1 * lum[idx - width + 1]) +
-            (-2 * lum[idx - 1])         + (2 * lum[idx + 1]) +
+            (-2 * lum[idx - 1]) + (2 * lum[idx + 1]) +
             (-1 * lum[idx + width - 1]) + (1 * lum[idx + width + 1]);
-
-          // Sobel Y kernel: [-1 -2 -1, 0 0 0, 1 2 1]
-          const gy = 
+          const gy =
             (-1 * lum[idx - width - 1]) + (-2 * lum[idx - width]) + (-1 * lum[idx - width + 1]) +
-            ( 1 * lum[idx + width - 1]) + ( 2 * lum[idx + width]) + ( 1 * lum[idx + width + 1]);
-
+            (1 * lum[idx + width - 1]) + (2 * lum[idx + width]) + (1 * lum[idx + width + 1]);
           const mag = Math.min(255, Math.sqrt(gx * gx + gy * gy));
           const val = mag > sobelThreshold ? mag : 0;
-
-          const outIdx = (y * width + x) * 4;
+          const outIdx = idx * 4;
           dst[outIdx] = val;
           dst[outIdx + 1] = val > 128 ? 200 : val;
           dst[outIdx + 2] = val;
@@ -261,12 +260,10 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     }
 
     if (mode === 'clahe_contrast') {
-      // Local contrast boost & gamma curve
       for (let i = 0; i < len; i += 4) {
         for (let c = 0; c < 3; c++) {
-          let v = src[i + c] / 255.0;
-          v = Math.pow(v, 1.0 / contrastBoost);
-          dst[i + c] = Math.min(255, Math.max(0, Math.round(v * 255)));
+          const value = src[i + c] / 255;
+          dst[i + c] = Math.min(255, Math.max(0, Math.round(Math.pow(value, 1 / contrastBoost) * 255)));
         }
         dst[i + 3] = 255;
       }
@@ -274,19 +271,15 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     }
 
     if (mode === 'noise_residual') {
-      // High-pass 3x3 Laplacian residual
       for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
           const p = (y * width + x) * 4;
           const pUp = ((y - 1) * width + x) * 4;
           const pDown = ((y + 1) * width + x) * 4;
-          const pLeft = (y * width + (x - 1)) * 4;
-          const pRight = (y * width + (x + 1)) * 4;
-
+          const pLeft = (y * width + x - 1) * 4;
+          const pRight = (y * width + x + 1) * 4;
           for (let c = 0; c < 3; c++) {
-            const lap = Math.abs(
-              4 * src[p + c] - src[pUp + c] - src[pDown + c] - src[pLeft + c] - src[pRight + c]
-            ) * 3.5;
+            const lap = Math.abs(4 * src[p + c] - src[pUp + c] - src[pDown + c] - src[pLeft + c] - src[pRight + c]) * 3.5;
             dst[p + c] = Math.min(255, Math.round(lap));
           }
           dst[p + 3] = 255;
@@ -298,83 +291,63 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     dst.set(src);
   }, [levelMin, levelMax, levelHighlightColor, bitPlane, selectedChannel, sobelThreshold, contrastBoost]);
 
-  // 4. Render Main Canvas with Split Curtain
+  // 4. Render the full image at a bounded preview size; the raw canvas remains native resolution.
   const renderMainCanvas = useCallback(() => {
     const canvas = mainCanvasRef.current;
     const rawCanvas = rawCanvasRef.current;
     if (!canvas || !rawCanvas || !imgNaturalSize.width) return;
 
-    const ctx = canvas.getContext('2d');
-    const rawCtx = rawCanvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx || !rawCtx) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
 
-    const w = imgNaturalSize.width;
-    const h = imgNaturalSize.height;
+    canvas.width = previewWidth;
+    canvas.height = previewHeight;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(rawCanvas, 0, 0, previewWidth, previewHeight);
+    const rawImgData = ctx.getImageData(0, 0, previewWidth, previewHeight);
 
-    canvas.width = w;
-    canvas.height = h;
+    if (filterMode === 'original' && !splitWipeActive) return;
 
-    const rawImgData = rawCtx.getImageData(0, 0, w, h);
-
-    if (filterMode === 'original' && !splitWipeActive) {
-      ctx.putImageData(rawImgData, 0, 0);
-      return;
-    }
-
-    const filteredImgData = ctx.createImageData(w, h);
-    applyFilterToImageData(rawImgData, filteredImgData, filterMode, w, h);
+    const filteredImgData = ctx.createImageData(previewWidth, previewHeight);
+    applyFilterToImageData(rawImgData, filteredImgData, filterMode, previewWidth, previewHeight);
 
     if (!splitWipeActive) {
       ctx.putImageData(filteredImgData, 0, 0);
-    } else {
-      // Split Wipe: Left = Original, Right = Filtered
-      const splitX = Math.round((w * splitPosition) / 100);
-      const splitData = ctx.createImageData(w, h);
-      const rawD = rawImgData.data;
-      const filtD = filteredImgData.data;
-      const splitD = splitData.data;
-
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const idx = (y * w + x) * 4;
-          if (x < splitX) {
-            splitD[idx] = rawD[idx];
-            splitD[idx + 1] = rawD[idx + 1];
-            splitD[idx + 2] = rawD[idx + 2];
-            splitD[idx + 3] = 255;
-          } else {
-            splitD[idx] = filtD[idx];
-            splitD[idx + 1] = filtD[idx + 1];
-            splitD[idx + 2] = filtD[idx + 2];
-            splitD[idx + 3] = 255;
-          }
-        }
-      }
-      ctx.putImageData(splitData, 0, 0);
-
-      // Draw Curtain Divider Line
-      ctx.save();
-      ctx.strokeStyle = '#b8872a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(splitX, 0);
-      ctx.lineTo(splitX, h);
-      ctx.stroke();
-
-      // Divider Handle Badge
-      ctx.fillStyle = '#1c2b3a';
-      ctx.fillRect(splitX - 32, h / 2 - 14, 64, 28);
-      ctx.strokeStyle = '#f5f0e2';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(splitX - 32, h / 2 - 14, 64, 28);
-      ctx.fillStyle = '#f5f0e2';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('SPLIT', splitX, h / 2);
-      ctx.restore();
+      return;
     }
-  }, [imgNaturalSize, filterMode, splitWipeActive, splitPosition, applyFilterToImageData]);
+
+    const splitX = Math.round((previewWidth * splitPosition) / 100);
+    const splitData = ctx.createImageData(previewWidth, previewHeight);
+    for (let y = 0; y < previewHeight; y++) {
+      for (let x = 0; x < previewWidth; x++) {
+        const idx = (y * previewWidth + x) * 4;
+        const source = x < splitX ? rawImgData.data : filteredImgData.data;
+        splitData.data[idx] = source[idx];
+        splitData.data[idx + 1] = source[idx + 1];
+        splitData.data[idx + 2] = source[idx + 2];
+        splitData.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(splitData, 0, 0);
+    ctx.save();
+    ctx.strokeStyle = '#b8872a';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(splitX, 0);
+    ctx.lineTo(splitX, previewHeight);
+    ctx.stroke();
+    ctx.fillStyle = '#1c2b3a';
+    ctx.fillRect(splitX - 32, previewHeight / 2 - 14, 64, 28);
+    ctx.strokeStyle = '#f5f0e2';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(splitX - 32, previewHeight / 2 - 14, 64, 28);
+    ctx.fillStyle = '#f5f0e2';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SPLIT', splitX, previewHeight / 2);
+    ctx.restore();
+  }, [imgNaturalSize.width, previewWidth, previewHeight, filterMode, splitWipeActive, splitPosition, applyFilterToImageData]);
 
   useEffect(() => {
     renderMainCanvas();
@@ -393,35 +366,25 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
     loupeCanvas.width = loupeSize;
     loupeCanvas.height = loupeSize;
-
     const sampleRadius = Math.round(loupeSize / (2 * loupePower));
     const sx = Math.max(0, Math.min(imgNaturalSize.width - 2 * sampleRadius, cursorPos.x - sampleRadius));
     const sy = Math.max(0, Math.min(imgNaturalSize.height - 2 * sampleRadius, cursorPos.y - sampleRadius));
     const sWidth = Math.min(2 * sampleRadius, imgNaturalSize.width - sx);
     const sHeight = Math.min(2 * sampleRadius, imgNaturalSize.height - sy);
-
     const patchData = rawCtx.getImageData(sx, sy, sWidth, sHeight);
-    
-    // Process patch according to loupeFilter
     const filteredPatch = loupeCtx.createImageData(sWidth, sHeight);
     applyFilterToImageData(patchData, filteredPatch, loupeFilter, sWidth, sHeight);
 
-    // Create temporary canvas to scale up with nearest-neighbor crisp pixels
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = sWidth;
     tempCanvas.height = sHeight;
     tempCanvas.getContext('2d')?.putImageData(filteredPatch, 0, 0);
-
     loupeCtx.save();
-    // Circular clip
     loupeCtx.beginPath();
     loupeCtx.arc(loupeSize / 2, loupeSize / 2, loupeSize / 2 - 2, 0, Math.PI * 2);
     loupeCtx.clip();
-
     loupeCtx.imageSmoothingEnabled = false;
     loupeCtx.drawImage(tempCanvas, 0, 0, loupeSize, loupeSize);
-
-    // Crosshair in center
     loupeCtx.strokeStyle = 'rgba(184, 135, 42, 0.75)';
     loupeCtx.lineWidth = 1;
     loupeCtx.beginPath();
@@ -430,7 +393,6 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     loupeCtx.moveTo(loupeSize / 2, loupeSize / 2 - 12);
     loupeCtx.lineTo(loupeSize / 2, loupeSize / 2 + 12);
     loupeCtx.stroke();
-
     loupeCtx.restore();
   }, [loupeActive, cursorPos, loupePower, loupeSize, loupeFilter, imgNaturalSize, applyFilterToImageData]);
 
@@ -440,9 +402,9 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
   // 6. Mouse Interaction Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) { // Left click
+    if (e.button === 0) {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - dragStart.y });
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
   };
 
@@ -452,41 +414,29 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     }
 
     const container = containerRef.current;
-    if (!container || !imgNaturalSize.width) return;
+    const canvas = mainCanvasRef.current;
+    if (!container || !canvas || !imgNaturalSize.width) return;
 
     const rect = container.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const imgX = Math.round(((e.clientX - rect.left - pan.x) / scale) / previewScale);
+    const imgY = Math.round(((e.clientY - rect.top - pan.y) / scale) / previewScale);
+    if (imgX < 0 || imgX >= imgNaturalSize.width || imgY < 0 || imgY >= imgNaturalSize.height) return;
 
-    // Convert screen coordinates to natural image pixel coordinates
-    const imgX = Math.round((mouseX - pan.x) / scale);
-    const imgY = Math.round((mouseY - pan.y) / scale);
-
-    if (imgX >= 0 && imgX < imgNaturalSize.width && imgY >= 0 && imgY < imgNaturalSize.height) {
-      setCursorPos({ x: imgX, y: imgY });
-
-      // Sample Pixel Data
-      const rawCanvas = rawCanvasRef.current;
-      if (rawCanvas) {
-        const ctx = rawCanvas.getContext('2d', { willReadFrequently: true });
-        if (ctx) {
-          const p = ctx.getImageData(imgX, imgY, 1, 1).data;
-          const hex = `#${((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1).toUpperCase()}`;
-          setPixelInfo({ x: imgX, y: imgY, r: p[0], g: p[1], b: p[2], a: p[3], hex });
-        }
-      }
-    }
+    setCursorPos({ x: imgX, y: imgY });
+    const rawCanvas = rawCanvasRef.current;
+    const ctx = rawCanvas?.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+    const p = ctx.getImageData(imgX, imgY, 1, 1).data;
+    const hex = `#${((1 << 24) + (p[0] << 16) + (p[1] << 8) + p[2]).toString(16).slice(1).toUpperCase()}`;
+    setPixelInfo({ x: imgX, y: imgY, r: p[0], g: p[1], b: p[2], a: p[3], hex });
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-    const newScale = Math.min(16, Math.max(0.2, scale * zoomFactor));
-    setScale(newScale);
+    setScale(current => Math.min(16, Math.max(0.2, current * zoomFactor)));
   };
 
   const resetView = () => {
@@ -498,27 +448,21 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
   const handleExportSnapshot = () => {
     const canvas = mainCanvasRef.current;
     if (!canvas) return;
-
-    // Create export canvas with metadata stamp
     const expCanvas = document.createElement('canvas');
     expCanvas.width = canvas.width;
     expCanvas.height = canvas.height + 40;
     const ctx = expCanvas.getContext('2d');
     if (!ctx) return;
-
     ctx.fillStyle = '#1c2b3a';
     ctx.fillRect(0, 0, expCanvas.width, expCanvas.height);
     ctx.drawImage(canvas, 0, 0);
-
-    // Metadata header text
     ctx.fillStyle = '#f5f0e2';
     ctx.font = '12px monospace';
     ctx.fillText(
-      `FORENSIGHT INSPECTION | ${filename} | Filter: ${filterMode.toUpperCase()} | Date: ${new Date().toISOString()}`,
+      `FORENSIGHT INSPECTION | ${filename} | Filter: ${activeFilterLabel} | View: ${canvas.width}x${canvas.height}; source: ${imgNaturalSize.width}x${imgNaturalSize.height} | Date: ${new Date().toISOString()}`,
       16,
       canvas.height + 25
     );
-
     const a = document.createElement('a');
     a.download = `forensight_${filename}_${filterMode}.png`;
     a.href = expCanvas.toDataURL('image/png');
@@ -571,6 +515,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>High-Precision Visual Forensic Inspection</h3>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Real-time dynamic level sweeping, bit-plane dissection, color channel isolation, and precision loupe magnification.
+            {previewScale < 1 && ` Whole-image filters use a ${previewWidth} × ${previewHeight} display preview; the loupe and pixel readout use native source pixels.`}
           </div>
         </div>
 
@@ -632,7 +577,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             { id: 'bit_plane', label: 'Bit-Plane Slicer', icon: Layers },
             { id: 'color_channel', label: 'Channel Isolator', icon: Sparkles },
             { id: 'gradient_sobel', label: 'Sobel Derivative', icon: Maximize2 },
-            { id: 'clahe_contrast', label: 'Contrast Boost', icon: Sliders },
+            { id: 'clahe_contrast', label: 'Gamma View', icon: Sliders },
             { id: 'noise_residual', label: 'Noise Residual', icon: Crosshair },
           ].map(m => {
             const isSel = filterMode === m.id;
@@ -726,7 +671,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
               </button>
             ))}
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              (Bit 0 LSB isolates subtle sensor noise and steganographic payload structures)
+              (A display transform only; interpret with the source format and independent examination)
             </span>
           </div>
         )}
@@ -735,8 +680,8 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Channel Decomposition:</span>
             {[
-              { id: 'blue', label: 'Blue Channel (Sensor Noise)' },
-              { id: 'green', label: 'Green Channel (Sharpest)' },
+              { id: 'blue', label: 'Blue Channel' },
+              { id: 'green', label: 'Green Channel' },
               { id: 'red', label: 'Red Channel' },
               { id: 'luminance_y', label: 'YCbCr: Y (Luminance)' },
               { id: 'chroma_cb', label: 'YCbCr: Cb (Chroma Blue)' },
@@ -773,14 +718,14 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             />
             <code style={{ fontSize: '0.75rem' }}>Threshold: {sobelThreshold}</code>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Highlights high-frequency edge discontinuities across cut-and-paste donor boundaries.
+              Displays image gradients; strong edges are common in authentic imagery and need independent corroboration.
             </span>
           </div>
         )}
 
         {filterMode === 'clahe_contrast' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Gamma & Contrast Boost:</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Gamma Adjustment:</span>
             <input 
               type="range" min="0.5" max="5.0" step="0.1" value={contrastBoost} 
               onChange={e => setContrastBoost(parseFloat(e.target.value))}
@@ -788,7 +733,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             />
             <code style={{ fontSize: '0.75rem' }}>{contrastBoost.toFixed(1)}x</code>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Stretches dynamic range in deep shadows and overexposed highlights to reveal hidden silhouettes.
+              Applies a global gamma curve for visual inspection; this is not local contrast equalization or evidence of manipulation.
             </span>
           </div>
         )}
@@ -923,8 +868,8 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
         {loupeActive && cursorPos.x >= 0 && (
           <div style={{
             position: 'absolute',
-            left: `${(cursorPos.x * scale) + pan.x - loupeSize / 2}px`,
-            top: `${(cursorPos.y * scale) + pan.y - loupeSize / 2}px`,
+            left: `${(cursorPos.x * previewScale * scale) + pan.x - loupeSize / 2}px`,
+            top: `${(cursorPos.y * previewScale * scale) + pan.y - loupeSize / 2}px`,
             width: `${loupeSize}px`,
             height: `${loupeSize}px`,
             borderRadius: '50%',
@@ -960,7 +905,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
           zIndex: 10
         }}>
           <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#b8872a' }} />
-          VIEW: {filterMode.toUpperCase()} {splitWipeActive ? '(CURTAIN WIPE)' : ''} | ZOOM: {Math.round(scale * 100)}%
+          VIEW: {activeFilterLabel} {splitWipeActive ? '(CURTAIN WIPE)' : ''} | ZOOM: {Math.round(scale * 100)}%
         </div>
 
         {/* Viewport HUD (Bottom-Right: Live Pixel Inspector) */}
@@ -1010,10 +955,10 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       }}>
         <strong style={{ color: '#92560a' }}>Forensic Examiner Inspection Guidelines:</strong>
         <ul style={{ margin: '0.4rem 0 0 1.25rem', padding: 0 }}>
-          <li><strong>Level Sweep:</strong> Use the auto-sweep slider to detect block boundary discontinuities and luminance halos around inserted objects. Authentic natural images transition smoothly through luminance bands.</li>
-          <li><strong>Bit-Plane 0 (LSB):</strong> The least-significant bit plane reveals natural CMOS sensor shot noise. Clean, sharp silhouetted cuts or missing noise in isolated regions strongly indicate digital tampering or AI inpainting.</li>
-          <li><strong>Blue Channel:</strong> Digital cameras exhibit the highest noise in the Blue channel due to lower Bayer sensor sensitivity. Spliced objects from different sources show mismatched blue-channel noise variance.</li>
-          <li><strong>Sobel Derivative:</strong> Sharply defined artificial boundaries indicate cut-and-paste compositing without feathered alpha-channel blending.</li>
+          <li><strong>Level Sweep:</strong> Highlights pixels within a selected luminance range. Compression, lighting, and scene content can all create visible boundaries; inspect the original and corroborate with independent methods.</li>
+          <li><strong>Bit Plane:</strong> Displays selected least- or most-significant channel bits. Demosaicing, compression, editing, and encoding can all affect these patterns; a bit-plane view alone cannot identify sensor noise, steganography, or manipulation.</li>
+          <li><strong>Color Channel:</strong> Isolates or transforms decoded color components for visual comparison. Channel noise depends on the sensor, demosaicing, image processing, and compression, so no channel is a universal manipulation indicator.</li>
+          <li><strong>Sobel Derivative:</strong> Displays image gradients and edges. Strong edges are common in authentic scenes and are not, by themselves, evidence of compositing.</li>
         </ul>
       </div>
     </div>

@@ -100,7 +100,7 @@ export const CameraIdViewer: React.FC<CameraIdViewerProps> = ({
       const res = await fetchApi(`/cases/${caseId}/camera-references`, {
         method: 'POST',
         body: formData,
-      });
+      }, 120000);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Failed to register camera reference.');

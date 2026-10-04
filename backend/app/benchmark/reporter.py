@@ -99,6 +99,9 @@ class BenchmarkReporter:
                 p95 = m.p95_runtime_ms
                 lines.append(f"| `{eng_id}` | Latency Distribution | P95: {p95:.1f} ms, Completed: {m.domain_specific_metrics.get('completed_count', 0)} |")
 
+        if not any(m.localization_metrics for m in s.engine_metrics.values()):
+            lines.append("| All evaluated engines | Spatial localization | NOT_EVALUATED (no localization metrics were produced in this run) |")
+
         lines.extend([
             f"",
             f"---",

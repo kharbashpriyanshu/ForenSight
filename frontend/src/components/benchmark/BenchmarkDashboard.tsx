@@ -145,7 +145,7 @@ export default function BenchmarkDashboard() {
           engines: selectedEngines === 'all' ? ['all'] : selectedEngines.split(',').map(s => s.trim()),
           verify_determinism: verifyDeterminism,
         }),
-      });
+      }, 300000);
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.detail || 'Benchmark execution failed.');
@@ -207,7 +207,7 @@ export default function BenchmarkDashboard() {
           verify_determinism: true,
           verify_hashes: true,
         }),
-      });
+      }, 300000);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'External benchmark failed.');
       setExternalSummary(data);
@@ -244,7 +244,7 @@ export default function BenchmarkDashboard() {
       const res = await fetchApi('/benchmark/prnu', {
         method: 'POST',
         body: JSON.stringify({ seed: 42 }),
-      });
+      }, 300000);
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'PRNU evaluation failed.');
       setPrnuResults(data);
@@ -258,9 +258,9 @@ export default function BenchmarkDashboard() {
   };
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1280px', margin: '0 auto', color: '#0f172a', background: '#f8fafc', minHeight: '100vh' }}>
+    <div className="benchmark-page" style={{ padding: '1.25rem', maxWidth: '1280px', margin: '0 auto' }}>
       {/* Header Banner */}
-      <div style={{
+      <div className="benchmark-header" style={{
         background: '#ffffff',
         border: '1px solid #e2e8f0',
         borderRadius: '12px',
@@ -298,14 +298,14 @@ export default function BenchmarkDashboard() {
               Forensic Evaluation & Benchmark Infrastructure
             </h1>
             <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', maxWidth: '820px', lineHeight: 1.5 }}>
-              Scientifically hardened validation infrastructure evaluating forensic engines against controlled fixtures and
-              external real-world datasets (CASIA v2.0, Columbia, NIST OpenMFC) under strict non-ranking empirical standards.
+              Reproducible, non-ranking evaluation for image-forensics engines. External dataset workflows are supported, but external image collections must be obtained and registered separately.
             </p>
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.3rem', borderRadius: '8px', gap: '0.3rem' }}>
+          <div className="benchmark-mode-switcher" style={{ display: 'flex', background: '#f1f5f9', padding: '0.3rem', borderRadius: '8px', gap: '0.3rem' }}>
             <button
+              aria-pressed={activeTab === 'external'}
               onClick={() => setActiveTab('external')}
               style={{
                 background: activeTab === 'external' ? '#ffffff' : 'transparent',
@@ -322,6 +322,7 @@ export default function BenchmarkDashboard() {
               Real External Datasets
             </button>
             <button
+              aria-pressed={activeTab === 'controlled'}
               onClick={() => setActiveTab('controlled')}
               style={{
                 background: activeTab === 'controlled' ? '#ffffff' : 'transparent',
@@ -341,7 +342,7 @@ export default function BenchmarkDashboard() {
         </div>
 
         {/* Scientific Policy Warning */}
-        <div style={{
+        <div className="benchmark-policy" style={{
           marginTop: '1.25rem',
           padding: '0.85rem 1rem',
           background: '#eff6ff',
@@ -351,10 +352,10 @@ export default function BenchmarkDashboard() {
           color: '#1e3a8a',
           lineHeight: 1.45
         }}>
-          <strong>Scientific Principle: </strong>
-          Absence of physical image files reports <code>DATASET NOT AVAILABLE</code> rather than fabricating synthetic metrics.
-          Authentic and manipulated groups are evaluated separately.
-          <code>NOT_APPLICABLE</code> is strictly decoupled from benign attribution. No composite ranking score is generated.
+          <strong>Scientific safeguards</strong>
+          <span>Missing image files are reported as <code>DATASET NOT AVAILABLE</code>; no metrics are fabricated.</span>
+          <span>Authentic and manipulated cohorts are reported separately.</span>
+          <span><code>NOT_APPLICABLE</code> is not benign attribution; engine results are not collapsed into a composite score.</span>
         </div>
       </div>
 
@@ -392,7 +393,7 @@ export default function BenchmarkDashboard() {
       {activeTab === 'external' && (
         <div>
           {/* Controls Panel */}
-          <div style={{
+          <div className="benchmark-panel" style={{
             background: '#ffffff',
             border: '1px solid #e2e8f0',
             borderRadius: '10px',
@@ -424,7 +425,7 @@ export default function BenchmarkDashboard() {
                   placeholder="e.g. datasets/external/casia2"
                 />
                 <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>
-                  Supported adapters: CASIA v2.0, Columbia Uncompressed, NIST OpenMFC, or generic directory.
+                  Supported adapters: CASIA v2.0, Columbia Uncompressed, NIST OpenMFC, or generic directory. Dataset files are not included; supply a licensed local copy.
                 </div>
               </div>
 
@@ -453,7 +454,7 @@ export default function BenchmarkDashboard() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <button
+              <button className="benchmark-action"
                 onClick={handleRegisterDataset}
                 style={{
                   background: '#f8fafc',
@@ -468,7 +469,7 @@ export default function BenchmarkDashboard() {
               >
                 1. Register & Snapshot Dataset
               </button>
-              <button
+              <button className="benchmark-action"
                 onClick={handleVerifyDataset}
                 style={{
                   background: '#f8fafc',
@@ -483,7 +484,7 @@ export default function BenchmarkDashboard() {
               >
                 2. Verify Snapshot Integrity
               </button>
-              <button
+              <button className="benchmark-action benchmark-action-primary"
                 onClick={handleRunExternalBenchmark}
                 disabled={running}
                 style={{
@@ -499,7 +500,7 @@ export default function BenchmarkDashboard() {
               >
                 {running ? 'Executing External Suite...' : '3. Run External Benchmark'}
               </button>
-              <button
+              <button className="benchmark-action"
                 onClick={handleReproduce}
                 style={{
                   background: '#f8fafc',
@@ -573,7 +574,7 @@ export default function BenchmarkDashboard() {
 
           {/* External Summary Display */}
           {externalSummary && (
-            <div style={{
+            <div className="benchmark-panel" style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '10px',
@@ -717,14 +718,14 @@ export default function BenchmarkDashboard() {
       {activeTab === 'controlled' && (
         <div>
           {/* Configuration Grid */}
-          <div style={{
+          <div className="benchmark-panel" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             gap: '1.25rem',
             marginBottom: '1.5rem'
           }}>
             {/* Dataset Selection */}
-            <div style={{
+            <div className="benchmark-panel" style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '10px',
@@ -774,7 +775,7 @@ export default function BenchmarkDashboard() {
             </div>
 
             {/* Execution Settings */}
-            <div style={{
+            <div className="benchmark-panel" style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '10px',
@@ -820,7 +821,7 @@ export default function BenchmarkDashboard() {
                 </label>
 
                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                  <button
+                  <button className="benchmark-action benchmark-action-primary"
                     onClick={handleRunControlledBenchmark}
                     disabled={running}
                     style={{
@@ -836,7 +837,7 @@ export default function BenchmarkDashboard() {
                   >
                     {running ? 'Running...' : 'Execute Controlled Benchmark'}
                   </button>
-                  <button
+                  <button className="benchmark-action"
                     onClick={handleRunPRNU}
                     disabled={prnuRunning}
                     style={{
@@ -859,7 +860,7 @@ export default function BenchmarkDashboard() {
 
           {/* PRNU Results Card */}
           {prnuResults && (
-            <div style={{
+            <div className="benchmark-panel" style={{
               background: '#ffffff',
               border: '1px solid #bfdbfe',
               borderRadius: '10px',
@@ -907,7 +908,7 @@ export default function BenchmarkDashboard() {
 
           {/* Controlled Benchmark Summary */}
           {summary && (
-            <div style={{
+            <div className="benchmark-panel" style={{
               background: '#ffffff',
               border: '1px solid #e2e8f0',
               borderRadius: '10px',

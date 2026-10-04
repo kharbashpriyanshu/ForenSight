@@ -347,7 +347,7 @@ class BenchmarkRunner:
             determinism_verified=determinism_verified,
             runtime_total_seconds=total_runtime_s,
             overall_limitations=[
-                "Evaluations conducted on controlled and registered external datasets.",
+                f"Evaluations conducted on registered dataset '{self.manifest.dataset_id}' ({self.manifest.dataset_type}); results are limited to this dataset and the selected engines.",
                 "Applicability is strictly separated from negative forensic attribution.",
                 "No universal accuracy score is generated; refer to individual engine distributions."
             ]

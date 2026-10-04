@@ -38,6 +38,7 @@
 
 | Engine ID | Metric Category | Results |
 | :--- | :--- | :--- |
+| All evaluated engines | Spatial localization | NOT_EVALUATED (no localization metrics were produced in this run) |
 | `ADVANCED-NOISE` | Latency Distribution | P95: 124.0 ms, Completed: 11 |
 | `RESAMPLING` | Latency Distribution | P95: 164.9 ms, Completed: 11 |
 
@@ -45,6 +46,6 @@
 
 ## 4. Scientific Limitations & Boundaries
 
-- Evaluations conducted on controlled and registered external datasets.
+- Evaluations conducted on the registered controlled dataset `controlled-v1`; results are limited to this dataset and the two selected engines.
 - Applicability is strictly separated from negative forensic attribution.
 - No universal accuracy score is generated; refer to individual engine distributions.

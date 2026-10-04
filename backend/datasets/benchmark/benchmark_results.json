@@ -65,7 +65,7 @@
   "determinism_verified": true,
   "runtime_total_seconds": 2.36,
   "overall_limitations": [
-    "Evaluations conducted on controlled and registered external datasets.",
+    "Evaluations conducted on the registered controlled dataset 'controlled-v1'; results are limited to this dataset and the two selected engines.",
     "Applicability is strictly separated from negative forensic attribution.",
     "No universal accuracy score is generated; refer to individual engine distributions."
   ]

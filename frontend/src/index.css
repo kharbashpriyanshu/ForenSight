@@ -342,6 +342,108 @@ input::placeholder, textarea::placeholder { color: var(--text-subtle); }
 .status-badge.failed, .badge.failed, .status-badge.anomalous { background: var(--status-anomalous-bg); color: var(--status-anomalous); border-color: var(--status-anomalous-border); }
 .status-badge.running, .badge.running { background: var(--status-info-bg); color: var(--status-info); border-color: var(--status-info-border); animation: pulseGlow 1.8s ease-in-out infinite; }
 
+.error-banner {
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  color: var(--status-anomalous);
+  background: var(--status-anomalous-bg);
+  border: 1px solid var(--status-anomalous-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.benchmark-page {
+  color: var(--text-body) !important;
+  background: transparent !important;
+  min-height: 0 !important;
+}
+
+.benchmark-page .benchmark-header,
+.benchmark-page .benchmark-panel {
+  color: var(--text-body) !important;
+  background: var(--glass-bg-solid) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.benchmark-page .benchmark-header h1,
+.benchmark-page .benchmark-panel h2,
+.benchmark-page .benchmark-panel h3,
+.benchmark-page .benchmark-panel h4 {
+  color: var(--text-main) !important;
+}
+
+.benchmark-page .benchmark-header p {
+  color: var(--text-muted) !important;
+}
+
+.benchmark-page .benchmark-header > div:first-child > div:first-child > span {
+  color: var(--primary-color) !important;
+  background: var(--surface-color-light) !important;
+  border-color: var(--border-color) !important;
+}
+
+.benchmark-page .benchmark-mode-switcher {
+  background: var(--surface-color-light) !important;
+  border: 1px solid var(--border-color);
+}
+
+.benchmark-page .benchmark-mode-switcher button {
+  color: var(--text-muted) !important;
+}
+
+.benchmark-page .benchmark-mode-switcher button[aria-pressed="true"] {
+  color: var(--primary-color) !important;
+  background: var(--surface-color-solid) !important;
+  box-shadow: var(--shadow-xs) !important;
+}
+
+.benchmark-page .benchmark-policy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 0.35rem 1rem;
+  align-items: start;
+  color: var(--text-body) !important;
+  background: var(--accent-light) !important;
+  border-left-color: var(--accent-color) !important;
+  padding: 0.8rem 1rem !important;
+}
+
+.benchmark-page .benchmark-policy strong {
+  color: var(--text-main);
+}
+
+.benchmark-page .benchmark-policy code {
+  display: inline-block;
+  white-space: nowrap;
+  color: var(--primary-color);
+}
+
+.benchmark-page .benchmark-panel input[type="text"],
+.benchmark-page .benchmark-panel select {
+  color: var(--text-main) !important;
+  background: var(--surface-color-solid) !important;
+  border-color: var(--border-color) !important;
+}
+
+.benchmark-page .benchmark-action {
+  color: var(--text-body) !important;
+  background: var(--surface-color-light) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.benchmark-page .benchmark-action-primary {
+  color: #fff !important;
+  background: var(--primary-gradient) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.benchmark-page .benchmark-panel button:focus-visible,
+.benchmark-page .benchmark-mode-switcher button:focus-visible {
+  outline: 3px solid var(--accent-border);
+  outline-offset: 2px;
+}
+
 code, pre, kbd { font-family: var(--font-mono); font-size: 0.825rem; }
 
 code {
@@ -382,6 +484,52 @@ hr { border: none; border-top: 1px solid var(--border-color-translucent); margin
 ::-webkit-scrollbar-track { background: rgba(242, 236, 224, 0.50); }
 ::-webkit-scrollbar-thumb { background: #c8b898; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #a89070; }
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .sidebar {
+    width: 72px;
+    flex: 0 0 72px;
+  }
+
+  .sidebar-brand {
+    justify-content: center;
+    padding-inline: 0.5rem;
+  }
+
+  .sidebar-brand > div:last-child,
+  .nav-section-label {
+    display: none;
+  }
+
+  .sidebar-nav {
+    align-items: center;
+    padding-inline: 0.35rem;
+  }
+
+  .nav-item {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .nav-item svg {
+    flex-basis: 17px;
+  }
+
+  .topbar {
+    padding-inline: 1rem;
+  }
+
+  .topbar .status-badge {
+    display: none;
+  }
+
+  .page-container {
+    padding: 1.25rem;
+  }
+}
 
 @media (max-width: 760px) {
   .app-container {

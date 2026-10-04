@@ -36,14 +36,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         </div>
         <nav className="sidebar-nav">
           <div className="nav-section-label">Station</div>
-          <NavLink to="/cases" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/cases" end title="Cases" aria-label="Cases" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <FolderOpen size={17} aria-hidden="true" /> Cases
           </NavLink>
           <div className="nav-section-label">Operations</div>
-          <NavLink to="/benchmark" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/benchmark" title="Benchmark Suite" aria-label="Benchmark Suite" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <FlaskConical size={17} aria-hidden="true" /> Benchmark Suite
           </NavLink>
-          <NavLink to="/system" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <NavLink to="/system" title="System Health" aria-label="System Health" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Activity size={17} aria-hidden="true" /> System Health
           </NavLink>
         </nav>

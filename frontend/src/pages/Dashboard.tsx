@@ -130,7 +130,7 @@ export default function Dashboard() {
     fetchApi(`/cases/${activeCase.id}/evidence`, {
       method: 'POST',
       body: formData
-    })
+    }, 120000)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Upload failed');
