@@ -1,10 +1,11 @@
 # ForenSight V3 vs. Amped Authenticate — Forensic Capability Parity Matrix
 
-**Document Version:** 4.0.0-STEP8  
-**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 8 CAMERA IDENTIFICATION ENGINES (PRNU & CAMERA-ID) IMPLEMENTED  
+**Document Version:** 4.0.0-STEP10  
+**Baseline Status:** V3 BASELINE VERIFIED & FROZEN | V4 STEP 10 REAL-WORLD DATASET VALIDATION & BENCHMARK HARDENING IMPLEMENTED  
 **Date:** 2026-09-22  
 
-This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, and the V4 Forensic Engine Extension Architecture without speculative claims or synthetic indicators.
+This document presents a transparent, evidence-based assessment of ForenSight's digital image forensic capabilities in comparison to industry-standard forensic suites (e.g., Amped Authenticate). It reflects current baseline capabilities, frozen V3 algorithms, the V4 Forensic Engine Extension Architecture, and the hardened real-world scientific evaluation harness without speculative claims or synthetic indicators.
+
 
 ---
 
@@ -43,6 +44,7 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 | **Keypoint-Based Geometric Cloning**| **NOT IMPLEMENTED** | **IMPLEMENTED** (`CLONE-KEYPOINT`, v1.0.0) | Independent ORB keypoint extraction (`cv2.setRNGSeed(42)`), Hamming distance self-matching with spatial separation constraint ($\ge 30$ px), Lowe's ratio test ($\le 0.75$), and affine RANSAC geometric consistency modeling estimating scale, rotation angle, translation vector, and reprojection error (Amerini et al. 2011 / Silva et al. 2015 / Rublee et al. 2011). | Supports JPEG, PNG, WebP, TIFF. Generates `clone_keypoint_map.png`, `clone_keypoint_analysis.png`, and `clone_keypoint_analysis.json`. |
 | **Photo Response Non-Uniformity (PRNU)** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`PRNU`, v1.0.0) | Adaptive local variance noise residual extraction, zero-mean row/column demosaicing artifact suppression, empirical suitability index screening (saturation, dynamic range, residual energy), and multi-image Maximum Likelihood Estimation (MLE) sensor fingerprint aggregation (Lukas et al. 2006 / Chen et al. 2008 / Goljan et al. 2009). | Supports JPEG, PNG, WebP, TIFF. Generates `prnu_residual.png`, `prnu_analysis.png`, and `prnu_analysis.json`. |
 | **Camera Hardware Identification** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`CAMERA-ID`, v1.0.0) | Physical device attribution via 2D circular cross-correlation surfaces and Peak-to-Correlation Energy (PCE) statistical thresholding ($\ge 50.0$) against case-scoped camera reference libraries; computes spatial shift offsets and candidate PCE margins (Chen et al. 2008 / Goljan et al. 2009 / Kang et al. 2012). | Supports JPEG, PNG, WebP, TIFF. Generates `camera_id_analysis.png`, `camera_id_comparison.png`, and `camera_id_analysis.json`. |
+| **Forensic Benchmark & Evaluation Harness** | **NOT IMPLEMENTED** | **IMPLEMENTED** (`BENCHMARK-HARNESS`, v1.0.0) | Scientific benchmark harness evaluating spatial localization (IoU, Dice), applicability rates, runtime distributions, and PRNU sensor attribution across controlled (`controlled-v1`) and external (CASIA, Columbia, NIST) datasets. Enforces strict `NOT_APPLICABLE != NEGATIVE_EVIDENCE` separation and 3-run determinism verification. | Supports all 16 production engines; outputs JSON, Markdown, and HTML reports. Prohibits non-scientific overall accuracy scores or engine rankings. |
 | **Synthetic & AI Screening** | **NOT IMPLEMENTED** | **PLANNED** (`AI-SCREENING`, v1.0.0) | Contract specified in manifest; spectral checkerboard artifacts and physical rendering anomalies of generative models. | Planned for future implementation. |
 | **Video Forensics** | **NOT IMPLEMENTED** | **PLANNED** (`VIDEO-FORENSICS`, v1.0.0) | Contract specified in manifest; video container atom inspection, GOP cadence, and optical flow vectors. | Planned for future implementation. |
 
@@ -50,15 +52,21 @@ This document presents a transparent, evidence-based assessment of ForenSight's 
 
 ## 2. Summary of Architecture & Scope Confirmation
 
-ForenSight V4 Step 8 implements two additional production forensic engines under the V4 Extension Architecture:
-1. `PRNU` (Photo-Response Non-Uniformity Sensor Pattern Forensics)
-2. `CAMERA-ID` (Source Camera Hardware Identification Forensics)
+ForenSight V4 Step 10 implements real-world forensic dataset validation and benchmark hardening:
+1. `BENCHMARK-HARNESS` v1.0.0 & External Dataset Hardening (Scientific Evaluation Framework)
+2. Automated dataset registration, cryptographic snapshotting (`dataset_snapshot.json`), SHA-256 pre-validation, and path traversal protection
+3. Real-world dataset adapters for CASIA v2.0, Columbia Uncompressed Image Splicing, and NIST/DARPA OpenMFC
+4. Authentic-image false positive characterization (natural textures, sharp contrast edges, smooth gradients)
+5. Modality-specific manipulation breakdown (copy-move, splicing, resampling, recompression, noise)
+6. Spatial localization evaluated strictly against ground truth masks (explicitly `NOT_EVALUATED` when masks are missing)
+7. Dedicated Real-Camera PRNU Validation Protocol (multi-reference MLE aggregation and processing sensitivity sweeps)
+8. Bit-for-bit run reproduction engine (`reproduce_benchmark_run`) with environment verification
+9. Standardized 15-Section Scientific Evaluation Reports (JSON, Markdown, pure Light-Theme HTML) and streaming JSONL observations
+10. Frontend Benchmark Dashboard with pure Light Theme and dual Controlled/External modes
 
-Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), Phase 2F (`CLONE-BLOCK`, `CLONE-KEYPOINT`), and Phase 2G (`PRNU`, `CAMERA-ID`), **sixteen production V4 engines** are now fully operational.
+Across Phase 2A (`JPEG-STRUCTURE`, `JPEG-QT`, `JPEG-HUFFMAN`), Phase 2B (`JPEG-GHOST`, `ADJPEG`, `NADJPEG`), Phase 2C (`BLOCKING-ARTIFACT`), Phase 2D (`HISTOGRAM`, `COLOR-CHANNEL`, `FOURIER`), Phase 2E (`ADVANCED-NOISE`, `RESAMPLING`), Phase 2F (`CLONE-BLOCK`, `CLONE-KEYPOINT`), and Phase 2G (`PRNU`, `CAMERA-ID`), **sixteen production V4 engines** are now systematically evaluated against real-world corpora.
 
 **EXPLICIT CONFIRMATION:**  
-- **ONLY PRNU AND CAMERA-ID WERE IMPLEMENTED IN STEP 8.**  
+- **NO NEW FORENSIC ENGINES WERE IMPLEMENTED IN STEP 10.**  
 - Exactly 2 future forensic modules remain strictly cataloged with `STATUS = PLANNED` (`AI-SCREENING`, `VIDEO-FORENSICS`).  
 - The 38 frozen files in `backend/app/forensics/` remain completely unchanged (verified cryptographically).
-
-

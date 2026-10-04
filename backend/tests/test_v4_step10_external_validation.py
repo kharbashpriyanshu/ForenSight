@@ -1,0 +1,544 @@
+"""
+ForenSight V4 — Step 10: Real-World Forensic Dataset Validation & Benchmark Hardening Test Suite
+Covers all 20 required testing areas:
+1. test_dataset_registration_valid
+2. test_dataset_registration_invalid_path
+3. test_dataset_registration_duplicate_detection
+4. test_dataset_snapshot_verification
+5. test_casia_adapter_real_or_fixture
+6. test_columbia_adapter_real_or_fixture
+7. test_nist_openmfc_adapter_real_or_fixture
+8. test_dataset_not_available_handling
+9. test_sha256_pre_execution_validation
+10. test_authentic_image_evaluation_separation
+11. test_manipulated_image_grouping
+12. test_processing_sensitivity_stratification
+13. test_authentic_false_positive_characterization
+14. test_ground_truth_mask_discipline
+15. test_real_prnu_multi_reference_mle
+16. test_real_prnu_processing_sensitivity
+17. test_observation_level_export_jsonl
+18. test_environment_snapshot_capture
+19. test_run_reproducibility
+20. test_non_ranking_non_composite_enforcement
+"""
+
+import os
+import json
+import tempfile
+import pytest
+import numpy as np
+from PIL import Image
+
+from app.benchmark.models import (
+    ImageRecord,
+    DatasetManifest,
+    AuthenticOrManipulated,
+    ManipulationType,
+    UncertaintyStatus,
+    DatasetRegistrationReport,
+    BenchmarkEnvironmentSnapshot,
+    BenchmarkObservationRecord,
+    ExternalBenchmarkSummary,
+)
+from app.benchmark.dataset_adapter import (
+    register_dataset,
+    create_dataset_snapshot,
+    verify_dataset_snapshot,
+    validate_safe_relative_path,
+    compute_sha256,
+    CASIADatasetAdapter,
+    ColumbiaDatasetAdapter,
+    NISTOpenMFCDatasetAdapter,
+)
+from app.benchmark.runner import (
+    BenchmarkRunner,
+    capture_environment_snapshot,
+    reproduce_benchmark_run,
+)
+from app.benchmark.reporter import ExternalBenchmarkReporter
+from app.benchmark.real_prnu import RealCameraPRNUProtocol
+
+
+@pytest.fixture
+def sample_external_dataset(tmp_path):
+    """Creates a temporary valid external dataset fixture with authentic, spliced, and mask images."""
+    d_dir = tmp_path / "casia_sample"
+    d_dir.mkdir()
+    auth_dir = d_dir / "authentic"
+    auth_dir.mkdir()
+    tamper_dir = d_dir / "tampered"
+    tamper_dir.mkdir()
+    mask_dir = d_dir / "masks"
+    mask_dir.mkdir()
+
+    # 1. Authentic Image
+    img_auth = Image.new("RGB", (128, 128), color=(100, 150, 200))
+    auth_p = auth_dir / "Au_sample_01.jpg"
+    img_auth.save(str(auth_p), "JPEG", quality=90)
+    auth_hash = compute_sha256(str(auth_p))
+
+    # 2. Tampered Image (with mask)
+    img_tamp = Image.new("RGB", (128, 128), color=(100, 150, 200))
+    # Paste a patch
+    patch = Image.new("RGB", (32, 32), color=(220, 50, 50))
+    img_tamp.paste(patch, (30, 30))
+    tamp_p = tamper_dir / "Tp_sample_01.jpg"
+    img_tamp.save(str(tamp_p), "JPEG", quality=90)
+    tamp_hash = compute_sha256(str(tamp_p))
+
+    # Ground truth mask
+    mask_img = Image.new("L", (128, 128), color=0)
+    mask_patch = Image.new("L", (32, 32), color=255)
+    mask_img.paste(mask_patch, (30, 30))
+    mask_p = mask_dir / "Tp_sample_01_mask.png"
+    mask_img.save(str(mask_p), "PNG")
+
+    # 3. Tampered image without mask
+    img_nomask = Image.new("RGB", (128, 128), color=(80, 80, 80))
+    nomask_p = tamper_dir / "Tp_nomask_02.jpg"
+    img_nomask.save(str(nomask_p), "JPEG", quality=85)
+    nomask_hash = compute_sha256(str(nomask_p))
+
+    # Manifest
+    manifest_data = {
+        "manifest_version": "1.0.0",
+        "dataset_id": "casia-fixture",
+        "dataset_version": "2.0.0",
+        "dataset_name": "CASIA v2.0 Test Fixture",
+        "dataset_type": "EXTERNAL",
+        "description": "Controlled test fixture modeling CASIA v2.0 structure.",
+        "creation_date": "2026-09-22T00:00:00Z",
+        "images": [
+            {
+                "image_id": "auth_01",
+                "filename": "authentic/Au_sample_01.jpg",
+                "format": "JPEG",
+                "width": 128,
+                "height": 128,
+                "color_mode": "RGB",
+                "sha256": auth_hash,
+                "authentic_or_manipulated": "AUTHENTIC",
+                "manipulation_type": "NONE",
+                "ground_truth_mask": None,
+                "manipulation_label": "Camera original natural scene",
+                "ground_truth_availability": "KNOWN",
+                "mask_availability": "NOT_APPLICABLE",
+                "transformation_history": ["camera_jpeg"],
+                "transformation_history_status": "KNOWN",
+                "annotation_provenance": "camera_original",
+                "known_dataset_limitations": ["Single compression generation"],
+                "compression_history_status": "KNOWN",
+                "camera_reference_status": "UNKNOWN"
+            },
+            {
+                "image_id": "tamp_01",
+                "filename": "tampered/Tp_sample_01.jpg",
+                "format": "JPEG",
+                "width": 128,
+                "height": 128,
+                "color_mode": "RGB",
+                "sha256": tamp_hash,
+                "authentic_or_manipulated": "MANIPULATED",
+                "manipulation_type": "SPLICING",
+                "ground_truth_mask": "masks/Tp_sample_01_mask.png",
+                "manipulation_label": "Spliced region from donor",
+                "ground_truth_availability": "KNOWN",
+                "mask_availability": "KNOWN",
+                "transformation_history": ["spliced", "jpeg_recompressed"],
+                "transformation_history_status": "KNOWN",
+                "annotation_provenance": "manual_mask",
+                "known_dataset_limitations": ["Feathered boundary"],
+                "compression_history_status": "KNOWN",
+                "camera_reference_status": "UNKNOWN"
+            },
+            {
+                "image_id": "tamp_02",
+                "filename": "tampered/Tp_nomask_02.jpg",
+                "format": "JPEG",
+                "width": 128,
+                "height": 128,
+                "color_mode": "RGB",
+                "sha256": nomask_hash,
+                "authentic_or_manipulated": "MANIPULATED",
+                "manipulation_type": "RESAMPLING",
+                "ground_truth_mask": None,
+                "manipulation_label": "Interpolated scaling",
+                "ground_truth_availability": "UNKNOWN",
+                "mask_availability": "NOT_PROVIDED",
+                "transformation_history": ["bicubic_resampling"],
+                "transformation_history_status": "UNVERIFIED",
+                "annotation_provenance": "dataset_metadata",
+                "known_dataset_limitations": ["No mask supplied by original authors"],
+                "compression_history_status": "UNKNOWN",
+                "camera_reference_status": "NOT_APPLICABLE"
+            }
+        ]
+    }
+
+    manifest_p = d_dir / "manifest.json"
+    with open(str(manifest_p), "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=2)
+
+    return str(d_dir)
+
+
+# 1. test_dataset_registration_valid
+def test_dataset_registration_valid(sample_external_dataset):
+    report = register_dataset(sample_external_dataset, "manifest.json")
+    assert report.is_valid is True
+    assert report.status == "VALID"
+    assert report.total_images_discovered == 3
+    assert report.total_masks_validated == 1
+    assert report.duplicate_hash_count == 0
+    assert report.snapshot_path is not None
+    assert os.path.exists(report.snapshot_path)
+
+
+# 2. test_dataset_registration_invalid_path
+def test_dataset_registration_invalid_path(tmp_path):
+    # Non-existent directory
+    report = register_dataset(str(tmp_path / "non_existent"), "manifest.json")
+    assert report.is_valid is False
+    assert report.status == "INVALID"
+    assert any("does not exist" in err for err in report.validation_errors)
+
+    # Manifest attempting path traversal
+    bad_dir = tmp_path / "bad_dataset"
+    bad_dir.mkdir()
+    bad_manifest = {
+        "dataset_id": "bad",
+        "dataset_name": "Bad",
+        "dataset_type": "EXTERNAL",
+        "description": "Bad",
+        "creation_date": "2026-09-22T00:00:00Z",
+        "images": [
+            {
+                "image_id": "bad_01",
+                "filename": "../../windows/system32/cmd.exe",
+                "format": "PNG",
+                "width": 10,
+                "height": 10,
+                "color_mode": "RGB",
+                "sha256": "abc",
+                "authentic_or_manipulated": "AUTHENTIC",
+                "manipulation_type": "NONE"
+            }
+        ]
+    }
+    with open(str(bad_dir / "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(bad_manifest, f)
+
+    report2 = register_dataset(str(bad_dir), "manifest.json")
+    assert report2.is_valid is False
+    assert any("Path traversal" in err or "outside dataset root" in err for err in report2.validation_errors)
+
+
+# 3. test_dataset_registration_duplicate_detection
+def test_dataset_registration_duplicate_detection(tmp_path):
+    d_dir = tmp_path / "dup_dataset"
+    d_dir.mkdir()
+    img = Image.new("RGB", (32, 32), color=(50, 100, 150))
+    img_p1 = d_dir / "img1.png"
+    img_p2 = d_dir / "img2.png"
+    img.save(str(img_p1), "PNG")
+    img.save(str(img_p2), "PNG")
+
+    h = compute_sha256(str(img_p1))
+    manifest = {
+        "dataset_id": "dup-test",
+        "dataset_name": "Duplicate Test",
+        "dataset_type": "EXTERNAL",
+        "description": "Tests duplicate detection",
+        "creation_date": "2026-09-22T00:00:00Z",
+        "images": [
+            {"image_id": "i1", "filename": "img1.png", "format": "PNG", "width": 32, "height": 32, "color_mode": "RGB", "sha256": h, "authentic_or_manipulated": "AUTHENTIC", "manipulation_type": "NONE"},
+            {"image_id": "i2", "filename": "img2.png", "format": "PNG", "width": 32, "height": 32, "color_mode": "RGB", "sha256": h, "authentic_or_manipulated": "AUTHENTIC", "manipulation_type": "NONE"}
+        ]
+    }
+    with open(str(d_dir / "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f)
+
+    report = register_dataset(str(d_dir), "manifest.json")
+    assert report.duplicate_hash_count == 1
+    assert h in report.duplicate_hashes
+
+
+# 4. test_dataset_snapshot_verification
+def test_dataset_snapshot_verification(sample_external_dataset):
+    # Snapshot first
+    register_dataset(sample_external_dataset, "manifest.json")
+    is_valid, status, reasons = verify_dataset_snapshot(sample_external_dataset, "dataset_snapshot.json")
+    assert is_valid is True
+    assert status == "VALID"
+    assert len(reasons) == 0
+
+    # Tamper with an image file
+    target_img = os.path.join(sample_external_dataset, "authentic", "Au_sample_01.jpg")
+    with open(target_img, "ab") as f:
+        f.write(b"\x00\xFF\x00")
+
+    is_valid2, status2, reasons2 = verify_dataset_snapshot(sample_external_dataset, "dataset_snapshot.json")
+    assert is_valid2 is False
+    assert status2 == "INVALID"
+    assert any("Hash mismatch" in r for r in reasons2)
+
+
+# 5. test_casia_adapter_real_or_fixture
+def test_casia_adapter_real_or_fixture(sample_external_dataset):
+    adapter = CASIADatasetAdapter(sample_external_dataset, manifest_filename="manifest.json")
+    manifest = adapter.load_manifest()
+    assert manifest.dataset_id == "casia-fixture"
+    assert len(manifest.images) == 3
+    rec = manifest.images[0]
+    assert rec.manipulation_label is not None
+    assert rec.ground_truth_availability == UncertaintyStatus.KNOWN
+
+
+# 6. test_columbia_adapter_real_or_fixture
+def test_columbia_adapter_real_or_fixture(tmp_path):
+    col_dir = tmp_path / "columbia_fixture"
+    col_dir.mkdir()
+    # Create an uncompressed TIFF
+    tiff_p = col_dir / "canong3_authentic_01.tif"
+    img = Image.new("RGB", (64, 64), color=(120, 140, 160))
+    img.save(str(tiff_p), "TIFF")
+
+    adapter = ColumbiaDatasetAdapter(str(col_dir))
+    manifest = adapter.load_manifest()
+    assert manifest.dataset_id in ["columbia-uncompressed", "columbia-splicing"]
+    assert len(manifest.images) == 1
+    assert manifest.images[0].format == "TIFF"
+    assert manifest.images[0].compression_history_status == UncertaintyStatus.KNOWN
+
+
+# 7. test_nist_openmfc_adapter_real_or_fixture
+def test_nist_openmfc_adapter_real_or_fixture(tmp_path):
+    nist_dir = tmp_path / "nist_fixture"
+    nist_dir.mkdir()
+    probe_p = nist_dir / "probe_01.jpg"
+    img = Image.new("RGB", (64, 64), color=(90, 110, 130))
+    img.save(str(probe_p), "JPEG")
+
+    adapter = NISTOpenMFCDatasetAdapter(str(nist_dir))
+    manifest = adapter.load_manifest()
+    assert manifest.dataset_id == "nist-openmfc"
+    assert len(manifest.images) == 1
+    assert "NIST" in manifest.images[0].annotation_provenance
+
+
+# 8. test_dataset_not_available_handling
+def test_dataset_not_available_handling(tmp_path):
+    missing_dir = str(tmp_path / "absent_dir")
+    runner = BenchmarkRunner(missing_dir)
+    summary = runner.run_external_benchmark()
+    assert summary.status == "DATASET NOT AVAILABLE"
+    assert summary.total_evaluations == 0
+    assert "cannot be fabricated" in summary.overall_limitations[0]
+
+
+# 9. test_sha256_pre_execution_validation
+def test_sha256_pre_execution_validation(sample_external_dataset, tmp_path):
+    # Alter hash in manifest so it doesn't match the file
+    m_path = os.path.join(sample_external_dataset, "manifest.json")
+    with open(m_path, "r", encoding="utf-8") as f:
+        m_data = json.load(f)
+    m_data["images"][0]["sha256"] = "0000000000000000000000000000000000000000000000000000000000000000"
+    with open(m_path, "w", encoding="utf-8") as f:
+        json.dump(m_data, f)
+
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "ext_out"),
+        engine_ids=["HISTOGRAM"],
+        verify_hashes=True
+    )
+    # The image with the corrupted hash must have been skipped
+    assert summary.status == "COMPLETED"
+    assert summary.total_evaluations < 3  # only 2 valid images executed
+
+
+# 10. test_authentic_image_evaluation_separation
+def test_authentic_image_evaluation_separation(sample_external_dataset, tmp_path):
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "sep_out"),
+        engine_ids=["HISTOGRAM", "FOURIER"]
+    )
+    assert summary.authentic_evaluations is not None
+    assert summary.manipulated_evaluations is not None
+    assert summary.authentic_evaluations["total_images"] == 1
+    assert summary.manipulated_evaluations["total_images"] == 2
+    # Check that individual engine statistics are tracked separately
+    assert "HISTOGRAM" in summary.authentic_evaluations["by_engine"]
+    assert "HISTOGRAM" in summary.manipulated_evaluations["by_engine"]
+
+
+# 11. test_manipulated_image_grouping
+def test_manipulated_image_grouping(sample_external_dataset, tmp_path):
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "group_out"),
+        engine_ids=["HISTOGRAM"]
+    )
+    breakdown = summary.manipulation_type_breakdown
+    assert "SPLICING" in breakdown
+    assert "RESAMPLING" in breakdown
+    assert breakdown["SPLICING"]["count"] == 1
+    assert breakdown["RESAMPLING"]["count"] == 1
+
+
+# 12. test_processing_sensitivity_stratification
+def test_processing_sensitivity_stratification(sample_external_dataset, tmp_path):
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "strat_out"),
+        engine_ids=["HISTOGRAM"]
+    )
+    strat = summary.compression_stratification
+    assert "format" in strat
+    assert strat["format"].get("JPEG") == 3
+    assert "resolution_bands" in strat
+    assert strat["resolution_bands"]["< 1MP"] == 3
+
+
+# 13. test_authentic_false_positive_characterization
+def test_authentic_false_positive_characterization(sample_external_dataset, tmp_path):
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "fp_out"),
+        engine_ids=["CLONE-BLOCK", "RESAMPLING"]
+    )
+    fp_data = summary.false_positive_characterization
+    assert "natural_textures" in fp_data
+    assert "sharp_edges" in fp_data
+    assert "smooth_gradients" in fp_data
+    assert "engine_anomalies_on_authentic" in fp_data
+
+
+# 14. test_ground_truth_mask_discipline
+def test_ground_truth_mask_discipline(sample_external_dataset, tmp_path):
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=str(tmp_path / "mask_disc_out"),
+        engine_ids=["CLONE-BLOCK"]
+    )
+    # Verify results for image with mask vs image without mask
+    results = runner.run_results
+    with_mask = [r for r in results if r.image_id == "tamp_01"][0]
+    without_mask = [r for r in results if r.image_id == "tamp_02"][0]
+
+    # tamp_02 has no mask -> must be NOT_EVALUATED
+    assert without_mask.evaluation_metrics["spatial_localization"]["status"] == "NOT_EVALUATED"
+    assert "No ground truth mask" in without_mask.evaluation_metrics["spatial_localization"]["reason"]
+
+
+# 15. test_real_prnu_multi_reference_mle
+def test_real_prnu_multi_reference_mle(tmp_path):
+    out_dir = str(tmp_path / "prnu_mle")
+    protocol = RealCameraPRNUProtocol(output_dir=out_dir)
+    res = protocol.execute_protocol()
+
+    assert "mle_reference_aggregation" in res
+    assert "camera_1" in res["mle_reference_aggregation"]
+    agg1 = res["mle_reference_aggregation"]["camera_1"]
+    assert agg1["reference_count"] >= 4
+    assert agg1["aggregation_status"] == "CONVERGED"
+
+
+# 16. test_real_prnu_processing_sensitivity
+def test_real_prnu_processing_sensitivity(tmp_path):
+    out_dir = str(tmp_path / "prnu_sens")
+    protocol = RealCameraPRNUProtocol(output_dir=out_dir)
+    res = protocol.execute_protocol()
+
+    assert "processing_sensitivity_sweep" in res
+    sweep = res["processing_sensitivity_sweep"]
+    assert "original" in sweep
+    assert "jpeg_q95" in sweep
+    assert "jpeg_q70" in sweep
+    assert "resample_down_0.8x" in sweep
+    assert "center_crop_50pct" in sweep
+    # Check that original has valid PCE
+    assert sweep["original"]["pce"] >= 0.0
+
+
+# 17. test_observation_level_export_jsonl
+def test_observation_level_export_jsonl(sample_external_dataset, tmp_path):
+    out_dir = str(tmp_path / "jsonl_out")
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=out_dir,
+        engine_ids=["HISTOGRAM"]
+    )
+    jsonl_p = os.path.join(out_dir, "benchmark_observations.jsonl")
+    assert os.path.exists(jsonl_p)
+    with open(jsonl_p, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+    assert len(lines) > 0
+    first_obs = json.loads(lines[0])
+    assert "benchmark_run_id" in first_obs
+    assert "image_id" in first_obs
+    assert "engine_id" in first_obs
+    assert "observation_type" in first_obs
+    assert "runtime_ms" in first_obs
+
+
+# 18. test_environment_snapshot_capture
+def test_environment_snapshot_capture():
+    env = capture_environment_snapshot()
+    assert env.benchmark_version == "1.0.0"
+    assert env.python_version is not None
+    assert env.numpy_version is not None
+    assert env.scipy_version is not None
+    assert env.os_info is not None
+    assert env.captured_at is not None
+
+
+# 19. test_run_reproducibility
+def test_run_reproducibility(sample_external_dataset, tmp_path):
+    out_dir = str(tmp_path / "reproduce_run")
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=out_dir,
+        engine_ids=["HISTOGRAM"]
+    )
+    reporter = ExternalBenchmarkReporter(summary=summary, output_dir=out_dir)
+    reporter.write_json_report()
+
+    # Re-run via reproduce_benchmark_run
+    rep_res = reproduce_benchmark_run(out_dir, dataset_dir=sample_external_dataset)
+    assert rep_res["reproducible"] is True
+    assert rep_res["status"] == "REPRODUCED"
+    assert rep_res["match_rate"] == 1.0
+    assert len(rep_res["discrepancies"]) == 0
+
+
+# 20. test_non_ranking_non_composite_enforcement
+def test_non_ranking_non_composite_enforcement(sample_external_dataset, tmp_path):
+    out_dir = str(tmp_path / "enforce_out")
+    runner = BenchmarkRunner(sample_external_dataset)
+    summary = runner.run_external_benchmark(
+        output_dir=out_dir,
+        engine_ids=["HISTOGRAM", "FOURIER"]
+    )
+    reporter = ExternalBenchmarkReporter(summary=summary, output_dir=out_dir)
+    json_path = reporter.write_json_report()
+    md_path = reporter.write_markdown_report()
+    html_path = reporter.write_html_report()
+
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    # Ensure no composite or ranking keys exist
+    assert "overall_accuracy" not in data
+    assert "composite_score" not in data
+    assert "engine_rankings" not in data
+    assert "best_engine" not in data
+
+    with open(md_path, "r", encoding="utf-8") as f:
+        md_text = f.read()
+    assert "No Universal Accuracy Score" in md_text or "Non-ranking evaluation protocol" in md_text
+
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_text = f.read()
+    assert "without composite scoring" in html_text

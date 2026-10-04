@@ -271,7 +271,31 @@ The following two production engines were implemented and verified in V4 Step 8:
    *Location:* `backend/app/engine_extensions/camera/`  
    *Reference Documentation:* [docs/CAMERA_ID_ANALYSIS.md](file:///d:/Project%20Resume/ForenSight/docs/CAMERA_ID_ANALYSIS.md)
 
-*Note:* Exactly 16 V4 forensic engines are now fully operational. The 2 remaining future engines (`AI-SCREENING`, `VIDEO-FORENSICS`) remain strictly in `STATUS = PLANNED`. The V3 core under `backend/app/forensics/` remains cryptographically frozen.
+## 17. Scientific Evaluation & Benchmark Harness (Step 9)
 
+In V4 Step 9, the **Forensic Evaluation & Benchmark Harness v1.0.0** was integrated to provide scientific, empirical evaluation of all 16 production forensic engines against synthetic and external tamper datasets:
+1. **Benchmark Infrastructure**: Orchestrates systematic batch execution of engines, measuring runtime distributions, memory limits, and 3-run bit-for-bit SHA-256 reproducibility.
+2. **Controlled Evaluation Suite (`controlled-v1`)**: 11 deterministic fixtures spanning 8 forensic modalities (JPEG compression, double compression, resampling scaling/rotation, block copy-move, keypoint copy-move, splicing, noise scale injection, and false-positive repetitive texture controls).
+3. **Dataset Manifest Adapters**: Pydantic schema validation, path traversal defense, and bitstream verification across internal and external benchmark datasets (CASIA v2.0, Columbia, NIST OpenMFC).
+4. **Spatial Localization Evaluation**: Computes pixel-level IoU, Dice/F1 score, precision, and recall between spatial detection heatmaps/masks and ground-truth manipulation annotations.
+5. **PRNU Attribution Protocol**: Two-camera 4-reference MLE aggregation protocol evaluating same-camera vs. different-camera PCE distributions and separation margins.
+6. **Scientific Guardrail Enforcement**: Prohibits overall aggregate "accuracy" scores or engine rankings. Enforces non-negotiable separation: `NOT_APPLICABLE != FAILED != COMPLETED`, guaranteeing container inapplicability is never presented as negative evidence.
+   *Location:* `backend/app/benchmark/`  
+   *Reference Documentation:* [docs/FORENSIGHT_BENCHMARKING.md](file:///d:/Project%20Resume/ForenSight/docs/FORENSIGHT_BENCHMARKING.md)
 
+## 18. Real-World Forensic Dataset Validation & Benchmark Hardening (Step 10)
 
+In V4 Step 10, the scientific benchmark infrastructure was hardened for rigorous real-world evaluation:
+1. **Dataset Integrity & Snapshots**: Automated dataset registration, cryptographic snapshot generation (`dataset_snapshot.json`), SHA-256 pre-validation, and path traversal protection (`validate_safe_relative_path`).
+2. **External Dataset Ingestion**: Specialized manifest adapters for CASIA v2.0, Columbia Uncompressed Image Splicing, and NIST/DARPA OpenMFC.
+3. **Scientific Evaluation Rigor**:
+   - Strict separation of authentic cohorts (false-positive trigger characterization: foliage, sand, sharp edges, smooth gradients) and manipulated cohorts (modality breakdown: copy-move, splicing, resampling, recompression).
+   - Absolute honesty rule: If physical images are missing on disk, returns `DATASET NOT AVAILABLE` without simulating or fabricating metrics.
+   - Ground-truth mask discipline: Spatial metrics are evaluated only when ground-truth masks are provided; otherwise explicitly marked `NOT_EVALUATED`.
+4. **Reproducibility Verification**: `reproduce_benchmark_run` verifies bit-for-bit repeatability, environment stability (Python, NumPy, SciPy, OS, git commit), and 100% finding parity.
+5. **Standardized 15-Section Reports**: Outputs comprehensive scientific evaluation reports in JSON, Markdown, and pure Light-Theme HTML.
+6. **Real-Camera PRNU Protocol**: Completely independent protocol executing multi-reference MLE aggregation on physical camera imagery with degradation sweeps (JPEG Q95/85/70, scaling, cropping).
+   *Location:* `backend/app/benchmark/`  
+   *Reference Documentation:* [docs/REAL_DATASET_VALIDATION.md](file:///d:/Project%20Resume/ForenSight/docs/REAL_DATASET_VALIDATION.md), [docs/DATASET_INTEGRITY.md](file:///d:/Project%20Resume/ForenSight/docs/DATASET_INTEGRITY.md), [docs/EXTERNAL_BENCHMARK_PROTOCOL.md](file:///d:/Project%20Resume/ForenSight/docs/EXTERNAL_BENCHMARK_PROTOCOL.md), [docs/PRNU_REAL_CAMERA_VALIDATION.md](file:///d:/Project%20Resume/ForenSight/docs/PRNU_REAL_CAMERA_VALIDATION.md)
+
+*Note:* Exactly 16 V4 forensic engines are operational and evaluated. The 38-file V3 core under `backend/app/forensics/` remains cryptographically frozen byte-for-byte.

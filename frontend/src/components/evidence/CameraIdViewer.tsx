@@ -407,6 +407,35 @@ export const CameraIdViewer: React.FC<CameraIdViewerProps> = ({
                   <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Analysis plot artifact unavailable.</div>
                 )}
               </div>
+              {/* Correlation Colorbar & Scientific Threshold Guide */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                background: 'var(--surface-color-light)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                fontSize: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 600 }}>Correlation Surface Scale:</span>
+                  <div style={{
+                    width: '140px',
+                    height: '10px',
+                    borderRadius: '3px',
+                    background: 'linear-gradient(to right, #000080, #0000ff, #00ffff, #ffff00, #ff0000)'
+                  }} />
+                  <span style={{ color: 'var(--text-muted)' }}>Low (0.00) &rarr; Peak Correlation</span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)' }}>
+                  <span>Exclusion Radius: <strong>5px</strong></span>
+                  <span>Decision PCE Threshold: <strong style={{ color: '#16a34a' }}>&ge; 50.0</strong></span>
+                </div>
+              </div>
+
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 2D circular cross-correlation peak height, exclusion window neighborhood, and candidate sensor ranking bar chart.
               </div>

@@ -1,0 +1,24 @@
+{
+  "transformation_id": "trans_color_channel_shift",
+  "transformation_type": "COLOR",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_color_channel_shift",
+  "parameters": {
+    "green_delta": 60,
+    "blue_delta": -40,
+    "target_bbox": [
+      60,
+      120,
+      140,
+      200
+    ]
+  },
+  "affected_bbox": [
+    60,
+    120,
+    140,
+    200
+  ],
+  "mask_filename": "fixture_008_color_shift/ground_truth_mask.png",
+  "description": "Localized RGB channel gain shift altering inter-channel color covariance"
+}

@@ -1,0 +1,30 @@
+{
+  "dataset_name": "Columbia-Uncompressed-Splicing-Template",
+  "version": "1.0.0",
+  "description": "Template manifest for Columbia Uncompressed Image Splicing Detection Evaluation Dataset.",
+  "root_dir": "datasets/external/columbia",
+  "images": [
+    {
+      "image_id": "columbia_auth_canon_001",
+      "relative_path": "authentic/canong3_01_sub_01.tif",
+      "format": "TIFF",
+      "width": 757,
+      "height": 568,
+      "ground_truth_label": "authentic",
+      "manipulation_types": [],
+      "ground_truth_mask_path": null,
+      "sha256": ""
+    },
+    {
+      "image_id": "columbia_spliced_001",
+      "relative_path": "spliced/canong3_01_sub_01_spliced.tif",
+      "format": "TIFF",
+      "width": 757,
+      "height": 568,
+      "ground_truth_label": "manipulated",
+      "manipulation_types": ["splicing"],
+      "ground_truth_mask_path": "edgemask/canong3_01_sub_01_edgemask.bmp",
+      "sha256": ""
+    }
+  ]
+}

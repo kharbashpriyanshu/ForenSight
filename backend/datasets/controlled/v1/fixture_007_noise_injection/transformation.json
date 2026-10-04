@@ -1,0 +1,24 @@
+{
+  "transformation_id": "trans_noise_gaussian_localized",
+  "transformation_type": "NOISE",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_noise_gaussian_localized",
+  "parameters": {
+    "sigma": 25.0,
+    "distribution": "Gaussian",
+    "target_bbox": [
+      100,
+      100,
+      180,
+      180
+    ]
+  },
+  "affected_bbox": [
+    100,
+    100,
+    180,
+    180
+  ],
+  "mask_filename": "fixture_007_noise_injection/ground_truth_mask.png",
+  "description": "Localized Gaussian noise injection (sigma=25) creating high-frequency residual discrepancy"
+}

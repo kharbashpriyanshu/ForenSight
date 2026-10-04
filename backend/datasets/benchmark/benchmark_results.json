@@ -1,0 +1,72 @@
+{
+  "summary_id": "4efd6cba-4d44-4f2c-809f-b2a6c12f9ff5",
+  "benchmark_version": "1.0.0",
+  "dataset_id": "controlled-v1",
+  "dataset_version": "1.0.0",
+  "created_at": "2026-09-22T09:38:50Z",
+  "total_images": 11,
+  "total_evaluations": 22,
+  "engines_evaluated": [
+    "ADVANCED-NOISE",
+    "RESAMPLING"
+  ],
+  "engine_metrics": {
+    "ADVANCED-NOISE": {
+      "engine_id": "ADVANCED-NOISE",
+      "engine_version": "1.0.0",
+      "total_images_evaluated": 11,
+      "applied_count": 11,
+      "not_applicable_count": 0,
+      "failed_count": 0,
+      "applicability_rate": 1.0,
+      "execution_success_rate": 1.0,
+      "mean_runtime_ms": 107.44,
+      "p95_runtime_ms": 123.96,
+      "deterministic_repeatability_rate": 1.0,
+      "localization_metrics": null,
+      "domain_specific_metrics": {
+        "runtimes": {
+          "mean": 107.44,
+          "std": 11.52,
+          "min": 87.14,
+          "p50": 107.59,
+          "p95": 123.96,
+          "max": 129.15
+        },
+        "completed_count": 11
+      }
+    },
+    "RESAMPLING": {
+      "engine_id": "RESAMPLING",
+      "engine_version": "1.0.0",
+      "total_images_evaluated": 11,
+      "applied_count": 11,
+      "not_applicable_count": 0,
+      "failed_count": 0,
+      "applicability_rate": 1.0,
+      "execution_success_rate": 1.0,
+      "mean_runtime_ms": 93.87,
+      "p95_runtime_ms": 164.88,
+      "deterministic_repeatability_rate": 1.0,
+      "localization_metrics": null,
+      "domain_specific_metrics": {
+        "runtimes": {
+          "mean": 93.87,
+          "std": 36.43,
+          "min": 59.53,
+          "p50": 76.21,
+          "p95": 164.88,
+          "max": 165.46
+        },
+        "completed_count": 11
+      }
+    }
+  },
+  "determinism_verified": true,
+  "runtime_total_seconds": 2.36,
+  "overall_limitations": [
+    "Evaluations conducted on controlled and registered external datasets.",
+    "Applicability is strictly separated from negative forensic attribution.",
+    "No universal accuracy score is generated; refer to individual engine distributions."
+  ]
+}

@@ -50,7 +50,7 @@ export default function Login() {
       minHeight: '100vh', 
       alignItems: 'center', 
       justifyContent: 'center', 
-      background: 'radial-gradient(circle at 20% 20%, rgba(219, 234, 254, 0.6) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(224, 231, 255, 0.5) 0%, transparent 50%), #f8fafc', 
+      background: 'radial-gradient(circle at 20% 20%, rgba(212, 160, 67, 0.14) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(184, 135, 42, 0.10) 0%, transparent 50%), #f6f2eb', 
       padding: '1.5rem',
       position: 'relative',
       overflow: 'hidden'
@@ -61,7 +61,7 @@ export default function Login() {
         width: '380px',
         height: '380px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(212, 160, 67, 0.12) 0%, transparent 70%)',
         top: '12%',
         left: '18%',
         filter: 'blur(40px)',
@@ -72,7 +72,7 @@ export default function Login() {
         width: '420px',
         height: '420px',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(184, 135, 42, 0.09) 0%, transparent 70%)',
         bottom: '10%',
         right: '15%',
         filter: 'blur(50px)',
@@ -84,11 +84,11 @@ export default function Login() {
         maxWidth: '430px', 
         padding: '2.75rem 2.25rem', 
         borderRadius: '16px', 
-        boxShadow: '0 20px 50px -10px rgba(15, 23, 42, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.95)', 
-        background: 'rgba(255, 255, 255, 0.78)', 
-        backdropFilter: 'blur(20px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        border: '1px solid rgba(255, 255, 255, 0.9)',
+        boxShadow: '0 20px 50px -10px rgba(26, 22, 16, 0.09), inset 0 1px 0 0 rgba(255, 253, 248, 0.95)', 
+        background: 'rgba(252, 249, 244, 0.88)', 
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        border: '1px solid rgba(255, 253, 248, 0.90)',
         zIndex: 1,
         animation: 'pageFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
       }}>
@@ -100,17 +100,17 @@ export default function Login() {
             width: '48px', 
             height: '48px', 
             borderRadius: '12px', 
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', 
-            color: '#ffffff', 
+            background: 'linear-gradient(135deg, #1c2b3a 0%, #2d4258 100%)', 
+            color: '#f5f0e2', 
             fontWeight: 800, 
             fontSize: '1.2rem', 
             marginBottom: '1rem',
-            boxShadow: '0 8px 20px -4px rgba(30, 58, 138, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+            boxShadow: '0 8px 20px -4px rgba(28, 43, 58, 0.32), inset 0 1px 0 rgba(255, 240, 190, 0.3)'
           }}>
             FS
           </div>
           <h1 style={{ color: 'var(--text-main)', fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.35rem' }}>ForenSight</h1>
-          <p style={{ color: '#2563eb', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <p style={{ color: '#b8872a', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
             Digital Evidence OS
           </p>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.65rem', lineHeight: 1.45 }}>

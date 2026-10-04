@@ -1,0 +1,137 @@
+{
+  "protocol_name": "Two-Camera 4-Reference PRNU Attribution Benchmark",
+  "reference_aggregation": {
+    "camera_a_references": 4,
+    "camera_b_references": 4,
+    "aggregation_method": "Maximum Likelihood Estimation (MLE)"
+  },
+  "same_camera_distribution": {
+    "count": 5,
+    "mean_pce": 22.81,
+    "min_pce": 18.07,
+    "max_pce": 27.47,
+    "pce_threshold_exceeded_rate": 0.0,
+    "probes": [
+      {
+        "probe_id": "same_camera_probe_1",
+        "correlation": 0.04184,
+        "pce": 27.47,
+        "peak_location": [
+          64,
+          64
+        ]
+      },
+      {
+        "probe_id": "same_camera_probe_2",
+        "correlation": 0.03573,
+        "pce": 20.03,
+        "peak_location": [
+          64,
+          64
+        ]
+      },
+      {
+        "probe_id": "same_camera_probe_3",
+        "correlation": -0.0341,
+        "pce": 18.07,
+        "peak_location": [
+          87,
+          101
+        ]
+      },
+      {
+        "probe_id": "same_camera_probe_4",
+        "correlation": 0.03893,
+        "pce": 23.91,
+        "peak_location": [
+          31,
+          28
+        ]
+      },
+      {
+        "probe_id": "same_camera_probe_5",
+        "correlation": -0.03983,
+        "pce": 24.55,
+        "peak_location": [
+          18,
+          52
+        ]
+      }
+    ]
+  },
+  "different_camera_distribution": {
+    "count": 5,
+    "mean_pce": 16.74,
+    "min_pce": 13.58,
+    "max_pce": 19.59,
+    "false_consistent_rate": 0.0,
+    "probes": [
+      {
+        "probe_id": "diff_camera_probe_1",
+        "correlation": 0.03484,
+        "pce": 18.82,
+        "peak_location": [
+          4,
+          59
+        ]
+      },
+      {
+        "probe_id": "diff_camera_probe_2",
+        "correlation": 0.03534,
+        "pce": 19.59,
+        "peak_location": [
+          119,
+          66
+        ]
+      },
+      {
+        "probe_id": "diff_camera_probe_3",
+        "correlation": -0.0297,
+        "pce": 13.58,
+        "peak_location": [
+          84,
+          20
+        ]
+      },
+      {
+        "probe_id": "diff_camera_probe_4",
+        "correlation": 0.0315,
+        "pce": 15.33,
+        "peak_location": [
+          45,
+          112
+        ]
+      },
+      {
+        "probe_id": "diff_camera_probe_5",
+        "correlation": 0.0327,
+        "pce": 16.38,
+        "peak_location": [
+          99,
+          95
+        ]
+      }
+    ]
+  },
+  "separation_metrics": {
+    "pce_separation_gap": -1.52,
+    "unambiguous_separation": false
+  },
+  "compression_sensitivity": [
+    {
+      "quality": 85,
+      "correlation": 0.04167,
+      "pce": 27.28
+    },
+    {
+      "quality": 60,
+      "correlation": 0.03762,
+      "pce": 22.22
+    }
+  ],
+  "scientific_limitations": [
+    "Evaluated on controlled synthetic sensor noise models with zero-mean normalization.",
+    "Real-world optical sensors may exhibit non-linear illumination, dark current non-uniformity, or lens vignetting.",
+    "PCE threshold of 50.0 is an empirical decision guideline and should not be cited as an unconditional law."
+  ]
+}

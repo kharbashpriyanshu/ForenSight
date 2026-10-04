@@ -1,0 +1,514 @@
+{
+  "manifest_version": "1.0.0",
+  "dataset_id": "controlled-v1",
+  "dataset_version": "1.0.0",
+  "dataset_name": "ForenSight Controlled Multi-Modality Forensic Benchmark Suite",
+  "dataset_type": "CONTROLLED",
+  "description": "Deterministically synthesized evaluation fixtures with pixel-accurate ground truth covering compression, geometry, copy-move, splicing, noise, color, and repetitive false-positive textures.",
+  "creation_date": "2026-09-22T00:00:00Z",
+  "images": [
+    {
+      "image_id": "img_001_authentic_base",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_001_authentic/original.png",
+      "sha256": "67c894be9a750ea636f153a911b497d75d6a399e1b649e4e5c2dd3f55a8b62c5",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "AUTHENTIC",
+      "manipulation_type": "NONE",
+      "ground_truth_mask": null,
+      "transformation_manifest": null,
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "ELA",
+        "NOISE",
+        "COPY-MOVE",
+        "HISTOGRAM",
+        "FOURIER",
+        "ADVANCED-NOISE",
+        "RESAMPLING",
+        "PRNU"
+      ],
+      "notes": "Unmodified authentic reference baseline",
+      "provenance": null
+    },
+    {
+      "image_id": "img_comp_q95",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_002_jpeg_q95/derived_q95.jpg",
+      "sha256": "b21965c0ff135fe32fba83474cd1ee3603b8f7143fbcee6c08d77ec60a733c8a",
+      "format": "JPEG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "AUTHENTIC",
+      "manipulation_type": "COMPRESSION",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_comp_q95",
+        "transformation_type": "COMPRESSION",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_comp_q95",
+        "parameters": {
+          "quality": 95,
+          "recompression_count": 1
+        },
+        "affected_bbox": [
+          0,
+          0,
+          256,
+          256
+        ],
+        "mask_filename": null,
+        "description": "Standard baseline JPEG compression at Q=95"
+      },
+      "camera_reference": null,
+      "compression_history": {
+        "quality": 95,
+        "recompression": false
+      },
+      "expected_applicable_engines": [
+        "JPEG-QT",
+        "JPEG-STRUCTURE",
+        "JPEG-HUFFMAN",
+        "BLOCKING-ARTIFACT",
+        "JPEG-GHOST",
+        "ADJPEG",
+        "NADJPEG"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_comp_q75",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_002_jpeg_q75/derived_q75.jpg",
+      "sha256": "098a0d2d901229ae6da0d3d980001e8e9f933a6e06e296e1a16bbe81d809fc00",
+      "format": "JPEG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "AUTHENTIC",
+      "manipulation_type": "COMPRESSION",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_comp_q75",
+        "transformation_type": "COMPRESSION",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_comp_q75",
+        "parameters": {
+          "quality": 75,
+          "recompression_count": 1
+        },
+        "affected_bbox": [
+          0,
+          0,
+          256,
+          256
+        ],
+        "mask_filename": null,
+        "description": "Standard baseline JPEG compression at Q=75"
+      },
+      "camera_reference": null,
+      "compression_history": {
+        "quality": 75,
+        "recompression": false
+      },
+      "expected_applicable_engines": [
+        "JPEG-QT",
+        "JPEG-STRUCTURE",
+        "JPEG-HUFFMAN",
+        "BLOCKING-ARTIFACT",
+        "JPEG-GHOST",
+        "ADJPEG",
+        "NADJPEG"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_comp_q50",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_002_jpeg_q50/derived_q50.jpg",
+      "sha256": "f5be7efe1759d7145e0254103a7a333f5014f957a5cb8ac35c4d72ff859e99e0",
+      "format": "JPEG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "AUTHENTIC",
+      "manipulation_type": "COMPRESSION",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_comp_q50",
+        "transformation_type": "COMPRESSION",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_comp_q50",
+        "parameters": {
+          "quality": 50,
+          "recompression_count": 1
+        },
+        "affected_bbox": [
+          0,
+          0,
+          256,
+          256
+        ],
+        "mask_filename": null,
+        "description": "Standard baseline JPEG compression at Q=50"
+      },
+      "camera_reference": null,
+      "compression_history": {
+        "quality": 50,
+        "recompression": false
+      },
+      "expected_applicable_engines": [
+        "JPEG-QT",
+        "JPEG-STRUCTURE",
+        "JPEG-HUFFMAN",
+        "BLOCKING-ARTIFACT",
+        "JPEG-GHOST",
+        "ADJPEG",
+        "NADJPEG"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_jpeg_double_q95_q75",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_003_jpeg_double_q95_q75/derived_double.jpg",
+      "sha256": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+      "format": "JPEG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "COMPRESSION",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_double_q95_q75",
+        "transformation_type": "COMPRESSION",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_jpeg_double_q95_q75",
+        "parameters": {
+          "primary_quality": 95,
+          "secondary_quality": 75
+        },
+        "affected_bbox": [
+          0,
+          0,
+          256,
+          256
+        ],
+        "mask_filename": null,
+        "description": "Double JPEG compression primary Q=95 secondary Q=75"
+      },
+      "camera_reference": null,
+      "compression_history": {
+        "q1": 95,
+        "q2": 75,
+        "double_compression": true
+      },
+      "expected_applicable_engines": [
+        "JPEG-GHOST",
+        "ADJPEG",
+        "NADJPEG",
+        "BLOCKING-ARTIFACT"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_geom_resample_bicubic",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_004_geometry_resample/derived_resampled.png",
+      "sha256": "76344b17bf670c3edfc108bc339c8260b3a80b9ba7e813a98af853bfb56a6b80",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "RESAMPLING",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_resample_bicubic_down_up",
+        "transformation_type": "RESAMPLING",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_geom_resample_bicubic",
+        "parameters": {
+          "downscale": 0.5,
+          "upscale": 2.0,
+          "interpolation": "bicubic"
+        },
+        "affected_bbox": [
+          0,
+          0,
+          256,
+          256
+        ],
+        "mask_filename": null,
+        "description": "Bicubic downscale 50% followed by upscale 200% introducing periodic interpolation traces"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "RESAMPLING",
+        "ADVANCED-NOISE",
+        "FOURIER"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_copymove_translated",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_005_copymove_clone/derived_copymove.png",
+      "sha256": "2d6c4240aaa4600958e2abb9e1dc9ab749fb1dd837f211ec7a4f1a05bb55f40e",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "COPY_MOVE",
+      "ground_truth_mask": "fixture_005_copymove_clone/ground_truth_mask.png",
+      "transformation_manifest": {
+        "transformation_id": "trans_copymove_translated",
+        "transformation_type": "COPY_MOVE",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_copymove_translated",
+        "parameters": {
+          "source_bbox": [
+            40,
+            40,
+            100,
+            100
+          ],
+          "target_bbox": [
+            150,
+            150,
+            210,
+            210
+          ],
+          "dx": 110,
+          "dy": 110
+        },
+        "affected_bbox": [
+          150,
+          150,
+          210,
+          210
+        ],
+        "mask_filename": "fixture_005_copymove_clone/ground_truth_mask.png",
+        "description": "Copy-move cloning of 60x60 square translated by (dx=110, dy=110)"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "CLONE-BLOCK",
+        "CLONE-KEYPOINT",
+        "COPY-MOVE",
+        "ADVANCED-NOISE"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_splicing_donor",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_006_splicing_donor/derived_spliced.png",
+      "sha256": "778cc4b60dca1c99558d23454472811494bd0180f806cb1d79b509203dd6e7bb",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "SPLICING",
+      "ground_truth_mask": "fixture_006_splicing_donor/ground_truth_mask.png",
+      "transformation_manifest": {
+        "transformation_id": "trans_splicing_donor_paste",
+        "transformation_type": "SPLICING",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_splicing_donor",
+        "parameters": {
+          "target_bbox": [
+            30,
+            140,
+            90,
+            200
+          ],
+          "donor_source": "synthetic_checker_canvas"
+        },
+        "affected_bbox": [
+          30,
+          140,
+          90,
+          200
+        ],
+        "mask_filename": "fixture_006_splicing_donor/ground_truth_mask.png",
+        "description": "Donor region splicing from distinct synthetic texture source"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "ELA",
+        "NOISE",
+        "ADVANCED-NOISE",
+        "COLOR-CHANNEL"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_noise_gaussian_localized",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_007_noise_injection/derived_noise_injected.png",
+      "sha256": "e7ca97f027d38c3a7ce0ea436371a2c1c1c335c9ac795f8c4315b9382440eb49",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "NOISE",
+      "ground_truth_mask": "fixture_007_noise_injection/ground_truth_mask.png",
+      "transformation_manifest": {
+        "transformation_id": "trans_noise_gaussian_localized",
+        "transformation_type": "NOISE",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_noise_gaussian_localized",
+        "parameters": {
+          "sigma": 25.0,
+          "distribution": "Gaussian",
+          "target_bbox": [
+            100,
+            100,
+            180,
+            180
+          ]
+        },
+        "affected_bbox": [
+          100,
+          100,
+          180,
+          180
+        ],
+        "mask_filename": "fixture_007_noise_injection/ground_truth_mask.png",
+        "description": "Localized Gaussian noise injection (sigma=25) creating high-frequency residual discrepancy"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "NOISE",
+        "ADVANCED-NOISE",
+        "FOURIER"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_color_channel_shift",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_008_color_shift/derived_color_shifted.png",
+      "sha256": "07e3c4a54eb76e03cb3f4545ac076f0d5770c22034d853d4e13d93216861b82b",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "MANIPULATED",
+      "manipulation_type": "COLOR",
+      "ground_truth_mask": "fixture_008_color_shift/ground_truth_mask.png",
+      "transformation_manifest": {
+        "transformation_id": "trans_color_channel_shift",
+        "transformation_type": "COLOR",
+        "source_image_id": "img_001_authentic_base",
+        "derived_image_id": "img_color_channel_shift",
+        "parameters": {
+          "green_delta": 60,
+          "blue_delta": -40,
+          "target_bbox": [
+            60,
+            120,
+            140,
+            200
+          ]
+        },
+        "affected_bbox": [
+          60,
+          120,
+          140,
+          200
+        ],
+        "mask_filename": "fixture_008_color_shift/ground_truth_mask.png",
+        "description": "Localized RGB channel gain shift altering inter-channel color covariance"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "COLOR-CHANNEL",
+        "HISTOGRAM"
+      ],
+      "notes": null,
+      "provenance": null
+    },
+    {
+      "image_id": "img_false_positive_texture",
+      "dataset_id": "controlled-v1",
+      "source": "ForenSight Controlled Synthetic Lab",
+      "source_license": "CC-BY-4.0",
+      "filename": "fixture_009_false_positive_texture/authentic_repetitive_texture.png",
+      "sha256": "ee291af48b81dca4b32439c5fda5c55367f7ebd41614d75e9cc882d4adc57e44",
+      "format": "PNG",
+      "width": 256,
+      "height": 256,
+      "color_mode": "RGB",
+      "authentic_or_manipulated": "AUTHENTIC",
+      "manipulation_type": "REPETITIVE_TEXTURE",
+      "ground_truth_mask": null,
+      "transformation_manifest": {
+        "transformation_id": "trans_challenge_repetitive_texture",
+        "transformation_type": "REPETITIVE_TEXTURE",
+        "source_image_id": "img_false_positive_texture",
+        "derived_image_id": "img_false_positive_texture",
+        "parameters": {
+          "pattern": "repetitive_brick_grid",
+          "is_authentic": true
+        },
+        "affected_bbox": null,
+        "mask_filename": null,
+        "description": "Authentic high-frequency repetitive brick structure designed to test false alarm rates in copy-move engines"
+      },
+      "camera_reference": null,
+      "compression_history": null,
+      "expected_applicable_engines": [
+        "CLONE-BLOCK",
+        "CLONE-KEYPOINT",
+        "FOURIER",
+        "RESAMPLING"
+      ],
+      "notes": "Authentic pattern. Evaluates false discovery rates in CLONE-BLOCK and CLONE-KEYPOINT.",
+      "provenance": null
+    }
+  ]
+}

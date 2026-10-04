@@ -1,0 +1,18 @@
+{
+  "transformation_id": "trans_comp_q75",
+  "transformation_type": "COMPRESSION",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_comp_q75",
+  "parameters": {
+    "quality": 75,
+    "recompression_count": 1
+  },
+  "affected_bbox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "mask_filename": null,
+  "description": "Standard baseline JPEG compression at Q=75"
+}

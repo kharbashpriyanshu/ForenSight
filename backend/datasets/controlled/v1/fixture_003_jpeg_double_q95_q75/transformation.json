@@ -1,0 +1,18 @@
+{
+  "transformation_id": "trans_double_q95_q75",
+  "transformation_type": "COMPRESSION",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_jpeg_double_q95_q75",
+  "parameters": {
+    "primary_quality": 95,
+    "secondary_quality": 75
+  },
+  "affected_bbox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "mask_filename": null,
+  "description": "Double JPEG compression primary Q=95 secondary Q=75"
+}

@@ -1,0 +1,30 @@
+{
+  "dataset_name": "NIST-OpenMFC-Template",
+  "version": "1.0.0",
+  "description": "Template manifest for NIST / DARPA Media Forensics Challenge (OpenMFC) evaluation dataset.",
+  "root_dir": "datasets/external/nist_openmfc",
+  "images": [
+    {
+      "image_id": "openmfc_auth_001",
+      "relative_path": "images/NC2016_0001.jpg",
+      "format": "JPEG",
+      "width": 1920,
+      "height": 1080,
+      "ground_truth_label": "authentic",
+      "manipulation_types": [],
+      "ground_truth_mask_path": null,
+      "sha256": ""
+    },
+    {
+      "image_id": "openmfc_manip_001",
+      "relative_path": "images/NC2016_0002.jpg",
+      "format": "JPEG",
+      "width": 1920,
+      "height": 1080,
+      "ground_truth_label": "manipulated",
+      "manipulation_types": ["splicing", "color_adjustment"],
+      "ground_truth_mask_path": "masks/NC2016_0002_mask.png",
+      "sha256": ""
+    }
+  ]
+}

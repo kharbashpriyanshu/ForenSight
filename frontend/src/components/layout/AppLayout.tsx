@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface AppLayoutProps {
@@ -7,34 +8,49 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
+  const location = useLocation();
+  const isCases = location.pathname.startsWith('/cases');
+  const isBenchmark = location.pathname.startsWith('/benchmark');
+
   return (
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-brand">
           <div style={{ 
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', 
+            background: 'linear-gradient(135deg, #1c2b3a 0%, #2d4258 100%)', 
             width: '32px', 
             height: '32px', 
             borderRadius: '8px', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
-            color: '#ffffff', 
+            color: '#f5f0e2', 
             fontWeight: 800, 
             fontSize: '0.85rem',
-            boxShadow: '0 4px 10px rgba(30, 58, 138, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+            boxShadow: '0 4px 10px rgba(28, 43, 58, 0.28), inset 0 1px 0 rgba(255, 240, 190, 0.3)'
           }}>
             FS
           </div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>ForenSight</div>
-            <div style={{ fontSize: '0.65rem', color: '#1d4ed8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
+            <div style={{ fontSize: '0.65rem', color: '#b8872a', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
           </div>
         </div>
         <nav className="sidebar-nav">
-          <div className="nav-item active">
+          <Link
+            to="/cases"
+            className={`nav-item ${isCases ? 'active' : ''}`}
+            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
             📁 Cases Overview
-          </div>
+          </Link>
+          <Link
+            to="/benchmark"
+            className={`nav-item ${isBenchmark ? 'active' : ''}`}
+            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            🧪 Benchmark Suite
+          </Link>
         </nav>
       </aside>
       <main className="main-content">
@@ -46,9 +62,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             <span style={{ 
               fontSize: '0.65rem', 
               fontWeight: 700, 
-              background: 'rgba(37, 99, 235, 0.08)', 
-              color: '#1d4ed8', 
-              border: '1px solid rgba(37, 99, 235, 0.2)', 
+              background: 'rgba(184, 135, 42, 0.10)', 
+              color: '#92560a', 
+              border: '1px solid rgba(184, 135, 42, 0.25)', 
               padding: '0.15rem 0.5rem', 
               borderRadius: '9999px',
               letterSpacing: '0.05em'

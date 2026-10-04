@@ -1,0 +1,13 @@
+{
+  "transformation_id": "trans_challenge_repetitive_texture",
+  "transformation_type": "REPETITIVE_TEXTURE",
+  "source_image_id": "img_false_positive_texture",
+  "derived_image_id": "img_false_positive_texture",
+  "parameters": {
+    "pattern": "repetitive_brick_grid",
+    "is_authentic": true
+  },
+  "affected_bbox": null,
+  "mask_filename": null,
+  "description": "Authentic high-frequency repetitive brick structure designed to test false alarm rates in copy-move engines"
+}

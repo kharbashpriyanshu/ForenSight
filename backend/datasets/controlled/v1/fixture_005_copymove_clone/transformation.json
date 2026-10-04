@@ -1,0 +1,30 @@
+{
+  "transformation_id": "trans_copymove_translated",
+  "transformation_type": "COPY_MOVE",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_copymove_translated",
+  "parameters": {
+    "source_bbox": [
+      40,
+      40,
+      100,
+      100
+    ],
+    "target_bbox": [
+      150,
+      150,
+      210,
+      210
+    ],
+    "dx": 110,
+    "dy": 110
+  },
+  "affected_bbox": [
+    150,
+    150,
+    210,
+    210
+  ],
+  "mask_filename": "fixture_005_copymove_clone/ground_truth_mask.png",
+  "description": "Copy-move cloning of 60x60 square translated by (dx=110, dy=110)"
+}

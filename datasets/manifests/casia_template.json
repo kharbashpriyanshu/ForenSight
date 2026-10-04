@@ -1,0 +1,41 @@
+{
+  "dataset_name": "CASIA-v2.0-Template",
+  "version": "2.0.0",
+  "description": "Template manifest for the CASIA v2.0 image tampering dataset. Populate image records according to your downloaded corpus.",
+  "root_dir": "datasets/external/casia2",
+  "images": [
+    {
+      "image_id": "casia_auth_001",
+      "relative_path": "Au/Au_ani_00001.jpg",
+      "format": "JPEG",
+      "width": 384,
+      "height": 256,
+      "ground_truth_label": "authentic",
+      "manipulation_types": [],
+      "ground_truth_mask_path": null,
+      "sha256": ""
+    },
+    {
+      "image_id": "casia_tp_spliced_001",
+      "relative_path": "Tp/Tp_S_NRN_S_N_ani00073_ani00068_00193.tif",
+      "format": "TIFF",
+      "width": 384,
+      "height": 256,
+      "ground_truth_label": "manipulated",
+      "manipulation_types": ["splicing"],
+      "ground_truth_mask_path": "CASIA 2 Groundtruth/Tp_S_NRN_S_N_ani00073_ani00068_00193_gt.png",
+      "sha256": ""
+    },
+    {
+      "image_id": "casia_tp_copymove_001",
+      "relative_path": "Tp/Tp_D_CND_M_N_ani00018_ani00018_00041.tif",
+      "format": "TIFF",
+      "width": 384,
+      "height": 256,
+      "ground_truth_label": "manipulated",
+      "manipulation_types": ["copy_move"],
+      "ground_truth_mask_path": "CASIA 2 Groundtruth/Tp_D_CND_M_N_ani00018_ani00018_00041_gt.png",
+      "sha256": ""
+    }
+  ]
+}

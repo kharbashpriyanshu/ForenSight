@@ -199,6 +199,35 @@ export const PRNUViewer: React.FC<PRNUViewerProps> = ({
                   <div style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Residual map artifact unavailable.</div>
                 )}
               </div>
+              {/* Colorbar Scale & Scientific Indicator */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                background: 'var(--surface-color-light)',
+                padding: '0.5rem 0.75rem',
+                borderRadius: '6px',
+                border: '1px solid var(--border-color)',
+                fontSize: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 600 }}>Residual Amplitude:</span>
+                  <div style={{
+                    width: '140px',
+                    height: '10px',
+                    borderRadius: '3px',
+                    background: 'linear-gradient(to right, #000000, #7f7f7f, #ffffff)'
+                  }} />
+                  <span style={{ color: 'var(--text-muted)' }}>-3σ (Dark) &rarr; 0 &rarr; +3σ (Bright)</span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)' }}>
+                  <span>Zero-Mean Suppression: <strong style={{ color: '#16a34a' }}>Active</strong></span>
+                  <span>Suitability: <strong style={{ color: (suitability.suitability_index || 0) >= 0.2 ? '#16a34a' : '#ef4444' }}>{suitability.suitability_index ?? 'N/A'}</strong></span>
+                </div>
+              </div>
+
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                 Normalized spatial representation of sensor noise residual W = I - F(I) with zero-mean row/column demosaicing artifact suppression.
               </div>

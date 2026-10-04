@@ -72,6 +72,10 @@ export default function EvidenceDetail() {
   const [verifyingCustody, setVerifyingCustody] = useState(false);
   const [custodyResult, setCustodyResult] = useState<any | null>(null);
 
+  // Categorized Forensic Workbench active tab
+  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
+
+
   const fetchEvidenceAndJobs = (evId: string) => {
     fetchApi(`/evidence/${evId}`)
       .then(res => res.json())
@@ -213,6 +217,27 @@ export default function EvidenceDetail() {
       .catch(() => setCorrelating(false));
   };
 
+  const hasResult = (key: string) => Boolean(results[key] || results[key.replace('-', '_')] || jobs[key]?.status === 'COMPLETED');
+
+  const coreCount = ['metadata', 'ela', 'noise', 'jpeg-dct', 'copy-move'].filter(k => hasResult(k)).length;
+  const compressionCount = ['jpeg-structure', 'jpeg-ghost', 'adjpeg', 'nadjpeg', 'blocking-artifact'].filter(k => hasResult(k)).length;
+  const colorCount = ['histogram', 'color-channel', 'fourier'].filter(k => hasResult(k)).length;
+  const noiseResamplingCount = ['advanced-noise', 'resampling'].filter(k => hasResult(k)).length;
+  const cloningCount = ['clone-block', 'clone-keypoint'].filter(k => hasResult(k)).length;
+  const cameraCount = ['prnu', 'camera-id'].filter(k => hasResult(k)).length;
+  const totalCompleted = coreCount + compressionCount + colorCount + noiseResamplingCount + cloningCount + cameraCount;
+
+  const workbenchTabs = [
+    { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', count: heatmap?.composite_regions_count || 0, suffix: 'zones' },
+    { id: 'core', label: 'Core DIP Engines', icon: '⚙️', count: coreCount, suffix: '/5' },
+    { id: 'compression', label: 'Container & Compression', icon: '🗜️', count: compressionCount, suffix: '/3' },
+    { id: 'color_spectrum', label: 'Color & Spectrum', icon: '🌈', count: colorCount, suffix: '/3' },
+    { id: 'noise_resampling', label: 'Noise & Resampling', icon: '🔬', count: noiseResamplingCount, suffix: '/2' },
+    { id: 'cloning', label: 'Clone Detection', icon: '👯', count: cloningCount, suffix: '/2' },
+    { id: 'camera_sensor', label: 'Camera & Sensor', icon: '📷', count: cameraCount, suffix: '/2' },
+    { id: 'all', label: 'All Modalities', icon: '📑', count: totalCompleted, suffix: 'active' },
+  ];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Evidence Acquisition Form (if new) */}
@@ -276,8 +301,64 @@ export default function EvidenceDetail() {
             </div>
           </div>
 
-          {/* Multi-Modality Forensic Anomaly Heatmap */}
-          {heatmap && (
+          {/* Categorized Forensic Workbench Navigation */}
+          <div style={{
+            position: 'sticky',
+            top: '0px',
+            zIndex: 90,
+            background: 'var(--surface-color)',
+            backdropFilter: 'var(--glass-blur)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '8px',
+            padding: '0.5rem',
+            margin: '1.25rem 0 0.5rem 0',
+            display: 'flex',
+            gap: '0.4rem',
+            overflowX: 'auto',
+            boxShadow: 'var(--shadow-card)',
+            alignItems: 'center'
+          }}>
+            {workbenchTabs.map(t => {
+              const isActive = workbenchTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setWorkbenchTab(t.id as any)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.45rem',
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    border: isActive ? '1px solid var(--primary-border)' : '1px solid transparent',
+                    background: isActive ? 'var(--primary-light)' : 'transparent',
+                    color: isActive ? 'var(--primary-color)' : 'var(--text-muted)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{t.icon}</span>
+                  <span>{t.label}</span>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: '9999px',
+                    background: isActive ? 'var(--primary-color)' : 'var(--surface-color-light)',
+                    color: isActive ? '#ffffff' : 'var(--text-muted)',
+                    fontWeight: 700
+                  }}>
+                    {t.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* TAB 1: OVERVIEW & MULTI-MODALITY HEATMAP */}
+          {(workbenchTab === 'overview' || workbenchTab === 'all') && heatmap && (
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
@@ -394,24 +475,28 @@ export default function EvidenceDetail() {
             </div>
           )}
 
-          {/* Analysis Jobs Grid */}
-          <div className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 className="card-title" style={{ margin: 0, color: 'var(--primary-color)' }}>
-                FORENSIC / DIP ENGINE WORKLOADS (FROZEN CORE)
-              </h2>
+          {/* TAB 2: CORE FORENSIC / DIP WORKLOADS */}
+          {(workbenchTab === 'core' || workbenchTab === 'all') && (
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 className="card-title" style={{ margin: 0, color: 'var(--primary-color)' }}>
+                  FORENSIC / DIP ENGINE WORKLOADS (FROZEN CORE)
+                </h2>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+                <AnalysisJobCard job={jobs['metadata']} analysisType="Metadata" result={results['metadata']} onRun={() => runAsyncJob('metadata')} disabled={false} />
+                <AnalysisJobCard job={jobs['ela']} analysisType="Error Level Analysis" result={results['ela']} onRun={() => runAsyncJob('ela')} disabled={false} />
+                <AnalysisJobCard job={jobs['noise']} analysisType="Noise Residual" result={results['noise']} onRun={() => runAsyncJob('noise')} disabled={false} />
+                <AnalysisJobCard job={jobs['jpeg-dct']} analysisType="JPEG / DCT" result={results['jpeg-dct']} onRun={() => runAsyncJob('jpeg-dct')} disabled={false} />
+                <AnalysisJobCard job={jobs['copy-move']} analysisType="Copy-Move" result={results['copy-move']} onRun={() => runAsyncJob('copy-move')} disabled={false} />
+              </div>
             </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-              <AnalysisJobCard job={jobs['metadata']} analysisType="Metadata" result={results['metadata']} onRun={() => runAsyncJob('metadata')} disabled={false} />
-              <AnalysisJobCard job={jobs['ela']} analysisType="Error Level Analysis" result={results['ela']} onRun={() => runAsyncJob('ela')} disabled={false} />
-              <AnalysisJobCard job={jobs['noise']} analysisType="Noise Residual" result={results['noise']} onRun={() => runAsyncJob('noise')} disabled={false} />
-              <AnalysisJobCard job={jobs['jpeg-dct']} analysisType="JPEG / DCT" result={results['jpeg-dct']} onRun={() => runAsyncJob('jpeg-dct')} disabled={false} />
-              <AnalysisJobCard job={jobs['copy-move']} analysisType="Copy-Move" result={results['copy-move']} onRun={() => runAsyncJob('copy-move')} disabled={false} />
-            </div>
+          )}
 
-            {/* V4 Step 2: Advanced JPEG & File Forensics Extension Viewer */}
-            <div style={{ marginTop: '2rem' }}>
+          {/* TAB 3: CONTAINER & COMPRESSION FORENSICS */}
+          {(workbenchTab === 'compression' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedJpegViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -420,10 +505,7 @@ export default function EvidenceDetail() {
                 huffmanResult={results['jpeg-huffman'] || results['jpeg_huffman']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 3: JPEG Compression History Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <CompressionHistoryViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -432,10 +514,7 @@ export default function EvidenceDetail() {
                 nadjpegResult={results['nadjpeg']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 4: JPEG 8×8 Blocking Artifact Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <BlockingArtifactViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -443,29 +522,25 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+          )}
 
-            {/* V4 Step 5: Histogram Distribution Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
+          {/* TAB 4: COLOR & SPECTRUM FORENSICS */}
+          {(workbenchTab === 'color_spectrum' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <HistogramViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 histogramResult={results['histogram']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 5: Color Channel Discrepancy Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <ColorChannelViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 colorChannelResult={results['color-channel'] || results['color_channel']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 5: Fourier 2D Frequency Spectrum Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <FourierViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -473,19 +548,18 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+          )}
 
-            {/* V4 Step 6: Advanced Spatial Noise Residual Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
+          {/* TAB 5: NOISE & RESAMPLING FORENSICS */}
+          {(workbenchTab === 'noise_resampling' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedNoiseViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 advancedNoiseResult={results['advanced-noise'] || results['advanced_noise']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 6: Periodic Resampling & Interpolation Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <ResamplingViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -493,19 +567,18 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+          )}
 
-            {/* V4 Step 7: Block-Based Copy-Move Clone Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
+          {/* TAB 6: CLONE DETECTION FORENSICS */}
+          {(workbenchTab === 'cloning' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <CloneBlockViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 cloneBlockResult={results['clone-block'] || results['clone_block']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 7: Keypoint-Based Copy-Move Clone Forensics Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <CloneKeypointViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
@@ -513,19 +586,18 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+          )}
 
-            {/* V4 Step 8: PRNU Sensor Pattern Analysis Viewer */}
-            <div style={{ marginTop: '2rem' }}>
+          {/* TAB 7: CAMERA ATTRIBUTION & SENSOR PRNU */}
+          {(workbenchTab === 'camera_sensor' || workbenchTab === 'all') && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <PRNUViewer
                 evidenceId={uploadResult.id}
                 containerFormat={uploadResult.file_format || ''}
                 prnuResult={results['prnu']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
-            </div>
 
-            {/* V4 Step 8: Source Camera Identification Viewer */}
-            <div style={{ marginTop: '2rem' }}>
               <CameraIdViewer
                 evidenceId={uploadResult.id}
                 caseId={uploadResult.case_id || caseId || 'default'}
@@ -534,40 +606,45 @@ export default function EvidenceDetail() {
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
             </div>
+          )}
 
-            <h2 className="card-title" style={{ marginTop: '2rem', marginBottom: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
-              FUSION & ASSESSMENT
-            </h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <button 
-                className="btn" 
-                onClick={handleNormalize}
-                disabled={normalizing}
-                style={{ background: '#1e3a8a', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: normalizing ? 'not-allowed' : 'pointer', opacity: normalizing ? 0.7 : 1 }}
-              >
-                {normalizing ? 'Normalizing Observations...' : '1. Normalize Observations'}
-              </button>
-              <button 
-                className="btn" 
-                onClick={handleCorrelate}
-                disabled={correlating}
-                style={{ background: '#0284c7', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: correlating ? 'not-allowed' : 'pointer', opacity: correlating ? 0.7 : 1 }}
-              >
-                {correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}
-              </button>
-            </div>
-            
-            {results.correlate && (
-              <div style={{ marginTop: '1.5rem', background: 'var(--surface-color-light)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', borderLeft: '4px solid #0284c7' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>Correlated Forensic Assessment</h3>
-                  <span className="status-badge">{results.correlate.assessment?.level}</span>
-                </div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.25rem' }}>{results.correlate.assessment?.level}</div>
-                <div style={{ marginTop: '0.5rem', color: 'var(--text-body)', lineHeight: 1.5 }}>{results.correlate.assessment?.summary}</div>
+          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
+          {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
+            <div className="card" style={{ marginTop: '1rem' }}>
+              <h2 className="card-title" style={{ marginBottom: '1rem' }}>
+                FUSION & MULTI-MODALITY ASSESSMENT
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <button 
+                  className="btn" 
+                  onClick={handleNormalize}
+                  disabled={normalizing}
+                  style={{ background: '#1e3a8a', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: normalizing ? 'not-allowed' : 'pointer', opacity: normalizing ? 0.7 : 1 }}
+                >
+                  {normalizing ? 'Normalizing Observations...' : '1. Normalize Observations'}
+                </button>
+                <button 
+                  className="btn" 
+                  onClick={handleCorrelate}
+                  disabled={correlating}
+                  style={{ background: '#0284c7', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: correlating ? 'not-allowed' : 'pointer', opacity: correlating ? 0.7 : 1 }}
+                >
+                  {correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}
+                </button>
               </div>
-            )}
-          </div>
+              
+              {results.correlate && (
+                <div style={{ marginTop: '1.5rem', background: 'var(--surface-color-light)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', borderLeft: '4px solid #0284c7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>Correlated Forensic Assessment</h3>
+                    <span className="status-badge">{results.correlate.assessment?.level}</span>
+                  </div>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.25rem' }}>{results.correlate.assessment?.level}</div>
+                  <div style={{ marginTop: '0.5rem', color: 'var(--text-body)', lineHeight: 1.5 }}>{results.correlate.assessment?.summary}</div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

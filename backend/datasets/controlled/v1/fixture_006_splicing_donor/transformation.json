@@ -1,0 +1,23 @@
+{
+  "transformation_id": "trans_splicing_donor_paste",
+  "transformation_type": "SPLICING",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_splicing_donor",
+  "parameters": {
+    "target_bbox": [
+      30,
+      140,
+      90,
+      200
+    ],
+    "donor_source": "synthetic_checker_canvas"
+  },
+  "affected_bbox": [
+    30,
+    140,
+    90,
+    200
+  ],
+  "mask_filename": "fixture_006_splicing_donor/ground_truth_mask.png",
+  "description": "Donor region splicing from distinct synthetic texture source"
+}

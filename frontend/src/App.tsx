@@ -18,6 +18,7 @@ import InvestigationAssistant from './pages/InvestigationAssistant';
 import CrossImageCorrelation from './pages/CrossImageCorrelation';
 import ChainOfCustody from './pages/ChainOfCustody';
 import InvestigationGraphPage from './pages/InvestigationGraphPage';
+import BenchmarkDashboard from './components/benchmark/BenchmarkDashboard';
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
         <Route path="/legacy" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
 
         <Route path="/cases" element={<ProtectedRoute><AppLayout><CasesList /></AppLayout></ProtectedRoute>} />
+        <Route path="/benchmark" element={<ProtectedRoute><AppLayout><BenchmarkDashboard /></AppLayout></ProtectedRoute>} />
 
         <Route path="/cases/:caseId" element={<ProtectedRoute><Workspace /></ProtectedRoute>}>
           <Route index element={<CaseOverview />} />

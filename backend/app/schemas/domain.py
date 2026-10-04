@@ -6,11 +6,11 @@ from pydantic import ConfigDict
 class EvidenceBase(BaseModel):
     original_filename: str
     mime_type: str
-    file_size: int
+    file_size: Optional[int] = 0
     sha256_hash: str
-    image_format: str
-    width: int
-    height: int
+    image_format: Optional[str] = "UNKNOWN"
+    width: Optional[int] = 0
+    height: Optional[int] = 0
 
 class EvidenceCreate(EvidenceBase):
     stored_path: str

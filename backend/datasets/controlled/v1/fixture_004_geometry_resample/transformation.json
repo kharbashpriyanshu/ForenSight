@@ -1,0 +1,19 @@
+{
+  "transformation_id": "trans_resample_bicubic_down_up",
+  "transformation_type": "RESAMPLING",
+  "source_image_id": "img_001_authentic_base",
+  "derived_image_id": "img_geom_resample_bicubic",
+  "parameters": {
+    "downscale": 0.5,
+    "upscale": 2.0,
+    "interpolation": "bicubic"
+  },
+  "affected_bbox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "mask_filename": null,
+  "description": "Bicubic downscale 50% followed by upscale 200% introducing periodic interpolation traces"
+}
