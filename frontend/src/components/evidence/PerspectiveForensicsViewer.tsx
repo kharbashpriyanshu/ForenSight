@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Compass, Eye, Layers, AlertTriangle, CheckCircle2, Info, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import AuthenticatedImage from './AuthenticatedImage';
 
 interface VanishingPoint {
   vp_index: number;
@@ -95,7 +96,7 @@ export const PerspectiveForensicsViewer: React.FC<PerspectiveForensicsViewerProp
     if (verdict === 'PERSPECTIVE_ANOMALY') {
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.12)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 700 }}>
-          <AlertTriangle size={14} /> Perspective Anomaly Detected
+          <AlertTriangle size={14} /> Perspective Inconsistency Candidate
         </span>
       );
     }
@@ -163,7 +164,7 @@ export const PerspectiveForensicsViewer: React.FC<PerspectiveForensicsViewerProp
       </div>
 
       {/* Main Workbench: Viewer + Inspector Sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(450px, 1fr) 340px', gap: '1.25rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '1.25rem', alignItems: 'start' }}>
         {/* Interactive Viewer Viewport */}
         <div style={{
           background: '#0d131a',
@@ -311,7 +312,7 @@ export const PerspectiveForensicsViewer: React.FC<PerspectiveForensicsViewerProp
               display: 'inline-block'
             }}>
               {/* Target Image */}
-              <img
+              <AuthenticatedImage
                 src={showBackendArtifact && backendArtifactUrl ? backendArtifactUrl : rawImageSrc}
                 alt="Perspective Forensic Stage"
                 style={{
@@ -434,7 +435,7 @@ export const PerspectiveForensicsViewer: React.FC<PerspectiveForensicsViewerProp
             padding: '1rem'
           }}>
             <h5 style={{ margin: '0 0 0.35rem 0', fontSize: '0.82rem', fontWeight: 700, color: '#b8872a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Forensic Interpretation (Daubert Standard)
+              Engine Interpretation
             </h5>
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-color)', lineHeight: 1.45 }}>
               {findings.interpretation}

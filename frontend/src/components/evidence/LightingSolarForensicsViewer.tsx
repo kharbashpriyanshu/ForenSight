@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Sun, Compass, AlertTriangle, CheckCircle2, Info, Eye, Layers, ZoomIn, ZoomOut, RotateCcw, MapPin, Clock } from 'lucide-react';
+import AuthenticatedImage from './AuthenticatedImage';
 
 interface IlluminationPatch {
   patch_id: string;
@@ -96,7 +97,7 @@ export const LightingSolarForensicsViewer: React.FC<LightingSolarForensicsViewer
     if (verdict === 'SOLAR_NIGHT_CONFLICT' || verdict === 'SOLAR_ASTRONOMICAL_ANOMALY' || verdict === 'LIGHTING_DIRECTION_ANOMALY') {
       return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.12)', padding: '0.25rem 0.65rem', borderRadius: '9999px', fontSize: '0.8rem', fontWeight: 700 }}>
-          <AlertTriangle size={14} /> {verdict.replace(/_/g, ' ')}
+          <AlertTriangle size={14} /> Candidate {verdict.replace(/_/g, ' ').toLowerCase()}
         </span>
       );
     }
@@ -181,7 +182,7 @@ export const LightingSolarForensicsViewer: React.FC<LightingSolarForensicsViewer
       </div>
 
       {/* Main Workbench: Viewer + Physics & Solar Compass Sidebar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(450px, 1fr) 350px', gap: '1.25rem', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '1.25rem', alignItems: 'start' }}>
         {/* Interactive Viewer Viewport */}
         <div style={{
           background: '#0d131a',
@@ -292,7 +293,7 @@ export const LightingSolarForensicsViewer: React.FC<LightingSolarForensicsViewer
               position: 'relative',
               display: 'inline-block'
             }}>
-              <img
+              <AuthenticatedImage
                 src={showArtifactOverlay && backendArtifactUrl ? backendArtifactUrl : rawImageSrc}
                 alt="Lighting & Physics Forensic Stage"
                 style={{
@@ -434,7 +435,7 @@ export const LightingSolarForensicsViewer: React.FC<LightingSolarForensicsViewer
             padding: '1rem'
           }}>
             <h5 style={{ margin: '0 0 0.35rem 0', fontSize: '0.82rem', fontWeight: 700, color: '#b8872a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Forensic Assessment (Farid & NOAA Models)
+              Engine Interpretation
             </h5>
             <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-color)', lineHeight: 1.45 }}>
               {findings.interpretation}

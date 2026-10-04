@@ -60,6 +60,7 @@ export default function EvidenceDetail() {
   
   const [jobs, setJobs] = useState<any>({});
   const [results, setResults] = useState<any>({});
+  const [jobErrors, setJobErrors] = useState<Record<string, string>>({});
 
   const [normalizing, setNormalizing] = useState(false);
   const [correlating, setCorrelating] = useState(false);
@@ -122,6 +123,7 @@ export default function EvidenceDetail() {
   }, [evidenceId]);
 
   const runAsyncJob = async (analysisType: string) => {
+    setJobErrors(prev => ({ ...prev, [analysisType]: '' }));
     try {
       const res = await fetchApi(`/jobs/analysis/${uploadResult.id}/${analysisType}`, { method: 'POST' });
       const jobData = await res.json();
@@ -131,15 +133,29 @@ export default function EvidenceDetail() {
 
       let isComplete = jobData.status === 'COMPLETED' || jobData.status === 'FAILED';
       let finalJob = jobData;
+      const pollStartedAt = Date.now();
       while (!isComplete) {
+        if (Date.now() - pollStartedAt >= 5 * 60 * 1000) {
+          setJobErrors(prev => ({ ...prev, [analysisType]: 'This analysis is still running. Check its status again shortly.' }));
+          return;
+        }
         await new Promise(resolve => setTimeout(resolve, 1500));
         const pollRes = await fetchApi(`/jobs/${finalJob.id}`);
+        if (!pollRes.ok) throw new Error(`Could not refresh job status (${pollRes.status}).`);
         finalJob = await pollRes.json();
         setJobs((prev: any) => ({ ...prev, [analysisType]: finalJob }));
         
         if (finalJob.status === 'COMPLETED' || finalJob.status === 'FAILED') {
           isComplete = true;
         }
+      }
+
+      if (finalJob.status === 'FAILED') {
+        setJobErrors(prev => ({
+          ...prev,
+          [analysisType]: finalJob.safe_error_message || 'The analysis failed. Retry after checking the system status.'
+        }));
+        return;
       }
       
       if (finalJob.status === 'COMPLETED' && finalJob.analysis_id) {
@@ -152,8 +168,9 @@ export default function EvidenceDetail() {
           .then(h => setHeatmap(h))
           .catch(() => {});
       }
-    } catch (err: any) {
-      console.error(err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Analysis request failed.';
+      setJobErrors(prev => ({ ...prev, [analysisType]: message }));
     }
   };
 
@@ -633,12 +650,12 @@ export default function EvidenceDetail() {
                       📐 Perspective & Vanishing Point Geometry
                     </h3>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Evaluates 3D linear perspective convergence, vanishing points, and detects spliced composite outliers.
+                      Measures line convergence and candidate perspective inconsistencies. Requires enough rectilinear scene structure; an outlier is not proof of compositing.
                     </p>
                   </div>
                   <button
                     onClick={() => runAsyncJob('geometry-perspective')}
-                    disabled={jobs['geometry-perspective']?.status === 'RUNNING'}
+                    disabled={['QUEUED', 'RUNNING'].includes(jobs['geometry-perspective']?.status)}
                     style={{
                       background: 'var(--primary-color)',
                       color: '#ffffff',
@@ -647,12 +664,28 @@ export default function EvidenceDetail() {
                       padding: '0.45rem 0.9rem',
                       fontWeight: 600,
                       fontSize: '0.82rem',
-                      cursor: jobs['geometry-perspective']?.status === 'RUNNING' ? 'not-allowed' : 'pointer'
+                      cursor: ['QUEUED', 'RUNNING'].includes(jobs['geometry-perspective']?.status) ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {jobs['geometry-perspective']?.status === 'RUNNING' ? 'Computing Geometry...' : 'Run Perspective Analysis'}
+                    {jobs['geometry-perspective']?.status === 'QUEUED'
+                      ? 'Queued...'
+                      : jobs['geometry-perspective']?.status === 'RUNNING'
+                        ? 'Computing...'
+                        : jobs['geometry-perspective']?.status === 'COMPLETED'
+                          ? 'Run Again'
+                          : 'Run Perspective Check'}
                   </button>
                 </div>
+
+                {jobs['geometry-perspective']?.status && (
+                  <div className="sub-panel" role="status" style={{ marginBottom: '0.75rem', fontSize: '0.78rem' }}>
+                    Status: <strong>{jobs['geometry-perspective'].status}</strong>
+                    {jobs['geometry-perspective'].job_identifier && <> · Job <code>{jobs['geometry-perspective'].job_identifier}</code></>}
+                  </div>
+                )}
+                {jobErrors['geometry-perspective'] && (
+                  <div className="error-banner" role="alert">{jobErrors['geometry-perspective']}</div>
+                )}
 
                 {(results['geometry-perspective']?.structured_findings || results['geometry_perspective']?.structured_findings) ? (
                   <PerspectiveForensicsViewer
@@ -662,7 +695,7 @@ export default function EvidenceDetail() {
                   />
                 ) : (
                   <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                    Perspective analysis has not been executed yet for this evidence. Click <strong>Run Perspective Analysis</strong> to compute vanishing points and detect geometric inconsistencies.
+                    No perspective result is available yet. This method is most informative in scenes with visible straight edges such as buildings or roads.
                   </div>
                 )}
               </div>
@@ -675,12 +708,12 @@ export default function EvidenceDetail() {
                       ☀️ Physical Lighting, Shadow & NOAA Solar Ephemeris
                     </h3>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Measures 2D illuminant vectors, cast shadow rays, and cross-checks EXIF timestamp/GPS with NOAA solar ephemeris.
+                      Estimates local light and shadow directions; when GPS/time metadata exists, compares them with solar position. Missing metadata makes that comparison unavailable.
                     </p>
                   </div>
                   <button
                     onClick={() => runAsyncJob('physics-lighting')}
-                    disabled={jobs['physics-lighting']?.status === 'RUNNING'}
+                    disabled={['QUEUED', 'RUNNING'].includes(jobs['physics-lighting']?.status)}
                     style={{
                       background: 'var(--primary-color)',
                       color: '#ffffff',
@@ -689,12 +722,28 @@ export default function EvidenceDetail() {
                       padding: '0.45rem 0.9rem',
                       fontWeight: 600,
                       fontSize: '0.82rem',
-                      cursor: jobs['physics-lighting']?.status === 'RUNNING' ? 'not-allowed' : 'pointer'
+                      cursor: ['QUEUED', 'RUNNING'].includes(jobs['physics-lighting']?.status) ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {jobs['physics-lighting']?.status === 'RUNNING' ? 'Evaluating Solar Physics...' : 'Run Lighting & Solar Analysis'}
+                    {jobs['physics-lighting']?.status === 'QUEUED'
+                      ? 'Queued...'
+                      : jobs['physics-lighting']?.status === 'RUNNING'
+                        ? 'Evaluating...'
+                        : jobs['physics-lighting']?.status === 'COMPLETED'
+                          ? 'Run Again'
+                          : 'Run Lighting Check'}
                   </button>
                 </div>
+
+                {jobs['physics-lighting']?.status && (
+                  <div className="sub-panel" role="status" style={{ marginBottom: '0.75rem', fontSize: '0.78rem' }}>
+                    Status: <strong>{jobs['physics-lighting'].status}</strong>
+                    {jobs['physics-lighting'].job_identifier && <> · Job <code>{jobs['physics-lighting'].job_identifier}</code></>}
+                  </div>
+                )}
+                {jobErrors['physics-lighting'] && (
+                  <div className="error-banner" role="alert">{jobErrors['physics-lighting']}</div>
+                )}
 
                 {(results['physics-lighting']?.structured_findings || results['physics_lighting']?.structured_findings) ? (
                   <LightingSolarForensicsViewer
@@ -704,7 +753,7 @@ export default function EvidenceDetail() {
                   />
                 ) : (
                   <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-                    Lighting & Solar ephemeris analysis has not been executed yet. Click <strong>Run Lighting & Solar Analysis</strong> to compute illuminant vectors and astronomical sun position.
+                    No lighting result is available yet. Solar cross-checks require usable GPS coordinates and a capture timestamp; light variation alone is not evidence of manipulation.
                   </div>
                 )}
               </div>

@@ -25,8 +25,11 @@ export default function AuthenticatedImage({ src, alt, style, className }: Authe
     setLoading(true);
     setError(false);
 
-    // Normalize endpoint: ensure it starts with /artifacts/
-    const endpoint = src.startsWith('/artifacts/') ? src : `/artifacts/${src.replace(/^\/+/, '')}`;
+    const endpoint = src.startsWith('/api/')
+      ? src.slice(4)
+      : src.startsWith('/artifacts/')
+        ? src
+        : `/artifacts/${src.replace(/^\/+/, '')}`;
 
     fetchApi(endpoint)
       .then(async (res) => {
