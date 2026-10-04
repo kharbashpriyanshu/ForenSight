@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* ==========================================================================
@@ -139,6 +139,15 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
   flex: 1;
 }
 
+.nav-section-label {
+  padding: 0.6rem 0.85rem 0.2rem;
+  color: var(--text-subtle);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -154,6 +163,11 @@ a:hover { color: var(--primary-hover); text-decoration: underline; }
   border: 1px solid transparent;
   position: relative;
   overflow: hidden;
+}
+
+.nav-item svg {
+  flex: 0 0 17px;
+  color: currentColor;
 }
 
 .nav-item:hover {
@@ -368,3 +382,52 @@ hr { border: none; border-top: 1px solid var(--border-color-translucent); margin
 ::-webkit-scrollbar-track { background: rgba(242, 236, 224, 0.50); }
 ::-webkit-scrollbar-thumb { background: #c8b898; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #a89070; }
+
+@media (max-width: 760px) {
+  .app-container {
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color-translucent);
+  }
+
+  .sidebar-brand {
+    padding: 0.65rem 1rem;
+  }
+
+  .nav-section-label {
+    display: none;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.25rem 0.5rem 0.55rem;
+  }
+
+  .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .main-content {
+    min-height: 0;
+  }
+
+  .topbar {
+    min-height: 56px;
+    height: auto;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .page-container {
+    padding: 1rem;
+  }
+}

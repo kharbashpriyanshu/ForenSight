@@ -47,7 +47,7 @@ function App() {
           <Route path="findings" element={<ReportsInterface />} />
           <Route path="reports" element={<ReportsInterface />} />
         </Route>
-        <Route path="/system" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
+        <Route path="/system" element={<ProtectedRoute><AppLayout><SystemHealth /></AppLayout></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
     </AuthProvider>

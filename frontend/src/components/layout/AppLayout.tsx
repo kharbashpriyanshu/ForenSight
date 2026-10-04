@@ -1,5 +1,6 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { Activity, FolderOpen, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface AppLayoutProps {
@@ -8,9 +9,6 @@ interface AppLayoutProps {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
-  const location = useLocation();
-  const isCases = location.pathname.startsWith('/cases');
-  const isBenchmark = location.pathname.startsWith('/benchmark');
 
   return (
     <div className="app-container">
@@ -37,20 +35,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </div>
         </div>
         <nav className="sidebar-nav">
-          <Link
-            to="/cases"
-            className={`nav-item ${isCases ? 'active' : ''}`}
-            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            📁 Cases Overview
-          </Link>
-          <Link
-            to="/benchmark"
-            className={`nav-item ${isBenchmark ? 'active' : ''}`}
-            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            🧪 Benchmark Suite
-          </Link>
+          <div className="nav-section-label">Station</div>
+          <NavLink to="/cases" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FolderOpen size={17} aria-hidden="true" /> Cases
+          </NavLink>
+          <div className="nav-section-label">Operations</div>
+          <NavLink to="/benchmark" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FlaskConical size={17} aria-hidden="true" /> Benchmark Suite
+          </NavLink>
+          <NavLink to="/system" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Activity size={17} aria-hidden="true" /> System Health
+          </NavLink>
         </nav>
       </aside>
       <main className="main-content">
