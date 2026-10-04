@@ -84,6 +84,15 @@ from .camera import (
     CameraReferenceMetadata,
     CameraReferenceLibrary,
 )
+from .geometry import (
+    PerspectiveEngine,
+    PerspectiveParameters,
+)
+from .physics import (
+    LightingEngine,
+    LightingParameters,
+    calculate_noaa_solar_position,
+)
 
 # Pre-register V3 core engines via non-invasive adapters
 engine_registry.register(LegacyMetadataAdapter())
@@ -121,6 +130,10 @@ engine_registry.register(CloneKeypointEngine())
 # Register V4 Step 8 PRNU and Camera-ID engines
 engine_registry.register(PRNUEngine())
 engine_registry.register(CameraIDEngine())
+
+# Register Physics & Geometry Forensics engines
+engine_registry.register(PerspectiveEngine())
+engine_registry.register(LightingEngine())
 
 from .runner import V4EngineRunner
 
