@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom';
+import { ClipboardList, Compass, FileText, GitCompare, History, Image, LayoutDashboard, Link2, Network, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Workspace: React.FC = () => {
@@ -31,43 +32,41 @@ const Workspace: React.FC = () => {
           </div>
         </div>
         
-        <div style={{ padding: '0.85rem 1rem 0.25rem', color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Forensic Modalities
-        </div>
-        
         <nav className="sidebar-nav" style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="nav-section-label">Case</div>
           <NavLink to={`/cases/${caseId}`} end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>📋</span> Overview
+            <LayoutDashboard size={17} aria-hidden="true" /> Overview
           </NavLink>
           <NavLink to={`/cases/${caseId}/evidence`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>🗄️</span> Evidence & Ingestion
+            <Image size={17} aria-hidden="true" /> Evidence & ingestion
           </NavLink>
+
+          <div className="nav-section-label">Examination</div>
           <NavLink to={`/cases/${caseId}/compare`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>⚖️</span> Compare Mode
+            <GitCompare size={17} aria-hidden="true" /> Compare evidence
           </NavLink>
           <NavLink to={`/cases/${caseId}/cross-correlation`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>🔗</span> Cross Correlation
+            <Link2 size={17} aria-hidden="true" /> Cross-image correlation
           </NavLink>
           <NavLink to={`/cases/${caseId}/graph`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>🕸️</span> Investigation Graph
+            <Network size={17} aria-hidden="true" /> Investigation graph
           </NavLink>
           <NavLink to={`/cases/${caseId}/assistant`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>🧭</span> Assistant
+            <Compass size={17} aria-hidden="true" /> Assistant
           </NavLink>
           <NavLink to={`/cases/${caseId}/analyst`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>✍️</span> Analyst Review
+            <ClipboardList size={17} aria-hidden="true" /> Analyst review
           </NavLink>
-          <NavLink to={`/cases/${caseId}/custody`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>🛡️</span> Chain of Custody
-          </NavLink>
-          
-          <div style={{ height: '1px', background: 'var(--border-color-translucent)', margin: '0.75rem 0.5rem' }} />
 
-          <NavLink to={`/cases/${caseId}/reports`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>📑</span> Reports & Manifest
+          <div className="nav-section-label">Integrity & output</div>
+          <NavLink to={`/cases/${caseId}/custody`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <ShieldCheck size={17} aria-hidden="true" /> Chain of custody
           </NavLink>
           <NavLink to={`/cases/${caseId}/audit`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span>⏱️</span> Audit Trail
+            <History size={17} aria-hidden="true" /> Audit trail
+          </NavLink>
+          <NavLink to={`/cases/${caseId}/reports`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FileText size={17} aria-hidden="true" /> Reports & manifest
           </NavLink>
         </nav>
 

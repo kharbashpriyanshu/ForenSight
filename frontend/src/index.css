@@ -171,6 +171,15 @@ a:hover {
   padding: 0.75rem 0.5rem;
 }
 
+.nav-section-label {
+  padding: 0.6rem 0.85rem 0.2rem;
+  color: var(--text-subtle);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -184,6 +193,11 @@ a:hover {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
   border: 1px solid transparent;
+}
+
+.nav-item svg {
+  flex: 0 0 17px;
+  color: currentColor;
 }
 
 .nav-item:hover {
@@ -529,4 +543,53 @@ tr:hover td {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+@media (max-width: 760px) {
+  .app-container {
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-color-translucent);
+  }
+
+  .sidebar-brand {
+    padding: 0.65rem 1rem;
+  }
+
+  .nav-section-label {
+    display: none;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 0.25rem 0.5rem 0.55rem;
+  }
+
+  .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .main-content {
+    min-height: 0;
+  }
+
+  .topbar {
+    min-height: 56px;
+    height: auto;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+  }
+
+  .page-container {
+    padding: 1rem;
+  }
 }

@@ -1,4 +1,6 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Activity, FolderOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface AppLayoutProps {
@@ -32,9 +34,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </div>
         </div>
         <nav className="sidebar-nav">
-          <div className="nav-item active">
-            📁 Cases Overview
-          </div>
+          <div className="nav-section-label">Station</div>
+          <NavLink to="/cases" end className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <FolderOpen size={17} aria-hidden="true" /> Cases
+          </NavLink>
+          <div className="nav-section-label">Operations</div>
+          <NavLink to="/system" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <Activity size={17} aria-hidden="true" /> System health
+          </NavLink>
         </nav>
       </aside>
       <main className="main-content">
