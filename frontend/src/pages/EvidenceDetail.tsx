@@ -16,6 +16,7 @@ import { CloneBlockViewer } from '../components/evidence/CloneBlockViewer';
 import { CloneKeypointViewer } from '../components/evidence/CloneKeypointViewer';
 import { PRNUViewer } from '../components/evidence/PRNUViewer';
 import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
+import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
 
 interface HeatmapRegion {
   modality: string;
@@ -73,7 +74,7 @@ export default function EvidenceDetail() {
   const [custodyResult, setCustodyResult] = useState<any | null>(null);
 
   // Categorized Forensic Workbench active tab
-  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
+  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
 
 
   const fetchEvidenceAndJobs = (evId: string) => {
@@ -229,6 +230,7 @@ export default function EvidenceDetail() {
 
   const workbenchTabs = [
     { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', count: heatmap?.composite_regions_count || 0, suffix: 'zones' },
+    { id: 'visual_inspection', label: 'Interactive Microscopy & Loupe', icon: '🔬', count: 1, suffix: 'active' },
     { id: 'core', label: 'Core DIP Engines', icon: '⚙️', count: coreCount, suffix: '/5' },
     { id: 'compression', label: 'Container & Compression', icon: '🗜️', count: compressionCount, suffix: '/3' },
     { id: 'color_spectrum', label: 'Color & Spectrum', icon: '🌈', count: colorCount, suffix: '/3' },
@@ -473,6 +475,14 @@ export default function EvidenceDetail() {
                 <strong>Limitation:</strong> {heatmap.limitations}
               </div>
             </div>
+          )}
+
+          {/* TAB: INTERACTIVE VISUAL INSPECTION & MICROSCOPY */}
+          {(workbenchTab === 'visual_inspection' || workbenchTab === 'all') && (
+            <InteractiveVisualInspection 
+              evidenceId={uploadResult.id} 
+              filename={uploadResult.original_filename} 
+            />
           )}
 
           {/* TAB 2: CORE FORENSIC / DIP WORKLOADS */}
