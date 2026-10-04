@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+import pathlib
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.database import get_db
@@ -8,6 +10,7 @@ from app.services.evidence import EvidenceService
 from app.services.audit import AuditService
 from app.api.deps import get_current_user
 from app.models.domain import User
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -58,6 +61,37 @@ def read_evidence(evidence_id: int, db: Session = Depends(get_db), current_user:
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this evidence")
     return evidence
+
+@router.get("/evidence/{evidence_id}/raw")
+def read_evidence_raw(evidence_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    evidence = EvidenceService.get_evidence(db, evidence_id)
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    case = evidence.case
+    if current_user.role != "ADMIN" and case.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this evidence")
+    
+    raw_path = evidence.stored_path
+    candidate_paths = [
+        pathlib.Path(raw_path),
+        pathlib.Path(settings.STORAGE_DIR) / raw_path,
+        pathlib.Path(settings.STORAGE_DIR) / pathlib.Path(raw_path).name,
+        pathlib.Path("storage") / "evidence" / pathlib.Path(raw_path).name,
+    ]
+    resolved_path = None
+    for p in candidate_paths:
+        if p.exists() and p.is_file():
+            resolved_path = p.resolve()
+            break
+            
+    if not resolved_path:
+        raise HTTPException(status_code=404, detail="Evidence physical bitstream not found on disk")
+        
+    return FileResponse(
+        path=str(resolved_path),
+        media_type=evidence.mime_type or "application/octet-stream",
+        filename=evidence.original_filename
+    )
 
 from app.schemas.domain import CaseOverviewStats
 
