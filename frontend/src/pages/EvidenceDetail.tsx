@@ -1260,7 +1260,7 @@ export default function EvidenceDetail() {
                       fontWeight: 800,
                       letterSpacing: '0.03em'
                     }}>
-                      {results.correlate.assessment.level.replace(/_FORENSIC_CONCERN/g, '')}
+                      {String(results.correlate.assessment.level || '').replace(/_FORENSIC_CONCERN/g, '')}
                     </span>
                   )}
                 </button>
@@ -1461,29 +1461,34 @@ export default function EvidenceDetail() {
                     </div>
 
                     {/* Evidentiary Limitations & Admissibility Scope Box */}
-                    {results.correlate.assessment?.limitations && (
-                      <div style={{ 
-                        marginTop: '1.1rem', 
-                        padding: '0.8rem 1.1rem', 
-                        background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(253, 230, 138, 0.2) 100%)', 
-                        borderRadius: '8px', 
-                        border: '1px solid rgba(245, 158, 11, 0.3)', 
-                        borderLeft: '4px solid #d97706',
-                        fontSize: '0.8rem', 
-                        color: '#78350f',
-                        display: 'flex',
-                        gap: '0.65rem',
-                        alignItems: 'flex-start'
-                      }}>
-                        <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
-                        <div style={{ lineHeight: 1.55 }}>
-                          <strong style={{ color: '#92400e', fontWeight: 750, letterSpacing: '0.02em' }}>
-                            LIMITATIONS & ADMISSIBILITY SCOPE (ISO/IEC 27037):
-                          </strong>{' '}
-                          {results.correlate.assessment.limitations.replace('observations.They', 'observations. They')}
+                    {Boolean(results.correlate.assessment?.limitations) && (() => {
+                      const raw = results.correlate.assessment?.limitations;
+                      const limitationsText = Array.isArray(raw) ? raw.join(' ') : String(raw || '');
+                      if (!limitationsText.trim()) return null;
+                      return (
+                        <div style={{ 
+                          marginTop: '1.1rem', 
+                          padding: '0.8rem 1.1rem', 
+                          background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(253, 230, 138, 0.2) 100%)', 
+                          borderRadius: '8px', 
+                          border: '1px solid rgba(245, 158, 11, 0.3)', 
+                          borderLeft: '4px solid #d97706',
+                          fontSize: '0.8rem', 
+                          color: '#78350f',
+                          display: 'flex',
+                          gap: '0.65rem',
+                          alignItems: 'flex-start'
+                        }}>
+                          <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
+                          <div style={{ lineHeight: 1.55 }}>
+                            <strong style={{ color: '#92400e', fontWeight: 750, letterSpacing: '0.02em' }}>
+                              LIMITATIONS & ADMISSIBILITY SCOPE (ISO/IEC 27037):
+                            </strong>{' '}
+                            {limitationsText.replace(/observations\.They/g, 'observations. They')}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })()}
