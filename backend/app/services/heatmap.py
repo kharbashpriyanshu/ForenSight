@@ -29,7 +29,7 @@ class HeatmapService:
             if ela_anl.status == "completed" and ela_anl.structured_findings:
                 ela_status = "AVAILABLE"
                 findings = ela_anl.structured_findings
-                mean_diff = findings.get("mean_difference", 0)
+                mean_diff = float(findings.get("mean_error") or findings.get("mean_difference", 0))
                 elevated = findings.get("elevated_regions", [])
                 
                 # If elevated regions are explicitly listed
@@ -76,8 +76,11 @@ class HeatmapService:
         # 2. Noise Residual Layer (PRNU / High-Pass Sensor Noise)
         # -------------------------------------------------------------
         noise_anl = analyses_by_type.get("noise")
+        adv_noise_anl = analyses_by_type.get("advanced_noise") or analyses_by_type.get("advanced-noise")
         noise_regions: List[HeatmapRegion] = []
         noise_status = "NOT_RUN"
+        
+        # Check standard noise
         if noise_anl and noise_anl.status == "completed" and noise_anl.structured_findings:
             noise_status = "AVAILABLE"
             local_stats = noise_anl.structured_findings.get("local_statistics", {})
@@ -99,6 +102,26 @@ class HeatmapService:
                             description="Localized SNR noise residual discrepancy exceeding standard deviation boundary"
                         ))
 
+        # Check advanced noise candidate regions
+        if adv_noise_anl and adv_noise_anl.status in ["completed", "COMPLETED"] and adv_noise_anl.structured_findings:
+            noise_status = "AVAILABLE"
+            local_cons = adv_noise_anl.structured_findings.get("local_consistency", {})
+            candidate_regs = local_cons.get("candidate_regions", [])
+            if isinstance(candidate_regs, list):
+                for cr in candidate_regs:
+                    bbox = cr.get("bounding_box", [])
+                    if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
+                        bx, by, bw, bh = bbox
+                        noise_regions.append(HeatmapRegion(
+                            modality="NOISE",
+                            x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
+                            y=round(min(max(float(by) / height, 0.0), 1.0), 4),
+                            width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
+                            height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
+                            intensity=round(min(max(float(cr.get("mean_deviation_z", 50)) / 100.0, 0.4), 1.0), 2),
+                            description=f"Candidate noise-inconsistency zone ({cr.get('region_id', 'noise')})"
+                        ))
+
         layers.append(ModalityHeatmapLayer(
             modality="NOISE",
             label="Sensor Noise Residual Variance (High-Pass SNR)",
@@ -111,11 +134,14 @@ class HeatmapService:
         all_regions.extend(noise_regions)
 
         # -------------------------------------------------------------
-        # 3. Copy-Move Layer (Keypoint Clustering)
+        # 3. Copy-Move Layer (Keypoint & Block Clustering)
         # -------------------------------------------------------------
         clone_anl = analyses_by_type.get("copy-move") or analyses_by_type.get("copy_move")
+        cb_anl = analyses_by_type.get("clone_block") or analyses_by_type.get("clone-block")
+        ck_anl = analyses_by_type.get("clone_keypoint") or analyses_by_type.get("clone-keypoint")
         clone_regions: List[HeatmapRegion] = []
         clone_status = "NOT_RUN"
+
         if clone_anl and clone_anl.status == "completed" and clone_anl.structured_findings:
             clone_status = "AVAILABLE"
             findings = clone_anl.structured_findings
@@ -137,6 +163,21 @@ class HeatmapService:
                             intensity=0.85,
                             description=f"Duplicated region cluster with {c.get('point_count', 'multiple')} affine-consistent keypoints"
                         ))
+            cand_regions = findings.get("candidate_regions", {})
+            if isinstance(cand_regions, dict):
+                for bkey in ["source_bounding_box", "destination_bounding_box"]:
+                    bb = cand_regions.get(bkey)
+                    if isinstance(bb, (list, tuple)) and len(bb) == 4:
+                        bx, by, bw, bh = bb
+                        clone_regions.append(HeatmapRegion(
+                            modality="COPY_MOVE",
+                            x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
+                            y=round(min(max(float(by) / height, 0.0), 1.0), 4),
+                            width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
+                            height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
+                            intensity=0.85,
+                            description=f"Duplicated region candidate ({bkey.replace('_', ' ')})"
+                        ))
             elif isinstance(matches, list) and len(matches) > 5:
                 # Bounding indicator for matched keypoint clusters
                 clone_regions.append(HeatmapRegion(
@@ -145,6 +186,38 @@ class HeatmapService:
                     intensity=0.75,
                     description=f"{len(matches)} paired keypoints sharing spatial affine displacement vectors"
                 ))
+
+        if cb_anl and cb_anl.status in ["completed", "COMPLETED"] and cb_anl.structured_findings:
+            clone_status = "AVAILABLE"
+            for cr in cb_anl.structured_findings.get("candidate_regions", []):
+                bb = cr.get("bounding_box", [])
+                if isinstance(bb, (list, tuple)) and len(bb) == 4:
+                    bx, by, bw, bh = bb
+                    clone_regions.append(HeatmapRegion(
+                        modality="COPY_MOVE",
+                        x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
+                        y=round(min(max(float(by) / height, 0.0), 1.0), 4),
+                        width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
+                        height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
+                        intensity=0.85,
+                        description="Block-based duplicated region"
+                    ))
+
+        if ck_anl and ck_anl.status in ["completed", "COMPLETED"] and ck_anl.structured_findings:
+            clone_status = "AVAILABLE"
+            for cr in ck_anl.structured_findings.get("candidate_regions", []):
+                bb = cr.get("bounding_box", [])
+                if isinstance(bb, (list, tuple)) and len(bb) == 4:
+                    bx, by, bw, bh = bb
+                    clone_regions.append(HeatmapRegion(
+                        modality="COPY_MOVE",
+                        x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
+                        y=round(min(max(float(by) / height, 0.0), 1.0), 4),
+                        width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
+                        height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
+                        intensity=0.85,
+                        description="Keypoint-based duplicated region"
+                    ))
 
         layers.append(ModalityHeatmapLayer(
             modality="COPY_MOVE",

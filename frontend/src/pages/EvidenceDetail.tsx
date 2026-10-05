@@ -573,76 +573,127 @@ export default function EvidenceDetail() {
                   </div>
                 </div>
 
-                {/* Heatmap Controls */}
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}>
-                    <label style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
-                    <input 
-                      type="range" 
-                      min="0.1" 
-                      max="1.0" 
-                      step="0.05"
-                      value={heatmapOpacity}
-                      onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
-                      style={{ width: '80px', cursor: 'pointer' }}
-                    />
-                  </div>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showElaLayer} onChange={e => setShowElaLayer(e.target.checked)} />
-                    <span style={{ color: '#ef4444', fontWeight: 600 }}>ELA Layer</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showNoiseLayer} onChange={e => setShowNoiseLayer(e.target.checked)} />
-                    <span style={{ color: '#06b6d4', fontWeight: 600 }}>Noise Layer</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={showCloneLayer} onChange={e => setShowCloneLayer(e.target.checked)} />
-                    <span style={{ color: '#10b981', fontWeight: 600 }}>Clone Layer</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Canvas/Overlay Container */}
-              <div style={{ position: 'relative', width: '100%', maxWidth: '900px', margin: '0 auto', background: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                <AuthenticatedImage
-                  src={`/api/evidence/${uploadResult.id}/raw`}
-                  alt={uploadResult.original_filename}
-                  style={{ width: '100%', height: 'auto', display: 'block' }}
-                />
-
-                {/* Overlay SVG */}
-                <svg 
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                  viewBox="0 0 1000 1000"
-                  preserveAspectRatio="none"
-                >
-                  {heatmap.layers.map(layer => {
-                    if (layer.modality === 'ELA' && !showElaLayer) return null;
-                    if (layer.modality === 'NOISE' && !showNoiseLayer) return null;
-                    if (layer.modality === 'COPY_MOVE' && !showCloneLayer) return null;
-
-                    const color = layer.modality === 'ELA' ? '#ef4444' : layer.modality === 'NOISE' ? '#06b6d4' : '#10b981';
-
-                    return layer.regions.map((r, rIdx) => (
-                      <rect
-                        key={`${layer.modality}-${rIdx}`}
-                        x={r.x * 1000}
-                        y={r.y * 1000}
-                        width={r.width * 1000}
-                        height={r.height * 1000}
-                        fill={color}
-                        fillOpacity={r.intensity * heatmapOpacity * 0.45}
-                        stroke={color}
-                        strokeWidth="2"
-                        strokeDasharray="4 2"
+                  {/* Heatmap Controls */}
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }} title="Adjust transparency of the spatial anomaly overlays on the evidence image">
+                      <label style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
+                      <input 
+                        type="range" 
+                        min="0.1" 
+                        max="1.0" 
+                        step="0.05"
+                        value={heatmapOpacity}
+                        onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
+                        style={{ width: '80px', cursor: 'pointer' }}
                       />
-                    ));
-                  })}
-                </svg>
-              </div>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Error Level Analysis compression variance overlay">
+                      <input type="checkbox" checked={showElaLayer} onChange={e => setShowElaLayer(e.target.checked)} />
+                      <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                        ELA Layer ({heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0})
+                      </span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Sensor Noise residual inconsistency overlay">
+                      <input type="checkbox" checked={showNoiseLayer} onChange={e => setShowNoiseLayer(e.target.checked)} />
+                      <span style={{ color: '#06b6d4', fontWeight: 600 }}>
+                        Noise Layer ({heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0})
+                      </span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Copy-Move duplicate keypoint cluster overlay">
+                      <input type="checkbox" checked={showCloneLayer} onChange={e => setShowCloneLayer(e.target.checked)} />
+                      <span style={{ color: '#10b981', fontWeight: 600 }}>
+                        Clone Layer ({heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0})
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Canvas/Overlay Container */}
+                <div style={{ position: 'relative', width: '100%', maxWidth: '900px', margin: '0 auto', background: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                  <AuthenticatedImage
+                    src={`/api/evidence/${uploadResult.id}/raw`}
+                    alt={uploadResult.original_filename}
+                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                  />
+
+                  {/* Overlay SVG */}
+                  <svg 
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    viewBox="0 0 1000 1000"
+                    preserveAspectRatio="none"
+                  >
+                    {heatmap.layers?.map(layer => {
+                      if (layer.modality === 'ELA' && !showElaLayer) return null;
+                      if (layer.modality === 'NOISE' && !showNoiseLayer) return null;
+                      if (layer.modality === 'COPY_MOVE' && !showCloneLayer) return null;
+
+                      const color = layer.modality === 'ELA' ? '#ef4444' : layer.modality === 'NOISE' ? '#06b6d4' : '#10b981';
+
+                      return layer.regions?.map((r, rIdx) => {
+                        const rx = r.x * 1000;
+                        const ry = r.y * 1000;
+                        const rw = r.width * 1000;
+                        const rh = r.height * 1000;
+                        return (
+                          <g key={`${layer.modality}-${rIdx}`}>
+                            <rect
+                              x={rx}
+                              y={ry}
+                              width={rw}
+                              height={rh}
+                              fill={color}
+                              fillOpacity={r.intensity * heatmapOpacity * 0.45}
+                              stroke={color}
+                              strokeWidth="3"
+                              strokeDasharray="6 3"
+                            />
+                            <rect
+                              x={rx}
+                              y={Math.max(0, ry - 22)}
+                              width={Math.min(220, rw)}
+                              height={20}
+                              fill={color}
+                              fillOpacity={Math.max(0.7, heatmapOpacity)}
+                              rx={3}
+                            />
+                            <text
+                              x={rx + 6}
+                              y={Math.max(0, ry - 22) + 14}
+                              fill="#ffffff"
+                              fontSize="12"
+                              fontWeight="bold"
+                              fontFamily="sans-serif"
+                            >
+                              {layer.modality}: {r.description?.slice(0, 22) || 'Anomaly Zone'}
+                            </text>
+                          </g>
+                        );
+                      });
+                    })}
+                  </svg>
+
+                  {heatmap.composite_regions_count === 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '12px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      background: 'rgba(15, 23, 42, 0.85)',
+                      color: '#94a3b8',
+                      padding: '0.4rem 0.9rem',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      pointerEvents: 'none',
+                      backdropFilter: 'blur(4px)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      🛡️ Clean Baseline: No spatial anomalies detected across active modalities
+                    </div>
+                  )}
+                </div>
 
               {/* Scientific Principles Context Card */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
