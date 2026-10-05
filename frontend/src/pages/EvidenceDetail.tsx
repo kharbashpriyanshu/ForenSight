@@ -19,7 +19,7 @@ import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
 import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
 import { PerspectiveForensicsViewer } from '../components/evidence/PerspectiveForensicsViewer';
 import { LightingSolarForensicsViewer } from '../components/evidence/LightingSolarForensicsViewer';
-import { X, Table, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, Table, RefreshCw, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 interface HeatmapRegion {
   modality: string;
@@ -1018,41 +1018,6 @@ export default function EvidenceDetail() {
                   </p>
                 </div>
 
-                {/* Top Action Bar: Open Normalization Dialog & Manual Re-sync */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <button 
-                    className="btn btn-secondary"
-                    onClick={() => setShowNormalizationModal(true)}
-                    disabled={!results.normalize}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      padding: '0.45rem 0.85rem',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      borderRadius: '6px',
-                      cursor: !results.normalize ? 'not-allowed' : 'pointer',
-                      opacity: !results.normalize ? 0.6 : 1
-                    }}
-                    title="Open dialog to inspect all normalized empirical metrics"
-                  >
-                    <Table size={14} color="#1e3a8a" />
-                    <span>View Normalization Results</span>
-                    {results.normalize?.observations?.length !== undefined && (
-                      <span style={{
-                        background: '#1e3a8a',
-                        color: '#ffffff',
-                        padding: '0.1rem 0.45rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.72rem',
-                        fontWeight: 700
-                      }}>
-                        {results.normalize.observations.length}
-                      </span>
-                    )}
-                  </button>
-
                   <button 
                     className="btn btn-secondary"
                     onClick={() => runFusionSync()}
@@ -1072,7 +1037,84 @@ export default function EvidenceDetail() {
                     <span>Re-sync</span>
                   </button>
                 </div>
-              </div>
+
+                {/* Two Large Action Buttons (Exact Previous Layout) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => setShowNormalizationModal(true)}
+                    disabled={!results.normalize && normalizing}
+                    style={{ 
+                      background: '#1e3a8a', 
+                      color: '#ffffff', 
+                      padding: '0.85rem 1.25rem', 
+                      borderRadius: '6px', 
+                      fontWeight: 600, 
+                      border: 'none', 
+                      cursor: 'pointer', 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.6rem',
+                      boxShadow: '0 2px 6px rgba(30, 58, 138, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Open modal dialog to view normalized empirical observations"
+                  >
+                    <Table size={16} />
+                    <span>1. Normalize Observations</span>
+                    {results.normalize?.observations?.length !== undefined && (
+                      <span style={{ 
+                        background: 'rgba(255, 255, 255, 0.25)', 
+                        color: '#ffffff', 
+                        padding: '0.1rem 0.5rem', 
+                        borderRadius: '9999px', 
+                        fontSize: '0.72rem', 
+                        fontWeight: 700 
+                      }}>
+                        {results.normalize.observations.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button 
+                    className="btn" 
+                    onClick={() => handleCorrelate()}
+                    disabled={correlating}
+                    style={{ 
+                      background: '#0284c7', 
+                      color: '#ffffff', 
+                      padding: '0.85rem 1.25rem', 
+                      borderRadius: '6px', 
+                      fontWeight: 600, 
+                      border: 'none', 
+                      cursor: correlating ? 'not-allowed' : 'pointer', 
+                      opacity: correlating ? 0.7 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.6rem',
+                      boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    title="Correlate active observations into a qualitative forensic assessment"
+                  >
+                    <ShieldCheck size={16} />
+                    <span>{correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}</span>
+                    {results.correlate?.assessment?.level && (
+                      <span style={{ 
+                        background: 'rgba(255, 255, 255, 0.25)', 
+                        color: '#ffffff', 
+                        padding: '0.1rem 0.5rem', 
+                        borderRadius: '9999px', 
+                        fontSize: '0.68rem', 
+                        fontWeight: 700 
+                      }}>
+                        {results.correlate.assessment.level.replace(/_FORENSIC_CONCERN/g, '')}
+                      </span>
+                    )}
+                  </button>
+                </div>
 
               {/* Informational Prerequisite if no jobs run yet */}
               {totalCompleted === 0 && (
