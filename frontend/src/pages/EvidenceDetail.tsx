@@ -349,9 +349,6 @@ export default function EvidenceDetail() {
       .catch(() => setVerifyingCustody(false));
   };
 
-  const handleNormalize = () => runFusionSync();
-  const handleCorrelate = () => runFusionSync();
-
   const hasResult = (key: string) => Boolean(results[key] || results[key.replace('-', '_')] || jobs[key]?.status === 'COMPLETED');
 
   const coreCount = ['metadata', 'ela', 'noise', 'jpeg-dct', 'copy-move'].filter(k => hasResult(k)).length;
@@ -936,6 +933,9 @@ export default function EvidenceDetail() {
                     No lighting result is available yet. Solar cross-checks require usable GPS coordinates and a capture timestamp; light variation alone is not evidence of manipulation.
                   </div>
                 )}
+              </div>
+            </div>
+            )}
                      {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
           {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
             <div className="card" style={{ marginTop: '1rem' }}>
