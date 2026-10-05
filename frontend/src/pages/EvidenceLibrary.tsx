@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchApi } from '../api';
+import { fetchApi, prefetchApi } from '../api';
 
 interface EvidenceItemEnriched {
   id: number;
@@ -328,6 +328,12 @@ const EvidenceLibrary: React.FC = () => {
               <div 
                 key={item.id}
                 className="card"
+                onMouseEnter={() => {
+                  prefetchApi(`/evidence/${item.id}`);
+                  prefetchApi(`/evidence/${item.id}/analyses`);
+                  prefetchApi(`/evidence/${item.id}/jobs`);
+                  prefetchApi(`/evidence/${item.id}/heatmap`);
+                }}
                 style={{ 
                   border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
                   display: 'flex',

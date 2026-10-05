@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { fetchApi } from '../api';
+import { fetchApi, prefetchApi } from '../api';
 
 export default function CasesList() {
   const [cases, setCases] = useState<any[]>([]);
@@ -190,7 +190,16 @@ export default function CasesList() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {filteredCases.map((c: any) => (
-            <Link key={c.id} to={`/cases/${c.case_identifier}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <Link 
+              key={c.id} 
+              to={`/cases/${c.case_identifier}`} 
+              onMouseEnter={() => {
+                prefetchApi(`/cases/${c.case_identifier}`);
+                prefetchApi(`/cases/${c.case_identifier}/evidence`);
+                prefetchApi(`/cases/${c.case_identifier}/timeline`);
+              }}
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
               <div className="card" style={{ 
                 cursor: 'pointer', 
                 height: '100%', 
