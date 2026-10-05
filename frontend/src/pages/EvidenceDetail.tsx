@@ -123,6 +123,26 @@ export default function EvidenceDetail() {
     }
   }, [uploadResult?.id]);
 
+  const handleOpenNormalizeModal = useCallback(() => {
+    // Open modal immediately without waiting for any network request
+    setShowNormalizationModal(true);
+
+    const targetId = uploadResult?.id;
+    // If not normalized yet and not normalizing, trigger normalization in background
+    if (!results.normalize && !normalizing && targetId) {
+      setNormalizing(true);
+      fetchApi(`/evidence/${targetId}/fusion/normalize`, { method: 'POST' })
+        .then(res => res.ok ? res.json() : null)
+        .then(normData => {
+          if (normData) {
+            setResults((prev: any) => ({ ...prev, normalize: normData }));
+          }
+        })
+        .catch(err => console.error("Auto normalize error", err))
+        .finally(() => setNormalizing(false));
+    }
+  }, [uploadResult?.id, results.normalize, normalizing]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -1038,12 +1058,11 @@ export default function EvidenceDetail() {
                   </button>
                 </div>
 
-                {/* Two Large Action Buttons (Exact Previous Layout) */}
+                {/* Two Large Action Buttons (Instant Opening Layout) */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
                   <button 
                     className="btn" 
-                    onClick={() => setShowNormalizationModal(true)}
-                    disabled={!results.normalize && normalizing}
+                    onClick={handleOpenNormalizeModal}
                     style={{ 
                       background: '#1e3a8a', 
                       color: '#ffffff', 
@@ -1057,13 +1076,27 @@ export default function EvidenceDetail() {
                       justifyContent: 'center',
                       gap: '0.6rem',
                       boxShadow: '0 2px 6px rgba(30, 58, 138, 0.25)',
-                      transition: 'all 0.15s ease'
+                      transition: 'transform 0.1s ease, filter 0.1s ease'
                     }}
                     title="Open modal dialog to view normalized empirical observations"
                   >
                     <Table size={16} />
                     <span>1. Normalize Observations</span>
-                    {results.normalize?.observations?.length !== undefined && (
+                    {normalizing ? (
+                      <span style={{ 
+                        background: 'rgba(255, 255, 255, 0.25)', 
+                        color: '#ffffff', 
+                        padding: '0.1rem 0.5rem', 
+                        borderRadius: '9999px', 
+                        fontSize: '0.72rem', 
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}>
+                        <RefreshCw size={11} className="spin-animate" /> Syncing
+                      </span>
+                    ) : results.normalize?.observations?.length !== undefined && (
                       <span style={{ 
                         background: 'rgba(255, 255, 255, 0.25)', 
                         color: '#ffffff', 
@@ -1079,7 +1112,7 @@ export default function EvidenceDetail() {
 
                   <button 
                     className="btn" 
-                    onClick={() => handleCorrelate()}
+                    onClick={() => runFusionSync()}
                     disabled={correlating}
                     style={{ 
                       background: '#0284c7', 
@@ -1095,7 +1128,7 @@ export default function EvidenceDetail() {
                       justifyContent: 'center',
                       gap: '0.6rem',
                       boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
-                      transition: 'all 0.15s ease'
+                      transition: 'transform 0.1s ease, filter 0.1s ease'
                     }}
                     title="Correlate active observations into a qualitative forensic assessment"
                   >
@@ -1226,7 +1259,6 @@ export default function EvidenceDetail() {
                 right: 0,
                 bottom: 0,
                 background: 'rgba(0, 0, 0, 0.65)',
-                backdropFilter: 'blur(3px)',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -1244,7 +1276,7 @@ export default function EvidenceDetail() {
                   maxHeight: '85vh',
                   display: 'flex',
                   flexDirection: 'column',
-                  boxShadow: '0 20px 45px rgba(0,0,0,0.35)',
+                  boxShadow: '0 16px 36px rgba(0,0,0,0.3)',
                   border: '1px solid var(--border-color)',
                   overflow: 'hidden'
                 }}
@@ -1272,23 +1304,57 @@ export default function EvidenceDetail() {
                       Normalized Empirical Observations
                     </h3>
                   </div>
-                  <button 
-                    onClick={() => setShowNormalizationModal(false)}
-                    aria-label="Close dialog"
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--text-muted)',
-                      cursor: 'pointer',
-                      padding: '0.4rem',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <X size={20} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      onClick={() => {
+                        if (uploadResult?.id) {
+                          setNormalizing(true);
+                          fetchApi(`/evidence/${uploadResult.id}/fusion/normalize`, { method: 'POST' })
+                            .then(res => res.ok ? res.json() : null)
+                            .then(normData => {
+                              if (normData) setResults((prev: any) => ({ ...prev, normalize: normData }));
+                            })
+                            .catch(err => console.error("Re-normalize error", err))
+                            .finally(() => setNormalizing(false));
+                        }
+                      }}
+                      disabled={normalizing}
+                      style={{
+                        background: 'var(--surface-color)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        padding: '0.3rem 0.65rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: 'var(--text-secondary)',
+                        cursor: normalizing ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                      title="Re-run normalization"
+                    >
+                      <RefreshCw size={11} className={normalizing ? 'spin-animate' : ''} />
+                      <span>{normalizing ? 'Normalizing...' : 'Re-normalize'}</span>
+                    </button>
+                    <button 
+                      onClick={() => setShowNormalizationModal(false)}
+                      aria-label="Close dialog"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '0.4rem',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Modal Body */}
@@ -1307,12 +1373,24 @@ export default function EvidenceDetail() {
                         </span>
                       ))
                     ) : (
-                      <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#ef4444' }}>None available yet</span>
+                      <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: 'var(--text-muted)' }}>
+                        {normalizing ? 'Evaluating modalities...' : 'None evaluated yet'}
+                      </span>
                     )}
                   </div>
 
-                  {/* Table */}
-                  {results.normalize?.observations?.length > 0 ? (
+                  {/* Table or Loading State */}
+                  {normalizing ? (
+                    <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                      <RefreshCw size={26} className="spin-animate" style={{ color: '#1e3a8a' }} />
+                      <div style={{ fontWeight: 600, fontSize: '0.925rem', color: 'var(--text-main)' }}>
+                        Normalizing empirical observations...
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Mapping metrics against authentic calibration baselines
+                      </div>
+                    </div>
+                  ) : results.normalize?.observations?.length > 0 ? (
                     <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                       <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
                         <thead>
@@ -1354,8 +1432,15 @@ export default function EvidenceDetail() {
                       </table>
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                      No normalized observations available yet. Run analytical engines above.
+                    <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      <p style={{ margin: '0 0 0.75rem 0' }}>No normalized observations available yet.</p>
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleOpenNormalizeModal}
+                        style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        Run Normalization Pipeline
+                      </button>
                     </div>
                   )}
 
@@ -1374,7 +1459,7 @@ export default function EvidenceDetail() {
                   background: 'var(--surface-color-light)'
                 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {results.normalize?.observations?.length || 0} observations evaluated
+                    {normalizing ? 'Evaluating observations...' : `${results.normalize?.observations?.length || 0} observations evaluated`}
                   </span>
                   <button 
                     className="btn btn-primary"
