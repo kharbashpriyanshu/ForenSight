@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useParams, Link } from 'react-router-dom';
-import { ClipboardList, Compass, FileText, GitCompare, History, Image, LayoutDashboard, Link2, Network, ShieldCheck } from 'lucide-react';
+import { ClipboardList, Compass, FileText, GitBranch, GitCompare, History, Image, LayoutDashboard, Link2, Network, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Workspace: React.FC = () => {
@@ -44,6 +44,9 @@ const Workspace: React.FC = () => {
           <div className="nav-section-label">Examination</div>
           <NavLink to={`/cases/${caseId}/compare`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <GitCompare size={17} aria-hidden="true" /> Compare evidence
+          </NavLink>
+          <NavLink to={`/cases/${caseId}/lineage`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+            <GitBranch size={17} aria-hidden="true" /> Image version links
           </NavLink>
           <NavLink to={`/cases/${caseId}/cross-correlation`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
             <Link2 size={17} aria-hidden="true" /> Cross-image correlation

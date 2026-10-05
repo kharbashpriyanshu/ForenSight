@@ -1,27 +1,31 @@
 # ForenSight — Image Forensics Investigation Platform
 
-ForenSight is an explainable digital image-forensics investigation platform. It combines classical image analysis, evidence provenance, asynchronous analysis jobs, cross-modality correlation, chain of custody, analyst review, and a reproducible benchmark harness.
+ForenSight is an explainable digital image-forensics investigation platform for teams reviewing images received through forwarding, compression, cropping, screenshotting, or web downloads. It preserves the received file, records the reported claim and acquisition context, links reviewable image-version candidates, and supports analyst-led reporting alongside classical image analysis.
 
 It is intentionally focused on **digital image evidence**; it is not a disk-imaging, mobile-device, video, or generative-AI detection suite. Measurements and candidate anomalies are investigative signals, not proof of manipulation or authenticity.
 
 ## Capabilities
 - **Asynchronous Workloads**: Heavy computer vision tasks (Copy-Move, ELA, DCT) are executed off the main thread via a Redis/Celery worker architecture.
 - **Evidence Provenance**: SHA-256 fingerprinting at ingestion, chain-of-custody records, replay verification, and tamper checks.
+- **Claim-First Intake**: Record the reported claim, event date/location, source reference, how each file was received, and reported capture time separately from engine observations.
+- **Image Version Lineage**: Find exact file duplicates and likely visual derivatives across crops, recompression, resizing, and screenshots. Every relation is a candidate until an analyst reviews it and sets direction.
 - **Batch Processing**: Multipart batch evidence ingestion with independent fault isolation, batch job queuing, and case-scoped progress monitoring.
 - **Image Examination**: Metadata, ELA, noise, JPEG structure/compression, copy-move, resampling, color/frequency analysis, and PRNU-related tooling. Applicability depends on the input and method.
 - **Multi-Modality Heatmaps**: Spatial anomaly candidate overlays without synthetic probability masks.
 - **Side-by-Side Comparison**: Synchronized dual-canvas viewport comparing file metadata, dimensions, hash signatures, compression parameters, and modality artifacts.
 - **Cross-Image Correlation**: Case-wide correlation evaluating shared camera hardware fingerprints (Make/Model/Serial), temporal capture sequencing, and cross-evidence descriptor matching.
 - **Investigation Assistant**: Rule-based decision support highlighting missing analyses and possible benign explanations; it is not an AI/ML classifier.
+- **Content Credentials**: Optional C2PA manifest inspection with remote retrieval disabled. Credential absence is not evidence of manipulation, and valid provenance does not prove a depicted event is true.
 - **Investigation Knowledge Graph**: Directed acyclic topological graph linking `CASE -> EVIDENCE -> ANALYSIS_JOB -> ANALYSIS -> OBSERVATION -> FINDING -> REPORT`.
 - **Benchmarking**: Controlled fixtures, dataset manifests and integrity checks, per-engine evaluation reports, reproducibility checks, and external-dataset benchmark workflows.
+- **Transformation Stress Runs**: Compare baseline engine measurements with reproducible forwarding, recompression, crop, screen-recapture, and metadata-stripping simulations. These laboratory profiles are not named-platform accuracy claims.
 - **Security & Authorization**: JWT authentication, role checks, case-scoped access, upload validation, and UUID-based evidence storage.
 - **Auditability**: An immutable, chronological audit trail automatically logs every meaningful investigative action.
 - **CI**: GitHub Actions workflows cover backend tests, scientific-core freeze verification, frontend type/build checks, Docker build/config validation, and PostgreSQL/Redis integration.
 
 ## Current Validation Snapshot
 
-The checked-in controlled benchmark report at [`backend/datasets/benchmark/benchmark_report.md`](backend/datasets/benchmark/benchmark_report.md) records **11 images and 22 evaluations across ADVANCED-NOISE and RESAMPLING**. It verifies three-run determinism and reports runtime and execution status. That artifact does **not** include localization metrics, and it is not evidence of broad real-world accuracy.
+The checked-in controlled benchmark report at [`backend/datasets/benchmark/benchmark_report.md`](backend/datasets/benchmark/benchmark_report.md) records **11 images and 22 evaluations across ADVANCED-NOISE and RESAMPLING**. It verifies three-run determinism and reports runtime and execution status. That artifact does **not** include localization metrics, and it is not evidence of broad real-world accuracy. The separate transformation stress endpoint measures engine behavior under synthetic benign processing profiles; it does not claim named-platform false-alarm or accuracy rates.
 
 External-dataset benchmarking is implemented as a workflow, but real external data must be separately obtained, licensed, registered, and evaluated. The repository includes protocols and adapters; it does not include the CASIA, Columbia, or NIST OpenMFC image collections. Do not interpret synthetic/controlled fixture performance as field performance.
 
@@ -129,6 +133,7 @@ npm run dev
 - [V3 Baseline Specification & Freeze Manifest](FORENSIGHT_V3_BASELINE.md) (describes the frozen V3 core, not the complete current product)
 - [Amped Authenticate Capability Parity Matrix](FORENSIGHT_AMPED_PARITY_MATRIX.md)
 - [Architecture & Trust Boundaries](docs/architecture.md)
+- [Forwarded Image Investigation Workflow](docs/IMAGE_LINEAGE_WORKFLOW.md)
 - [Deployment Guide (Local & Docker Compose)](docs/DEPLOYMENT.md)
 - [CI/CD Pipeline Specification](docs/CI_CD.md)
 - [Security Architecture & RBAC Policy](docs/SECURITY.md)

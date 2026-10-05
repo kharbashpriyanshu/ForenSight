@@ -7,6 +7,8 @@
 **HEAD Commit:** e320e5f (V4 Step 8: PRNU & CAMERA-ID)
 **V3 Freeze Baseline Commit:** d81873d
 
+> **Snapshot note:** This audit predates the current checkout. The current local HEAD is `60e47f6` ("Improve physics geometry evidence workflow"), and the working tree now includes claim-first intake, acquisition metadata, image-lineage review, C2PA inspection, transformation-stress benchmarking, and report changes. Older implementation counts, phase labels, and remaining-work lists below are historical until a fresh audit is completed.
+
 ---
 
 ## SECTION 1: REPOSITORY INVENTORY

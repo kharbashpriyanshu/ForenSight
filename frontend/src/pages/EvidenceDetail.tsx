@@ -56,6 +56,13 @@ export default function EvidenceDetail() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any | null>(null);
+  const [sourcePlatform, setSourcePlatform] = useState('');
+  const [acquisitionMethod, setAcquisitionMethod] = useState('');
+  const [receivedFrom, setReceivedFrom] = useState('');
+  const [receivedAt, setReceivedAt] = useState('');
+  const [reportedCaptureTime, setReportedCaptureTime] = useState('');
+  const [sourceReferenceUrl, setSourceReferenceUrl] = useState('');
+  const [intakeNotes, setIntakeNotes] = useState('');
   const [error, setError] = useState('');
   
   const [jobs, setJobs] = useState<any>({});
@@ -75,6 +82,8 @@ export default function EvidenceDetail() {
   // Custody quick verify state
   const [verifyingCustody, setVerifyingCustody] = useState(false);
   const [custodyResult, setCustodyResult] = useState<any | null>(null);
+  const [c2paResult, setC2paResult] = useState<any | null>(null);
+  const [checkingC2pa, setCheckingC2pa] = useState(false);
 
   // Categorized Forensic Workbench active tab
   const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
@@ -85,6 +94,11 @@ export default function EvidenceDetail() {
       .then(res => res.json())
       .then(data => setUploadResult(data))
       .catch(err => console.error("Error fetching evidence", err));
+
+    fetchApi(`/evidence/${evId}/c2pa/latest`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setC2paResult(data); })
+      .catch(() => {});
 
     fetchApi(`/evidence/${evId}/jobs`)
       .then(res => res.json())
@@ -182,6 +196,13 @@ export default function EvidenceDetail() {
     const formData = new FormData();
     formData.append('case_id', caseId || '');
     formData.append('file', file);
+    formData.append('source_platform', sourcePlatform);
+    formData.append('acquisition_method', acquisitionMethod);
+    formData.append('received_from', receivedFrom);
+    formData.append('received_at', receivedAt);
+    formData.append('reported_capture_time', reportedCaptureTime);
+    formData.append('source_reference_url', sourceReferenceUrl);
+    formData.append('intake_notes', intakeNotes);
 
     fetchApi(`/cases/${caseId}/evidence`, {
       method: 'POST',
@@ -199,6 +220,22 @@ export default function EvidenceDetail() {
         setError(_err.message);
         setUploading(false);
       });
+  };
+
+  const handleCheckC2pa = async () => {
+    if (!uploadResult) return;
+    setCheckingC2pa(true);
+    try {
+      const response = await fetchApi(`/evidence/${uploadResult.id}/c2pa/inspect`, { method: 'POST' }, 60000);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Content Credential inspection failed.');
+      setC2paResult(data);
+    } catch (checkError) {
+      const message = checkError instanceof Error ? checkError.message : 'Content Credential inspection failed.';
+      setC2paResult({ credential_status: 'INSPECTION_ERROR', summary: message });
+    } finally {
+      setCheckingC2pa(false);
+    }
   };
 
   const handleVerifyCustody = () => {
@@ -278,8 +315,24 @@ export default function EvidenceDetail() {
                 onChange={e => setFile(e.target.files?.[0] || null)}
                 style={{ marginBottom: '1rem', display: 'block', width: '100%', padding: '0.5rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '0.25rem', color: 'var(--text-main)' }}
               />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem', marginBottom: '0.8rem' }}>
+                <input type="text" placeholder="Where received (for example, WhatsApp)" value={sourcePlatform} onChange={e => setSourcePlatform(e.target.value)} aria-label="Source platform" />
+                <select value={acquisitionMethod} onChange={e => setAcquisitionMethod(e.target.value)} aria-label="How the file was acquired">
+                  <option value="">Acquisition method (optional)</option>
+                  <option value="ORIGINAL_FILE">Original file</option>
+                  <option value="FORWARDED_FILE">Forwarded file</option>
+                  <option value="SCREENSHOT">Screenshot</option>
+                  <option value="WEB_DOWNLOAD">Web download</option>
+                  <option value="OTHER">Other</option>
+                </select>
+                <input type="text" placeholder="Received from (optional)" value={receivedFrom} onChange={e => setReceivedFrom(e.target.value)} aria-label="Received from" />
+                <input type="datetime-local" value={receivedAt} onChange={e => setReceivedAt(e.target.value)} aria-label="Received at" />
+                <input type="text" placeholder="Reported capture time (keep as reported)" value={reportedCaptureTime} onChange={e => setReportedCaptureTime(e.target.value)} aria-label="Reported capture time" />
+                <input type="url" placeholder="Source URL (optional)" value={sourceReferenceUrl} onChange={e => setSourceReferenceUrl(e.target.value)} aria-label="Source URL" />
+                <textarea placeholder="Acquisition notes (optional)" value={intakeNotes} onChange={e => setIntakeNotes(e.target.value)} rows={2} aria-label="Acquisition notes" style={{ gridColumn: '1 / -1', resize: 'vertical' }} />
+              </div>
               <button className="btn btn-primary" onClick={handleUpload} disabled={!file || uploading} style={{ width: '100%' }}>
-                {uploading ? 'Processing Cryptographic Ingestion...' : 'Acquire & Compute SHA-256 Hash'}
+                {uploading ? 'Preserving received file and computing SHA-256…' : 'Preserve file & start intake record'}
               </button>
               {error && <div style={{ marginTop: '1rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '0.25rem' }}>{error}</div>}
             </div>
@@ -290,7 +343,7 @@ export default function EvidenceDetail() {
       {uploadResult && (
         <>
           {/* Top Bar: Integrity Card + Quick Verify */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
             <EvidenceIntegrityCard evidence={uploadResult} />
 
             {/* Custody Card */}
@@ -320,6 +373,43 @@ export default function EvidenceDetail() {
                 style={{ width: '100%', fontSize: '0.8rem', padding: '0.45rem' }}
               >
                 {verifyingCustody ? 'Reading Physical Disk Bytes...' : '🛡️ On-Demand Hash Re-Verification'}
+              </button>
+            </div>
+
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.8rem' }}>
+              <div>
+                <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.05rem' }}>Content Credentials (C2PA)</h3>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Optional signed provenance check. Credential absence is common and is not evidence of manipulation.
+                </p>
+                {uploadResult.intake_context && (
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Received via: <strong>{uploadResult.intake_context.source_platform || uploadResult.intake_context.acquisition_method || 'Not recorded'}</strong>
+                    {uploadResult.intake_context.reported_capture_time && <> · Reported capture: {uploadResult.intake_context.reported_capture_time}</>}
+                  </div>
+                )}
+                {c2paResult && (
+                  <div style={{ marginTop: '0.65rem', padding: '0.65rem', borderRadius: '5px', background: 'var(--surface-color-light)', fontSize: '0.75rem' }}>
+                    <strong>{String(c2paResult.credential_status || 'UNKNOWN').replaceAll('_', ' ')}</strong>
+                    <div style={{ marginTop: '0.25rem' }}>{c2paResult.summary}</div>
+                    {c2paResult.manifest?.signer_issuer && <div style={{ marginTop: '0.3rem' }}>Signer: {c2paResult.manifest.signer_issuer}</div>}
+                    {c2paResult.manifest?.signature_time && <div>Signed: {c2paResult.manifest.signature_time}</div>}
+                    {Array.isArray(c2paResult.manifest?.assertion_labels) && c2paResult.manifest.assertion_labels.length > 0 && (
+                      <div style={{ marginTop: '0.3rem' }}>Assertions: {c2paResult.manifest.assertion_labels.join(', ')}</div>
+                    )}
+                    {(c2paResult.validation_state !== undefined || (Array.isArray(c2paResult.validation_results) && c2paResult.validation_results.length > 0)) && (
+                      <details style={{ marginTop: '0.5rem' }}>
+                        <summary style={{ cursor: 'pointer' }}>View SDK validation details</summary>
+                        <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: '220px', overflow: 'auto', fontSize: '0.68rem', marginTop: '0.35rem' }}>
+                          {JSON.stringify({ state: c2paResult.validation_state, results: c2paResult.validation_results }, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button className="secondary-button" onClick={handleCheckC2pa} disabled={checkingC2pa} style={{ width: '100%', fontSize: '0.8rem', padding: '0.45rem' }}>
+                {checkingC2pa ? 'Inspecting local credential…' : 'Inspect Content Credential'}
               </button>
             </div>
           </div>

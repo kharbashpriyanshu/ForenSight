@@ -12,6 +12,17 @@ class EvidenceBase(BaseModel):
     width: Optional[int] = 0
     height: Optional[int] = 0
 
+class EvidenceIntakeContextResponse(BaseModel):
+    source_platform: Optional[str] = None
+    acquisition_method: Optional[str] = None
+    received_from: Optional[str] = None
+    received_at: Optional[str] = None
+    reported_capture_time: Optional[str] = None
+    source_reference_url: Optional[str] = None
+    intake_notes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 class EvidenceCreate(EvidenceBase):
     stored_path: str
     case_id: int
@@ -20,6 +31,8 @@ class EvidenceResponse(EvidenceBase):
     id: int
     evidence_identifier: str
     created_at: datetime
+    case_id: Optional[int] = None
+    intake_context: Optional[EvidenceIntakeContextResponse] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -27,7 +40,21 @@ class InvestigationCaseBase(BaseModel):
     title: str
 
 class InvestigationCaseCreate(InvestigationCaseBase):
-    pass
+    claim_summary: Optional[str] = None
+    reported_event_date: Optional[str] = None
+    reported_location: Optional[str] = None
+    source_reference_url: Optional[str] = None
+    intake_notes: Optional[str] = None
+
+
+class CaseIntakeContextResponse(BaseModel):
+    claim_summary: Optional[str] = None
+    reported_event_date: Optional[str] = None
+    reported_location: Optional[str] = None
+    source_reference_url: Optional[str] = None
+    intake_notes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class InvestigationCaseResponse(InvestigationCaseBase):
     id: int
@@ -36,8 +63,23 @@ class InvestigationCaseResponse(InvestigationCaseBase):
     created_at: datetime
     updated_at: datetime
     evidence_items: List[EvidenceResponse] = []
+    intake_context: Optional[CaseIntakeContextResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LineageReviewRequest(BaseModel):
+    review_status: str
+    parent_evidence_id: Optional[int] = None
+    review_note: Optional[str] = None
+
+
+class CaseIntakeContextUpdate(BaseModel):
+    claim_summary: Optional[str] = None
+    reported_event_date: Optional[str] = None
+    reported_location: Optional[str] = None
+    source_reference_url: Optional[str] = None
+    intake_notes: Optional[str] = None
 
 class AnalysisBase(BaseModel):
     analysis_type: str
@@ -73,6 +115,7 @@ class CaseOverviewStats(BaseModel):
     latest_assessment: Optional[str] = None
     rule_version: Optional[str] = None
     safe_error_message: Optional[str] = None
+    intake_context: Optional[CaseIntakeContextResponse] = None
     
     model_config = ConfigDict(from_attributes=True)
 

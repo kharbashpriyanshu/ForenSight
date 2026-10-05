@@ -16,3 +16,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 alembic
 reportlab
+c2pa-python

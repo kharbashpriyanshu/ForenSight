@@ -2,6 +2,7 @@ import os
 import uuid
 import json
 import datetime
+import html
 from pathlib import Path
 from sqlalchemy.orm import Session
 from app.models.domain import (
@@ -14,6 +15,7 @@ from app.models.domain import (
     EvidenceAssessment,
     AnalysisJob,
     AuditEvent,
+    EvidenceLineageRelation,
 )
 from app.services.audit import AuditService
 
@@ -69,6 +71,12 @@ class ReportService:
         notes_records = db.query(AnalystNote).filter(
             (AnalystNote.case_id == case.case_identifier) | (AnalystNote.case_id == str(case.id))
         ).all()
+        lineage_records = (
+            db.query(EvidenceLineageRelation)
+            .filter(EvidenceLineageRelation.case_id == case.id)
+            .order_by(EvidenceLineageRelation.created_at.asc())
+            .all()
+        )
 
         findings_data = []
         for f in findings_records:
@@ -173,6 +181,15 @@ class ReportService:
                 "height": ev.height,
                 "file_size": ev.file_size,
                 "created_at": ev.created_at.strftime("%Y-%m-%d %H:%M:%S") if ev.created_at else "N/A",
+                "intake_context": ({
+                    "source_platform": ev.intake_context.source_platform,
+                    "acquisition_method": ev.intake_context.acquisition_method,
+                    "received_from": ev.intake_context.received_from,
+                    "received_at": ev.intake_context.received_at,
+                    "reported_capture_time": ev.intake_context.reported_capture_time,
+                    "source_reference_url": ev.intake_context.source_reference_url,
+                    "intake_notes": ev.intake_context.intake_notes,
+                } if ev.intake_context else None),
                 "analyses": an_list,
                 "jobs": job_list,
                 "assessments": ass_list,
@@ -196,6 +213,28 @@ class ReportService:
                 "event_type": a.event_type,
             })
 
+        evidence_by_id = {item.id: item for item in evidence_list}
+        lineage_data = []
+        for relation in lineage_records:
+            evidence_a = evidence_by_id.get(relation.evidence_a_id)
+            evidence_b = evidence_by_id.get(relation.evidence_b_id)
+            if not evidence_a or not evidence_b:
+                continue
+            parent = evidence_by_id.get(relation.parent_evidence_id) if relation.parent_evidence_id else None
+            lineage_data.append({
+                "relation_id": relation.id,
+                "relation_kind": relation.relation_kind,
+                "review_status": relation.review_status,
+                "evidence_a": evidence_a.evidence_identifier,
+                "evidence_a_filename": evidence_a.original_filename,
+                "evidence_b": evidence_b.evidence_identifier,
+                "evidence_b_filename": evidence_b.original_filename,
+                "parent_evidence": parent.evidence_identifier if parent else None,
+                "reviewer": relation.reviewer,
+                "review_note": relation.review_note,
+                "matching_details": relation.matching_details or {},
+            })
+
         # V3 additions: Investigation Assistant decision support and Chain of Custody
         from app.services.assistant import AssistantService
         from app.services.custody import CustodyService
@@ -213,6 +252,20 @@ class ReportService:
                 "title": case.title,
                 "status": case.status,
                 "created_at": case.created_at.strftime("%Y-%m-%d %H:%M:%S") if case.created_at else "N/A",
+                "reported_context": ({
+                    "claim_summary": case.intake_context.claim_summary,
+                    "reported_event_date": case.intake_context.reported_event_date,
+                    "reported_location": case.intake_context.reported_location,
+                    "source_reference_url": case.intake_context.source_reference_url,
+                    "intake_notes": case.intake_context.intake_notes,
+                } if case.intake_context else None),
+            },
+            "triage_summary": {
+                "what_was_found": assistant_support.what_was_found_summary,
+                "why_it_matters": assistant_support.why_it_matters_summary,
+                "investigative_next_steps": [s.model_dump() for s in assistant_support.investigative_next_steps],
+                "counter_hypotheses": [h.model_dump() for h in assistant_support.counter_hypotheses],
+                "unreviewed_findings": sum(1 for finding in findings_records if finding.status in ("GENERATED", "REVIEW_REQUIRED")),
             },
             "investigation_assistant": {
                 "what_was_found": assistant_support.what_was_found_summary,
@@ -226,6 +279,7 @@ class ReportService:
                 "total_evidence_items": custody_overview.total_evidence_items,
             },
             "correlated_findings": findings_data,
+            "image_lineage_reviews": lineage_data,
             "analyst_notes": notes_data,
             "evidence": evidence_data,
             "audit_trail_summary": audit_summary[:20],
@@ -394,6 +448,57 @@ class ReportService:
         story.append(t_info)
         story.append(Spacer(1, 10))
 
+        # Claim-first triage view: reported context is explicitly separated from measured observations.
+        reported_context = case_info.get("reported_context") or {}
+        story.append(Paragraph("INVESTIGATIVE QUESTION & REPORTED CONTEXT", h2_style))
+        claim_text = html.escape(str(reported_context.get("claim_summary") or "No claim was recorded at case intake.")).replace("\n", "<br/>")
+        context_rows = [
+            [Paragraph("<b>Reported claim</b>", body_style), Paragraph(claim_text, body_style)],
+            [Paragraph("<b>Reported event date</b>", body_style), Paragraph(html.escape(str(reported_context.get("reported_event_date") or "Not provided")), body_style)],
+            [Paragraph("<b>Reported location</b>", body_style), Paragraph(html.escape(str(reported_context.get("reported_location") or "Not provided")), body_style)],
+            [Paragraph("<b>Source reference</b>", body_style), Paragraph(html.escape(str(reported_context.get("source_reference_url") or "Not provided")), body_style)],
+        ]
+        if reported_context.get("intake_notes"):
+            context_rows.append([Paragraph("<b>Intake notes</b>", body_style), Paragraph(html.escape(str(reported_context["intake_notes"])).replace("\n", "<br/>"), body_style)])
+        t_context = Table(context_rows, colWidths=[105, 425])
+        t_context.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t_context)
+        story.append(Paragraph("Reported context is supplied by the investigator and is not validated by image measurements.", disclaimer_style))
+        story.append(Spacer(1, 8))
+
+        triage = data.get("triage_summary") or {}
+        story.append(Paragraph("TRIAGE SUMMARY & NEXT CHECKS", h2_style))
+        triage_rows = [
+            [Paragraph("<b>Observations summary</b>", body_style), Paragraph(html.escape(str(triage.get("what_was_found") or "No summary is available yet.")).replace("\n", "<br/>"), body_style)],
+            [Paragraph("<b>Why it matters</b>", body_style), Paragraph(html.escape(str(triage.get("why_it_matters") or "Review the individual measurements and their limitations." )).replace("\n", "<br/>"), body_style)],
+            [Paragraph("<b>Unreviewed findings</b>", body_style), Paragraph(str(triage.get("unreviewed_findings", 0)), body_style)],
+        ]
+        next_steps = triage.get("investigative_next_steps") or []
+        if next_steps:
+            step_text = "<br/>".join(f"• {html.escape(str(step.get('description') or step.get('action') or step))}" for step in next_steps[:5])
+        else:
+            step_text = "No automated next checks are pending."
+        triage_rows.append([Paragraph("<b>Suggested next checks</b>", body_style), Paragraph(step_text, body_style)])
+        t_triage = Table(triage_rows, colWidths=[105, 425])
+        t_triage.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#eff6ff")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#bfdbfe")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#bfdbfe")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t_triage)
+        story.append(Paragraph("This deterministic triage summary is decision support. It is not an authenticity verdict; analyst review and the detailed engine limitations remain part of the record.", disclaimer_style))
+        story.append(Spacer(1, 10))
+
         # Evidence Registry
         story.append(Paragraph("1. EVIDENCE REGISTRY & TECHNICAL PROVENANCE", h2_style))
         ev_list = data["evidence"]
@@ -406,7 +511,7 @@ class ReportService:
             for e in ev_list:
                 ev_rows.append([
                     Paragraph(e["evidence_identifier"], body_bold),
-                    Paragraph(e["filename"], body_style),
+                    Paragraph(html.escape(str(e["filename"])), body_style),
                     Paragraph(f"{e['image_format']} ({e['mime_type']})", body_style),
                     Paragraph(f"{e['width']}x{e['height']}", body_style),
                     Paragraph(f"{e['file_size']} B", body_style),
@@ -429,8 +534,21 @@ class ReportService:
         for idx, e in enumerate(ev_list, 1):
             name = e.get("filename") or e.get("original_filename") or "Evidence Item"
             ev_ident = e.get("evidence_identifier") or ""
-            story.append(Paragraph(f"<b>Evidence Item {idx}: {name} ({ev_ident})</b>", body_bold))
+            story.append(Paragraph(f"<b>Evidence Item {idx}: {html.escape(str(name))} ({html.escape(str(ev_ident))})</b>", body_bold))
             story.append(Paragraph(f"Cryptographic SHA-256 Fingerprint: {e.get('sha256', '')}", hash_style))
+            intake = e.get("intake_context") or {}
+            if intake:
+                acquisition_parts = [
+                    f"Received via {intake.get('source_platform') or intake.get('acquisition_method') or 'unspecified method'}",
+                    f"from {intake.get('received_from')}" if intake.get("received_from") else None,
+                    f"received {intake.get('received_at')}" if intake.get("received_at") else None,
+                    f"capture time reported as {intake.get('reported_capture_time')}" if intake.get("reported_capture_time") else None,
+                ]
+                acquisition_text = html.escape("; ".join(part for part in acquisition_parts if part))
+                story.append(Paragraph(f"Acquisition record: {acquisition_text}", body_style))
+                if intake.get("intake_notes"):
+                    intake_notes_text = html.escape(str(intake["intake_notes"])).replace("\n", "<br/>")
+                    story.append(Paragraph(f"Acquisition notes: {intake_notes_text}", body_style))
             story.append(Spacer(1, 4))
 
             analyses = e["analyses"]
@@ -513,10 +631,43 @@ class ReportService:
 
         story.append(Spacer(1, 10))
 
-        # 4. Analyst Notes & Annotations (Phase 6)
+        # 4. Image version lineage and review decisions
+        lineage = data.get("image_lineage_reviews", [])
+        if lineage:
+            story.append(Paragraph("4. IMAGE VERSION LINKS & ANALYST REVIEW", h2_style))
+            lineage_rows = [[Paragraph("<b>Version pair</b>", body_style), Paragraph("<b>Candidate basis</b>", body_style), Paragraph("<b>Review / direction</b>", body_style)]]
+            for relation in lineage[:30]:
+                pair_text = f"{html.escape(relation['evidence_a_filename'])} ({html.escape(relation['evidence_a'])})<br/>↔ {html.escape(relation['evidence_b_filename'])} ({html.escape(relation['evidence_b'])})"
+                basis = ", ".join(relation.get("matching_details", {}).get("methods", [])) or relation["relation_kind"]
+                review_parts = [relation.get("review_status", "CANDIDATE")]
+                if relation.get("parent_evidence"):
+                    review_parts.append(f"Parent: {relation['parent_evidence']}")
+                if relation.get("reviewer"):
+                    review_parts.append(f"Reviewed by: {relation['reviewer']}")
+                if relation.get("review_note"):
+                    review_parts.append(relation["review_note"])
+                review_text = "<br/>".join(html.escape(str(part)) for part in review_parts)
+                lineage_rows.append([
+                    Paragraph(pair_text, body_style),
+                    Paragraph(html.escape(basis), body_style),
+                    Paragraph(review_text, body_style),
+                ])
+            t_lineage = Table(lineage_rows, colWidths=[240, 110, 180])
+            t_lineage.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(t_lineage)
+            story.append(Paragraph("Similarity links are candidate relationships, not evidence of source chronology. Unreviewed candidates are not analyst conclusions.", disclaimer_style))
+            story.append(Spacer(1, 10))
+
+        # 5. Analyst Notes & Annotations (Phase 6)
         notes = data.get("analyst_notes", [])
         if notes:
-            story.append(Paragraph("4. ANALYST CASE ANNOTATIONS & NOTES", h2_style))
+            story.append(Paragraph("5. ANALYST CASE ANNOTATIONS & NOTES", h2_style))
             note_headers = ["Timestamp", "Author", "Target", "Note Content"]
             note_rows = [[Paragraph(f"<b>{h}</b>", body_style) for h in note_headers]]
             for n in notes[:10]:
@@ -537,8 +688,8 @@ class ReportService:
             story.append(t_note)
             story.append(Spacer(1, 10))
 
-        # 5. Technical Integrity & Audit Trail
-        story.append(Paragraph("5. TECHNICAL CHAIN OF CUSTODY & AUDIT RECORD", h2_style))
+        # 6. Technical Integrity & Audit Trail
+        story.append(Paragraph("6. TECHNICAL CHAIN OF CUSTODY & AUDIT RECORD", h2_style))
         audits = data["audit_trail_summary"]
         if audits:
             aud_headers = ["Timestamp (UTC)", "Actor", "Investigative Action"]
@@ -561,8 +712,8 @@ class ReportService:
 
         story.append(Spacer(1, 10))
 
-        # 6. Scientific Limitations & Reproducibility Notice
-        story.append(Paragraph("6. SCIENTIFIC LIMITATIONS & REPRODUCIBILITY", h2_style))
+        # 7. Scientific Limitations & Reproducibility Notice
+        story.append(Paragraph("7. SCIENTIFIC LIMITATIONS & REPRODUCIBILITY", h2_style))
         disclaimer_box = [
             [Paragraph("<b>SCIENTIFIC LIMITATIONS NOTICE & DEFENSE STATEMENT:</b>", body_bold)],
             [Paragraph(data["disclaimer"], disclaimer_style)],

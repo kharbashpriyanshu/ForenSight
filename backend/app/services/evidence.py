@@ -4,7 +4,7 @@ import hashlib
 from io import BytesIO
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
-from app.models.domain import Evidence, InvestigationCase
+from app.models.domain import Evidence, EvidenceIntakeContext, InvestigationCase
 from app.core.config import settings
 from PIL import Image, UnidentifiedImageError
 
@@ -13,7 +13,7 @@ ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 class EvidenceService:
     @staticmethod
-    def process_and_store_evidence(db: Session, case_id: int, file: UploadFile) -> Evidence:
+    def process_and_store_evidence(db: Session, case_id: int, file: UploadFile, intake_context: dict = None) -> Evidence:
         case = db.query(InvestigationCase).filter(InvestigationCase.id == case_id).first()
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
@@ -73,6 +73,12 @@ class EvidenceService:
         db.add(db_evidence)
         db.commit()
         db.refresh(db_evidence)
+
+        safe_context = intake_context or {}
+        if any(value and str(value).strip() for value in safe_context.values()):
+            db.add(EvidenceIntakeContext(evidence_id=db_evidence.id, **safe_context))
+            db.commit()
+            db.refresh(db_evidence)
 
         return db_evidence
 

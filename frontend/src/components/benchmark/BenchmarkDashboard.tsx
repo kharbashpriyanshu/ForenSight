@@ -79,6 +79,10 @@ export default function BenchmarkDashboard() {
   const [verifyDeterminism, setVerifyDeterminism] = useState<boolean>(true);
   const [summary, setSummary] = useState<BenchmarkReportSummary | null>(null);
   const [prnuResults, setPrnuResults] = useState<any | null>(null);
+  const [stressRunning, setStressRunning] = useState(false);
+  const [stressReport, setStressReport] = useState<any | null>(null);
+  const [stressEngines, setStressEngines] = useState('METADATA,ELA,NOISE,JPEG_DCT,COPY_MOVE,RESAMPLING');
+  const [stressImageLimit, setStressImageLimit] = useState(6);
 
   // External harness state (Step 10)
   const [externalDatasetDir, setExternalDatasetDir] = useState<string>('datasets/external/casia2');
@@ -125,6 +129,16 @@ export default function BenchmarkDashboard() {
       }
     } catch (err) {
       // ignore
+    }
+
+    try {
+      const resStress = await fetchApi('/benchmark/transformation-stress/latest');
+      if (resStress.ok) {
+        const data = await resStress.json();
+        setStressReport(data);
+      }
+    } catch (err) {
+      // No stress report exists until the first run.
     }
   };
 
@@ -254,6 +268,31 @@ export default function BenchmarkDashboard() {
       setStatusMessage('');
     } finally {
       setPrnuRunning(false);
+    }
+  };
+
+  const handleRunTransformationStress = async () => {
+    setStressRunning(true);
+    setErrorMessage('');
+    setStatusMessage('Running benign delivery-transformation profiles against the selected dataset…');
+    try {
+      const res = await fetchApi('/benchmark/transformation-stress', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataset_dir: selectedDataset,
+          engines: stressEngines.split(',').map(engine => engine.trim()).filter(Boolean),
+          limit: stressImageLimit,
+        }),
+      }, 300000);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Transformation stress run failed.');
+      setStressReport(data);
+      setStatusMessage('Transformation robustness report generated.');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Transformation stress run failed.');
+      setStatusMessage('');
+    } finally {
+      setStressRunning(false);
     }
   };
 
@@ -973,6 +1012,59 @@ export default function BenchmarkDashboard() {
               </div>
             </div>
           )}
+
+          <section className="benchmark-panel" style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '1.25rem', marginTop: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+              <div>
+                <h2 style={{ margin: '0 0 0.3rem', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Forwarded-image transformation stress</h2>
+                <p style={{ margin: 0, maxWidth: '760px', color: '#64748b', fontSize: '0.82rem', lineHeight: 1.5 }}>
+                  Compare unchanged images with five deterministic delivery simulations: JPEG forwarding, double recompression, a small crop, screen recapture, and pixel rewrite. Results show execution status, localization where masks exist, and numeric measurement drift; they are not platform-specific error rates.
+                </p>
+              </div>
+              <button onClick={handleRunTransformationStress} disabled={stressRunning} style={{ background: '#0f766e', color: '#fff', border: 0, borderRadius: '6px', padding: '0.6rem 1rem', fontWeight: 700, cursor: stressRunning ? 'wait' : 'pointer' }}>
+                {stressRunning ? 'Running profiles…' : 'Run transformation stress'}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 2fr) minmax(130px, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
+              <label style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 600 }}>
+                Engines (comma separated)
+                <input value={stressEngines} onChange={event => setStressEngines(event.target.value)} style={{ display: 'block', width: '100%', marginTop: '0.3rem', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
+              </label>
+              <label style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 600 }}>
+                Source images (1–20)
+                <input type="number" min={1} max={20} value={stressImageLimit} onChange={event => setStressImageLimit(Math.min(20, Math.max(1, Number(event.target.value) || 1)))} style={{ display: 'block', width: '100%', marginTop: '0.3rem', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '5px' }} />
+              </label>
+            </div>
+            {stressReport && (
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ color: '#334155', fontSize: '0.8rem', marginBottom: '0.65rem' }}>
+                  Dataset <strong>{stressReport.dataset_id}</strong> · {stressReport.source_images?.length || 0} source images · {stressReport.engines?.length || 0} engines
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.7rem' }}>
+                  {(stressReport.profiles || []).map((profileReport: any) => (
+                    <div key={profileReport.profile.id} style={{ border: '1px solid #e2e8f0', borderRadius: '7px', padding: '0.75rem', background: '#f8fafc' }}>
+                      <strong style={{ color: '#0f172a', fontSize: '0.83rem' }}>{profileReport.profile.label}</strong>
+                      <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.2rem' }}>{profileReport.profile.description}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', marginTop: '0.6rem', fontSize: '0.73rem' }}>
+                        {Object.entries(profileReport.summary.engine_metrics || {}).map(([engineId, metric]: [string, any]) => (
+                          <div key={engineId} style={{ background: '#fff', padding: '0.4rem', borderRadius: '4px' }}>
+                            <strong>{engineId}</strong><br />
+                            {metric.applied_count ?? 0} applicable · {metric.failed_count ?? 0} failed
+                            {metric.localization_metrics?.mean_iou !== undefined && <><br />Mean IoU {Number(metric.localization_metrics.mean_iou).toFixed(3)}</>}
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '0.68rem', marginTop: '0.5rem' }}>
+                        Numeric paired measurement changes: {Object.values(profileReport.measurement_drift || ({} as Record<string, Record<string, unknown>>)).reduce<number>((count, engine) => count + Object.keys(engine).length, 0)} engine/metric pairs
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.75rem' }}>{stressReport.limitations?.join(' ')}</div>
+                {stressReport.report_path && <code style={{ display: 'block', marginTop: '0.4rem', fontSize: '0.7rem' }}>Saved report: {stressReport.report_path}</code>}
+              </div>
+            )}
+          </section>
         </div>
       )}
     </div>

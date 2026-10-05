@@ -191,6 +191,16 @@ const EvidenceLibrary: React.FC = () => {
               </button>
             )}
 
+            <button
+              className="secondary-button"
+              onClick={() => navigate(`/cases/${caseId}/lineage`)}
+              disabled={evidenceList.length < 2}
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+              title={evidenceList.length < 2 ? 'Add at least two image versions to compare lineage' : 'Find related image versions'}
+            >
+              Trace Image Versions
+            </button>
+
             <button 
               className="secondary-button" 
               onClick={handleTriggerBatchAnalysis}

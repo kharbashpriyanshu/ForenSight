@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -27,6 +27,22 @@ class InvestigationCase(Base):
     owner = relationship("User", backref="cases")
 
     evidence_items = relationship("Evidence", back_populates="case")
+    intake_context = relationship("CaseIntakeContext", back_populates="case", uselist=False, cascade="all, delete-orphan")
+
+
+class CaseIntakeContext(Base):
+    __tablename__ = "case_intake_contexts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("investigation_cases.id"), unique=True, nullable=False, index=True)
+    claim_summary = Column(Text, nullable=True)
+    reported_event_date = Column(String, nullable=True)
+    reported_location = Column(Text, nullable=True)
+    source_reference_url = Column(Text, nullable=True)
+    intake_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    case = relationship("InvestigationCase", back_populates="intake_context")
 
 class Evidence(Base):
     __tablename__ = "evidence"
@@ -46,6 +62,43 @@ class Evidence(Base):
 
     case = relationship("InvestigationCase", back_populates="evidence_items")
     analyses = relationship("Analysis", back_populates="evidence")
+    intake_context = relationship("EvidenceIntakeContext", back_populates="evidence", uselist=False, cascade="all, delete-orphan")
+
+
+class EvidenceIntakeContext(Base):
+    __tablename__ = "evidence_intake_contexts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    evidence_id = Column(Integer, ForeignKey("evidence.id"), unique=True, nullable=False, index=True)
+    source_platform = Column(String, nullable=True)
+    acquisition_method = Column(String, nullable=True)
+    received_from = Column(Text, nullable=True)
+    received_at = Column(String, nullable=True)
+    reported_capture_time = Column(String, nullable=True)
+    source_reference_url = Column(Text, nullable=True)
+    intake_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    evidence = relationship("Evidence", back_populates="intake_context")
+
+
+class EvidenceLineageRelation(Base):
+    __tablename__ = "evidence_lineage_relations"
+    __table_args__ = (UniqueConstraint("evidence_a_id", "evidence_b_id", name="uq_lineage_evidence_pair"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("investigation_cases.id"), nullable=False, index=True)
+    evidence_a_id = Column(Integer, ForeignKey("evidence.id"), nullable=False, index=True)
+    evidence_b_id = Column(Integer, ForeignKey("evidence.id"), nullable=False, index=True)
+    relation_kind = Column(String, nullable=False)
+    matching_details = Column(JSON, nullable=False, default=dict)
+    review_status = Column(String, nullable=False, default="CANDIDATE")
+    parent_evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=True)
+    reviewer = Column(String, nullable=True)
+    review_note = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 class Analysis(Base):
     __tablename__ = "analyses"

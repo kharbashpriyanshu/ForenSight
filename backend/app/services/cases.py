@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.domain import InvestigationCase
+from app.models.domain import InvestigationCase, CaseIntakeContext
 from app.schemas.domain import InvestigationCaseCreate
 
 class CaseService:
@@ -7,6 +7,16 @@ class CaseService:
     def create_case(db: Session, case: InvestigationCaseCreate) -> InvestigationCase:
         db_case = InvestigationCase(title=case.title)
         db.add(db_case)
+        db.flush()
+        intake_values = {
+            "claim_summary": case.claim_summary,
+            "reported_event_date": case.reported_event_date,
+            "reported_location": case.reported_location,
+            "source_reference_url": case.source_reference_url,
+            "intake_notes": case.intake_notes,
+        }
+        if any(value and value.strip() for value in intake_values.values()):
+            db.add(CaseIntakeContext(case_id=db_case.id, **intake_values))
         db.commit()
         db.refresh(db_case)
         return db_case
@@ -74,5 +84,12 @@ class CaseService:
             'audit_event_count': len(audit_events),
             'assessment_status': 'AVAILABLE' if latest_assessment else 'PENDING',
             'latest_assessment': latest_assessment.level if latest_assessment else None,
-            'rule_version': latest_assessment.rule_version if latest_assessment else 'Fusion 7B-v1'
+            'rule_version': latest_assessment.rule_version if latest_assessment else 'Fusion 7B-v1',
+            'intake_context': ({
+                'claim_summary': case.intake_context.claim_summary,
+                'reported_event_date': case.intake_context.reported_event_date,
+                'reported_location': case.intake_context.reported_location,
+                'source_reference_url': case.intake_context.source_reference_url,
+                'intake_notes': case.intake_context.intake_notes,
+            } if case.intake_context else None)
         }

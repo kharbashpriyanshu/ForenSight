@@ -1,18 +1,43 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from fastapi.responses import FileResponse
 import pathlib
 from sqlalchemy.orm import Session
 from typing import List
 from app.db.database import get_db
-from app.schemas.domain import InvestigationCaseCreate, InvestigationCaseResponse, EvidenceResponse
+from app.schemas.domain import InvestigationCaseCreate, InvestigationCaseResponse, EvidenceResponse, CaseIntakeContextUpdate
 from app.services.cases import CaseService
 from app.services.evidence import EvidenceService
 from app.services.audit import AuditService
 from app.api.deps import get_current_user
 from app.models.domain import User
+from app.models.domain import CaseIntakeContext
 from app.core.config import settings
+from app.api.deps import verify_case_access
 
 router = APIRouter()
+
+
+@router.put("/cases/{case_id}/intake")
+def update_case_intake(
+    case_id: str,
+    request: CaseIntakeContextUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    case = verify_case_access(db, case_id, current_user)
+    context = case.intake_context
+    if context is None:
+        context = CaseIntakeContext(case_id=case.id)
+        db.add(context)
+    for field, value in request.model_dump().items():
+        setattr(context, field, value.strip() if isinstance(value, str) else value)
+    db.commit()
+    db.refresh(context)
+    AuditService.log_event(
+        db, case.case_identifier, "CASE_INTAKE_CONTEXT_UPDATED", actor=current_user.username,
+        metadata={"claim_recorded": bool(context.claim_summary)},
+    )
+    return context
 
 @router.post("/cases", response_model=InvestigationCaseResponse)
 def create_case(case: InvestigationCaseCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -41,15 +66,40 @@ def read_case(case_id: str, db: Session = Depends(get_db), current_user: User = 
     return case
 
 @router.post("/cases/{case_id}/evidence", response_model=EvidenceResponse)
-def upload_evidence(case_id: str, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def upload_evidence(
+    case_id: str,
+    file: UploadFile = File(...),
+    source_platform: str = Form(default=""),
+    acquisition_method: str = Form(default=""),
+    received_from: str = Form(default=""),
+    received_at: str = Form(default=""),
+    reported_capture_time: str = Form(default=""),
+    source_reference_url: str = Form(default=""),
+    intake_notes: str = Form(default=""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this case")
         
-    evidence = EvidenceService.process_and_store_evidence(db, case.id, file)
-    AuditService.log_event(db, case.case_identifier, "EVIDENCE_UPLOADED", evidence.id, actor=current_user.username, metadata={"filename": file.filename})
+    intake_context = {
+        "source_platform": source_platform.strip() or None,
+        "acquisition_method": acquisition_method.strip() or None,
+        "received_from": received_from.strip() or None,
+        "received_at": received_at.strip() or None,
+        "reported_capture_time": reported_capture_time.strip() or None,
+        "source_reference_url": source_reference_url.strip() or None,
+        "intake_notes": intake_notes.strip() or None,
+    }
+    evidence = EvidenceService.process_and_store_evidence(db, case.id, file, intake_context)
+    AuditService.log_event(
+        db, case.case_identifier, "EVIDENCE_UPLOADED", evidence.id,
+        actor=current_user.username,
+        metadata={"filename": file.filename, "source_platform_recorded": bool(source_platform.strip())},
+    )
     return evidence
 
 @router.get("/evidence/{evidence_id}", response_model=EvidenceResponse)

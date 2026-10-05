@@ -19,6 +19,13 @@ interface CaseStats {
   assessment_status: string;
   rule_version: string;
   last_activity: string | null;
+  intake_context?: {
+    claim_summary?: string | null;
+    reported_event_date?: string | null;
+    reported_location?: string | null;
+    source_reference_url?: string | null;
+    intake_notes?: string | null;
+  } | null;
 }
 
 const CaseOverview: React.FC = () => {
@@ -27,6 +34,14 @@ const CaseOverview: React.FC = () => {
   const [stats, setStats] = useState<CaseStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [intakeSaveError, setIntakeSaveError] = useState('');
+  const [editingIntake, setEditingIntake] = useState(false);
+  const [savingIntake, setSavingIntake] = useState(false);
+  const [claimSummary, setClaimSummary] = useState('');
+  const [reportedEventDate, setReportedEventDate] = useState('');
+  const [reportedLocation, setReportedLocation] = useState('');
+  const [sourceReferenceUrl, setSourceReferenceUrl] = useState('');
+  const [intakeNotes, setIntakeNotes] = useState('');
 
   useEffect(() => {
     fetchApi(`/cases/${caseId}/overview`)
@@ -44,9 +59,61 @@ const CaseOverview: React.FC = () => {
       });
   }, [caseId]);
 
+  useEffect(() => {
+    setClaimSummary(stats?.intake_context?.claim_summary || '');
+    setReportedEventDate(stats?.intake_context?.reported_event_date || '');
+    setReportedLocation(stats?.intake_context?.reported_location || '');
+    setSourceReferenceUrl(stats?.intake_context?.source_reference_url || '');
+    setIntakeNotes(stats?.intake_context?.intake_notes || '');
+  }, [stats?.intake_context]);
+
+  const saveIntakeContext = async () => {
+    if (!caseId) return;
+    setSavingIntake(true);
+    setIntakeSaveError('');
+    try {
+      const response = await fetchApi(`/cases/${caseId}/intake`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          claim_summary: claimSummary.trim() || null,
+          reported_event_date: reportedEventDate || null,
+          reported_location: reportedLocation.trim() || null,
+          source_reference_url: sourceReferenceUrl.trim() || null,
+          intake_notes: intakeNotes.trim() || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not save case intake context.');
+      setStats(current => current ? { ...current, intake_context: data } : current);
+      setEditingIntake(false);
+    } catch (saveError) {
+      setIntakeSaveError(saveError instanceof Error ? saveError.message : 'Could not save case intake context.');
+    } finally {
+      setSavingIntake(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading investigation dashboard...</div>;
   if (error) return <div className="error-banner">{error}</div>;
   if (!stats) return null;
+  const intake = stats.intake_context;
+  let safeSourceReferenceUrl: string | null = null;
+  if (intake?.source_reference_url) {
+    try {
+      const parsedSourceUrl = new URL(intake.source_reference_url);
+      if (parsedSourceUrl.protocol === 'https:' || parsedSourceUrl.protocol === 'http:') {
+        safeSourceReferenceUrl = parsedSourceUrl.toString();
+      }
+    } catch {
+      safeSourceReferenceUrl = null;
+    }
+  }
+  const workflow = [
+    { title: 'Record the report', detail: intake?.claim_summary ? 'Reported context recorded' : 'Add the claim and source context', href: `/cases/${caseId}`, done: Boolean(intake?.claim_summary) },
+    { title: 'Preserve received files', detail: stats.evidence_count ? `${stats.evidence_count} image${stats.evidence_count === 1 ? '' : 's'} registered` : 'Upload the image files as received', href: `/cases/${caseId}/evidence`, done: stats.evidence_count > 0 },
+    { title: 'Trace image versions', detail: stats.evidence_count > 1 ? 'Find and review related versions' : 'Add multiple versions to compare', href: `/cases/${caseId}/lineage`, done: false },
+    { title: 'Review and export', detail: stats.completed_analysis_count ? 'Review observations and make a decision' : 'Run relevant analysis, then review it', href: `/cases/${caseId}/analyst`, done: stats.completed_analysis_count > 0 },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -78,6 +145,52 @@ const CaseOverview: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <section className="card" aria-labelledby="investigation-flow-title">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <h2 id="investigation-flow-title" className="card-title" style={{ marginBottom: '0.3rem' }}>Image investigation workflow</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0 }}>Keep the reported claim, the preserved files, and the analyst’s interpretation distinct.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button className="secondary-button" onClick={() => setEditingIntake(value => !value)}>{editingIntake ? 'Close report context' : 'Add / edit report context'}</button>
+            <button className="primary-button" onClick={() => navigate(`/cases/${caseId}/evidence`)}>Continue investigation</button>
+          </div>
+        </div>
+        {intake?.claim_summary && (
+          <div style={{ background: 'var(--surface-color-light)', borderLeft: '3px solid #3b82f6', borderRadius: '5px', padding: '0.8rem 1rem', marginTop: '1rem' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>Reported claim · unverified context</div>
+            <div style={{ marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>{intake.claim_summary}</div>
+            {(intake.reported_event_date || intake.reported_location || intake.source_reference_url) && (
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {intake.reported_event_date && <span>Reported date: {intake.reported_event_date}</span>}
+                {intake.reported_location && <span>Reported place: {intake.reported_location}</span>}
+                {safeSourceReferenceUrl && <a href={safeSourceReferenceUrl} target="_blank" rel="noreferrer">Open source reference</a>}
+              </div>
+            )}
+          </div>
+        )}
+        {editingIntake && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem', marginTop: '0.8rem', padding: '0.8rem', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+            {intakeSaveError && <div className="error-banner" role="alert" style={{ gridColumn: '1 / -1' }}>{intakeSaveError}</div>}
+            <textarea placeholder="What is being claimed about these images?" value={claimSummary} onChange={event => setClaimSummary(event.target.value)} rows={3} style={{ gridColumn: '1 / -1', resize: 'vertical' }} />
+            <input type="date" aria-label="Reported event date" value={reportedEventDate} onChange={event => setReportedEventDate(event.target.value)} />
+            <input type="text" placeholder="Reported location" value={reportedLocation} onChange={event => setReportedLocation(event.target.value)} />
+            <input type="url" placeholder="Source URL" value={sourceReferenceUrl} onChange={event => setSourceReferenceUrl(event.target.value)} style={{ gridColumn: '1 / -1' }} />
+            <textarea placeholder="Intake notes" value={intakeNotes} onChange={event => setIntakeNotes(event.target.value)} rows={2} style={{ gridColumn: '1 / -1', resize: 'vertical' }} />
+            <button className="primary-button" onClick={saveIntakeContext} disabled={savingIntake} style={{ gridColumn: '1 / -1' }}>{savingIntake ? 'Saving…' : 'Save reported context'}</button>
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginTop: '1rem' }}>
+          {workflow.map((step, index) => (
+            <button key={step.title} onClick={() => index === 0 ? setEditingIntake(true) : navigate(step.href)} className="secondary-button" style={{ textAlign: 'left', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <span style={{ fontSize: '0.7rem', color: step.done ? '#059669' : 'var(--text-muted)', fontWeight: 700 }}>STEP {index + 1} · {step.done ? 'RECORDED' : 'NEXT'}</span>
+              <strong>{step.title}</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{step.detail}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* Metrics Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>

@@ -19,6 +19,7 @@ from app.benchmark.runner import BenchmarkRunner, reproduce_benchmark_run
 from app.benchmark.reporter import BenchmarkReporter, ExternalBenchmarkReporter
 from app.benchmark.prnu_benchmark import PRNUBenchmarkProtocol
 from app.benchmark.real_prnu import RealCameraPRNUProtocol
+from app.benchmark.transformation_stress import TransformationStressRunner, DEFAULT_ENGINES, MAX_SOURCE_IMAGES, PROFILES
 from app.benchmark.controlled_generator import ControlledDatasetGenerator
 from app.benchmark.dataset_adapter import register_dataset, verify_dataset_snapshot
 from app.benchmark.models import (
@@ -165,6 +166,12 @@ class RealPRNUBenchmarkRequest(BaseModel):
     camera_images: Optional[Dict[str, List[str]]] = None
 
 
+class TransformationStressRequest(BaseModel):
+    dataset_dir: str = "datasets/controlled/v1"
+    engines: List[str] = Field(default_factory=lambda: list(DEFAULT_ENGINES))
+    limit: int = Field(default=MAX_SOURCE_IMAGES, ge=1, le=MAX_SOURCE_IMAGES)
+
+
 @router.post("/register-dataset", response_model=DatasetRegistrationReport)
 def register_external_dataset(
     request: DatasetRegistrationRequest,
@@ -254,4 +261,49 @@ def execute_real_prnu_benchmark(
         json.dump(results, f, indent=2)
 
     return results
+
+
+@router.get("/transformation-profiles")
+def list_transformation_profiles(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    return {
+        "profiles": PROFILES,
+        "default_engines": DEFAULT_ENGINES,
+        "max_source_images": MAX_SOURCE_IMAGES,
+        "disclaimer": "Profiles are synthetic, deterministic laboratory operations. They are not captured output from named social or messaging platforms.",
+    }
+
+
+@router.post("/transformation-stress")
+def execute_transformation_stress(
+    request: TransformationStressRequest,
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    dataset_dir = os.path.abspath(request.dataset_dir)
+    if not os.path.exists(dataset_dir) and "controlled" in dataset_dir:
+        ControlledDatasetGenerator(dataset_dir).generate_full_controlled_suite()
+    if not os.path.isdir(dataset_dir):
+        raise HTTPException(status_code=404, detail="Dataset directory not found")
+    try:
+        report = TransformationStressRunner(dataset_dir).run(request.engines, request.limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    output_dir = os.path.join(BENCHMARK_OUTPUT_DIR, "transformation-stress")
+    os.makedirs(output_dir, exist_ok=True)
+    report_path = os.path.join(output_dir, "latest.json")
+    report["report_path"] = "datasets/benchmark/transformation-stress/latest.json"
+    with open(report_path, "w", encoding="utf-8") as output:
+        import json
+        json.dump(report, output, indent=2)
+    return report
+
+
+@router.get("/transformation-stress/latest")
+def get_latest_transformation_stress(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
+    report_path = os.path.join(BENCHMARK_OUTPUT_DIR, "transformation-stress", "latest.json")
+    if not os.path.isfile(report_path):
+        raise HTTPException(status_code=404, detail="No transformation stress report has been generated yet")
+    import json
+    with open(report_path, "r", encoding="utf-8") as source:
+        return json.load(source)
 

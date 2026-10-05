@@ -19,6 +19,7 @@ import CrossImageCorrelation from './pages/CrossImageCorrelation';
 import ChainOfCustody from './pages/ChainOfCustody';
 import InvestigationGraphPage from './pages/InvestigationGraphPage';
 import BenchmarkDashboard from './components/benchmark/BenchmarkDashboard';
+import ImageLineagePage from './pages/ImageLineagePage';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
           <Route path="evidence" element={<EvidenceLibrary />} />
           <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
           <Route path="compare" element={<EvidenceComparison />} />
+          <Route path="lineage" element={<ImageLineagePage />} />
           <Route path="cross-correlation" element={<CrossImageCorrelation />} />
           <Route path="graph" element={<InvestigationGraphPage />} />
           <Route path="assistant" element={<InvestigationAssistant />} />

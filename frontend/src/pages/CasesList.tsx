@@ -5,6 +5,10 @@ import { fetchApi } from '../api';
 export default function CasesList() {
   const [cases, setCases] = useState<any[]>([]);
   const [newCaseTitle, setNewCaseTitle] = useState('');
+  const [claimSummary, setClaimSummary] = useState('');
+  const [reportedEventDate, setReportedEventDate] = useState('');
+  const [reportedLocation, setReportedLocation] = useState('');
+  const [sourceReferenceUrl, setSourceReferenceUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -42,12 +46,22 @@ export default function CasesList() {
     fetchApi('/cases', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: newCaseTitle.trim() })
+      body: JSON.stringify({
+        title: newCaseTitle.trim(),
+        claim_summary: claimSummary.trim() || null,
+        reported_event_date: reportedEventDate || null,
+        reported_location: reportedLocation.trim() || null,
+        source_reference_url: sourceReferenceUrl.trim() || null,
+      })
     })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to initialize case');
         setNewCaseTitle('');
+        setClaimSummary('');
+        setReportedEventDate('');
+        setReportedLocation('');
+        setSourceReferenceUrl('');
         setCreating(false);
         navigate(`/cases/${data.case_identifier}`);
       })
@@ -136,16 +150,30 @@ export default function CasesList() {
         <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span>📂</span> Open New Forensic Dossier
         </h2>
-        <form onSubmit={handleCreateCase} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+          Record the reported claim and source context separately from what image analysis later observes.
+        </p>
+        <form onSubmit={handleCreateCase} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
           <input 
             type="text" 
             placeholder="Investigation Reference / Target Identifier (e.g., CAS-2026-089)" 
             value={newCaseTitle} 
             onChange={e => setNewCaseTitle(e.target.value)}
-            style={{ flex: '1 1 300px' }}
+            style={{ gridColumn: '1 / -1' }}
             disabled={creating}
           />
-          <button type="submit" className="btn btn-primary" disabled={!newCaseTitle.trim() || creating}>
+          <textarea
+            placeholder="What is being claimed about these images? (reported claim, not a verified conclusion)"
+            value={claimSummary}
+            onChange={e => setClaimSummary(e.target.value)}
+            rows={3}
+            disabled={creating}
+            style={{ gridColumn: '1 / -1', resize: 'vertical', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-main)' }}
+          />
+          <input type="date" aria-label="Reported event date" value={reportedEventDate} onChange={e => setReportedEventDate(e.target.value)} disabled={creating} />
+          <input type="text" placeholder="Reported location (if known)" value={reportedLocation} onChange={e => setReportedLocation(e.target.value)} disabled={creating} />
+          <input type="url" placeholder="Source URL (optional)" value={sourceReferenceUrl} onChange={e => setSourceReferenceUrl(e.target.value)} disabled={creating} style={{ gridColumn: '1 / -1' }} />
+          <button type="submit" className="btn btn-primary" disabled={!newCaseTitle.trim() || creating} style={{ gridColumn: '1 / -1' }}>
             {creating ? 'Initializing...' : '+ Initialize Workspace'}
           </button>
         </form>

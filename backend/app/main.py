@@ -17,6 +17,8 @@ from app.api.assistant import router as assistant_router
 from app.api.custody import router as custody_router
 from app.api.engines import router as engines_router
 from app.api.benchmark import router as benchmark_router
+from app.api.lineage import router as lineage_router
+from app.api.provenance import router as provenance_router
 from app.db.database import engine, Base
 
 Base.metadata.create_all(bind=engine)
@@ -58,4 +60,6 @@ app.include_router(assistant_router, prefix="/api")
 app.include_router(custody_router, prefix="/api")
 app.include_router(engines_router, prefix="/api")
 app.include_router(benchmark_router, prefix="/api")
+app.include_router(lineage_router, prefix="/api")
+app.include_router(provenance_router, prefix="/api")
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
