@@ -7,6 +7,7 @@ interface ResamplingViewerProps {
   containerFormat: string;
   resamplingResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
@@ -14,8 +15,10 @@ export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
   containerFormat,
   resamplingResult,
   onRefresh,
+  onResult,
 }) => {
   const [running, setRunning] = useState<boolean>(false);
+  const [localResult, setLocalResult] = useState<any>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'diagnostic'>('map');
 
@@ -30,6 +33,9 @@ export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Resampling analysis execution failed.');
       }
+      const data = await res.json();
+      setLocalResult(data);
+      if (onResult) onResult('resampling', data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Failed to trigger Resampling analysis.');
@@ -38,13 +44,14 @@ export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
     }
   };
 
-  const findings = resamplingResult?.structured_findings || {};
+  const effectiveResult = localResult || resamplingResult;
+  const findings = effectiveResult?.structured_findings || {};
   const hMetrics = findings.horizontal_metrics || {};
   const vMetrics = findings.vertical_metrics || {};
   const localConsistency = findings.local_consistency || {};
   const candidateRegions = localConsistency.candidate_regions || [];
   const artifacts = findings.artifacts || {};
-  const isCompleted = resamplingResult && resamplingResult.status === 'completed';
+  const isCompleted = effectiveResult && (effectiveResult.status === 'completed' || effectiveResult.status === 'COMPLETED');
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -213,7 +220,7 @@ export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
             {activeTab === 'map' ? (
               artifacts.resampling_map ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.resampling_map}`}
+                  src={`/api/artifacts/${artifacts.resampling_map}`}
                   alt="Spatial Resampling Heatmap"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />
@@ -223,7 +230,7 @@ export const ResamplingViewer: React.FC<ResamplingViewerProps> = ({
             ) : (
               artifacts.resampling_analysis ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.resampling_analysis}`}
+                  src={`/api/artifacts/${artifacts.resampling_analysis}`}
                   alt="Resampling Directional Spectra Plot"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />

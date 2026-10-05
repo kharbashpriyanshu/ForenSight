@@ -7,6 +7,7 @@ interface AdvancedNoiseViewerProps {
   containerFormat: string;
   advancedNoiseResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
@@ -14,8 +15,10 @@ export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
   containerFormat,
   advancedNoiseResult,
   onRefresh,
+  onResult,
 }) => {
   const [running, setRunning] = useState<boolean>(false);
+  const [localResult, setLocalResult] = useState<any>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'diagnostic'>('map');
 
@@ -30,6 +33,9 @@ export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Advanced Noise execution failed.');
       }
+      const data = await res.json();
+      setLocalResult(data);
+      if (onResult) onResult('advanced-noise', data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Failed to trigger Advanced Noise analysis.');
@@ -38,14 +44,15 @@ export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
     }
   };
 
-  const findings = advancedNoiseResult?.structured_findings || {};
+  const effectiveResult = localResult || advancedNoiseResult;
+  const findings = effectiveResult?.structured_findings || {};
   const globalMetrics = findings.global_metrics || {};
   const lumMetrics = globalMetrics.luminance || {};
   const freqDecomp = findings.residual_frequency_decomposition || {};
   const localConsistency = findings.local_consistency || {};
   const candidateRegions = localConsistency.candidate_regions || [];
   const artifacts = findings.artifacts || {};
-  const isCompleted = advancedNoiseResult && advancedNoiseResult.status === 'completed';
+  const isCompleted = effectiveResult && (effectiveResult.status === 'completed' || effectiveResult.status === 'COMPLETED');
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -214,7 +221,7 @@ export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
             {activeTab === 'map' ? (
               artifacts.advanced_noise_map ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.advanced_noise_map}`}
+                  src={`/api/artifacts/${artifacts.advanced_noise_map}`}
                   alt="Spatial Noise Inconsistency Heatmap"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />
@@ -224,7 +231,7 @@ export const AdvancedNoiseViewer: React.FC<AdvancedNoiseViewerProps> = ({
             ) : (
               artifacts.advanced_noise_analysis ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.advanced_noise_analysis}`}
+                  src={`/api/artifacts/${artifacts.advanced_noise_analysis}`}
                   alt="Advanced Noise Diagnostic Plot"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />

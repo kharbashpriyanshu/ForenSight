@@ -25,11 +25,18 @@ export default function AuthenticatedImage({ src, alt, style, className }: Authe
     setLoading(true);
     setError(false);
 
-    const endpoint = src.startsWith('/api/')
-      ? src.slice(4)
-      : src.startsWith('/artifacts/')
-        ? src
-        : `/artifacts/${src.replace(/^\/+/, '')}`;
+    let endpoint = src;
+    if (endpoint.startsWith('/api/v1/analysis/artifacts/')) {
+      endpoint = `/artifacts/${endpoint.slice('/api/v1/analysis/artifacts/'.length)}`;
+    } else if (endpoint.startsWith('/v1/analysis/artifacts/')) {
+      endpoint = `/artifacts/${endpoint.slice('/v1/analysis/artifacts/'.length)}`;
+    } else if (endpoint.startsWith('/api/artifacts/')) {
+      endpoint = `/artifacts/${endpoint.slice('/api/artifacts/'.length)}`;
+    } else if (endpoint.startsWith('/api/')) {
+      endpoint = endpoint.slice(4);
+    } else if (!endpoint.startsWith('/artifacts/') && !endpoint.startsWith('/evidence/')) {
+      endpoint = `/artifacts/${endpoint.replace(/^\/+/, '')}`;
+    }
 
     fetchApi(endpoint)
       .then(async (res) => {

@@ -766,6 +766,7 @@ export default function EvidenceDetail() {
                 containerFormat={effectiveFormat}
                 advancedNoiseResult={results['advanced-noise'] || results['advanced_noise']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
 
               <ResamplingViewer
@@ -773,6 +774,7 @@ export default function EvidenceDetail() {
                 containerFormat={effectiveFormat}
                 resamplingResult={results['resampling']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
             </div>
           )}
@@ -785,6 +787,7 @@ export default function EvidenceDetail() {
                 containerFormat={effectiveFormat}
                 cloneBlockResult={results['clone-block'] || results['clone_block']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
 
               <CloneKeypointViewer
@@ -792,6 +795,7 @@ export default function EvidenceDetail() {
                 containerFormat={effectiveFormat}
                 cloneKeypointResult={results['clone-keypoint'] || results['clone_keypoint']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
             </div>
           )}

@@ -7,6 +7,7 @@ interface CloneBlockViewerProps {
   containerFormat: string;
   cloneBlockResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
@@ -14,8 +15,10 @@ export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
   containerFormat,
   cloneBlockResult,
   onRefresh,
+  onResult,
 }) => {
   const [running, setRunning] = useState<boolean>(false);
+  const [localResult, setLocalResult] = useState<any>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'diagnostic'>('map');
 
@@ -30,6 +33,9 @@ export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Block-based clone analysis execution failed.');
       }
+      const data = await res.json();
+      setLocalResult(data);
+      if (onResult) onResult('clone-block', data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Failed to trigger Block-based clone analysis.');
@@ -38,10 +44,11 @@ export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
     }
   };
 
-  const findings = cloneBlockResult?.structured_findings || {};
+  const effectiveResult = localResult || cloneBlockResult;
+  const findings = effectiveResult?.structured_findings || {};
   const candidateRegions = findings.candidate_regions || [];
   const artifacts = findings.artifacts || {};
-  const isCompleted = cloneBlockResult && cloneBlockResult.status === 'completed';
+  const isCompleted = effectiveResult && (effectiveResult.status === 'completed' || effectiveResult.status === 'COMPLETED');
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -179,7 +186,7 @@ export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
             {activeTab === 'map' ? (
               artifacts.clone_block_map ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.clone_block_map}`}
+                  src={`/api/artifacts/${artifacts.clone_block_map}`}
                   alt="Block Clone Match Map"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />
@@ -189,7 +196,7 @@ export const CloneBlockViewer: React.FC<CloneBlockViewerProps> = ({
             ) : (
               artifacts.clone_block_analysis ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.clone_block_analysis}`}
+                  src={`/api/artifacts/${artifacts.clone_block_analysis}`}
                   alt="Block Clone Diagnostic Visualization"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />

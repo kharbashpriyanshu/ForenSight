@@ -552,6 +552,7 @@ def delete_case_camera_reference(
     return {"message": "Camera reference deleted successfully", "reference_id": reference_id}
 
 @router.get("/artifacts/{artifact_path:path}")
+@router.get("/v1/analysis/artifacts/{artifact_path:path}")
 def get_artifact(
     artifact_path: str,
     db: Session = Depends(get_db),

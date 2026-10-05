@@ -7,6 +7,7 @@ interface CloneKeypointViewerProps {
   containerFormat: string;
   cloneKeypointResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
@@ -14,8 +15,10 @@ export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
   containerFormat,
   cloneKeypointResult,
   onRefresh,
+  onResult,
 }) => {
   const [running, setRunning] = useState<boolean>(false);
+  const [localResult, setLocalResult] = useState<any>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'map' | 'diagnostic'>('map');
 
@@ -30,6 +33,9 @@ export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
         const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Keypoint-based clone analysis execution failed.');
       }
+      const data = await res.json();
+      setLocalResult(data);
+      if (onResult) onResult('clone-keypoint', data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Failed to trigger Keypoint-based clone analysis.');
@@ -38,11 +44,12 @@ export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
     }
   };
 
-  const findings = cloneKeypointResult?.structured_findings || {};
+  const effectiveResult = localResult || cloneKeypointResult;
+  const findings = effectiveResult?.structured_findings || {};
   const affineModel = findings.affine_model || null;
   const candidateRegions = findings.candidate_regions || [];
   const artifacts = findings.artifacts || {};
-  const isCompleted = cloneKeypointResult && cloneKeypointResult.status === 'completed';
+  const isCompleted = effectiveResult && (effectiveResult.status === 'completed' || effectiveResult.status === 'COMPLETED');
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -210,7 +217,7 @@ export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
             {activeTab === 'map' ? (
               artifacts.clone_keypoint_map ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.clone_keypoint_map}`}
+                  src={`/api/artifacts/${artifacts.clone_keypoint_map}`}
                   alt="Keypoint Clone Match Map"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />
@@ -220,7 +227,7 @@ export const CloneKeypointViewer: React.FC<CloneKeypointViewerProps> = ({
             ) : (
               artifacts.clone_keypoint_analysis ? (
                 <AuthenticatedImage
-                  src={`/api/v1/analysis/artifacts/${artifacts.clone_keypoint_analysis}`}
+                  src={`/api/artifacts/${artifacts.clone_keypoint_analysis}`}
                   alt="Keypoint Clone Diagnostic Plot"
                   style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain', borderRadius: '6px' }}
                 />
