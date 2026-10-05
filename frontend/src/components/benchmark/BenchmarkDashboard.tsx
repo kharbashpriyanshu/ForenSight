@@ -1055,7 +1055,7 @@ export default function BenchmarkDashboard() {
                         ))}
                       </div>
                       <div style={{ color: '#64748b', fontSize: '0.68rem', marginTop: '0.5rem' }}>
-                        Numeric paired measurement changes: {Object.values(profileReport.measurement_drift || ({} as Record<string, Record<string, unknown>>)).reduce<number>((count, engine) => count + Object.keys(engine).length, 0)} engine/metric pairs
+                        Numeric paired measurement changes: {Object.values((profileReport.measurement_drift || {}) as Record<string, Record<string, unknown>>).reduce((count: number, engine: Record<string, unknown>) => count + Object.keys(engine).length, 0)} engine/metric pairs
                       </div>
                     </div>
                   ))}
