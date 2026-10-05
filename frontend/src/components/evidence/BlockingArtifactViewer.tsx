@@ -7,6 +7,7 @@ interface BlockingArtifactViewerProps {
   containerFormat: string;
   blockingResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
@@ -14,10 +15,14 @@ export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
   containerFormat,
   blockingResult,
   onRefresh,
+  onResult,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'map' | 'regions' | 'boundaries'>('overview');
   const [running, setRunning] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [localBlocking, setLocalBlocking] = useState<any>(null);
+  const effectiveBlocking = blockingResult || localBlocking;
 
   const isJpeg = ['JPEG', 'JPG'].includes((containerFormat || '').toUpperCase());
 
@@ -28,10 +33,12 @@ export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
       const res = await fetchApi(`/evidence/${evidenceId}/analysis/blocking-artifact`, {
         method: 'POST',
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || 'Analysis trigger failed.');
       }
+      setLocalBlocking(data);
+      if (onResult) onResult('blocking-artifact', data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Blocking Artifact analysis failed to execute.');
@@ -45,7 +52,7 @@ export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
     return (
       <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>JPEG 8×8 Blocking Artifact Forensics (V4 Step 4)</h3>
+          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>JPEG 8×8 Blocking Artifact Forensics</h3>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
             NOT APPLICABLE ({containerFormat.toUpperCase()})
           </span>
@@ -62,14 +69,14 @@ export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
     );
   }
 
-  const findings = blockingResult?.structured_findings || {};
+  const findings = effectiveBlocking?.structured_findings || {};
   const globalStats = findings.global_statistics || {};
   const hStats = findings.horizontal_boundary_statistics || {};
   const vStats = findings.vertical_boundary_statistics || {};
   const inputInfo = findings.input_information || {};
   const candidateRegions = findings.candidate_regions || [];
   const artifacts = findings.artifacts || {};
-  const isCompleted = blockingResult && blockingResult.status === 'completed';
+  const isCompleted = effectiveBlocking && effectiveBlocking.status === 'completed';
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -77,10 +84,7 @@ export const BlockingArtifactViewer: React.FC<BlockingArtifactViewerProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#2563eb', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-              V4 LOCAL ANALYSIS ENGINE
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ITU-T T.81 / ISO 10918-1 8×8 Grid</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ITU-T T.81 / ISO 10918-1 8×8 Grid Analysis</span>
           </div>
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>JPEG 8×8 Blocking Artifact & Boundary Discontinuity Analysis</h3>
         </div>

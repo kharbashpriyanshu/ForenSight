@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
@@ -19,6 +19,7 @@ import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
 import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
 import { PerspectiveForensicsViewer } from '../components/evidence/PerspectiveForensicsViewer';
 import { LightingSolarForensicsViewer } from '../components/evidence/LightingSolarForensicsViewer';
+import { X, Table, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface HeatmapRegion {
   modality: string;
@@ -88,8 +89,59 @@ export default function EvidenceDetail() {
   // Categorized Forensic Workbench active tab
   const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
 
+  // Normalization Modal & Auto-Fusion State
+  const [showNormalizationModal, setShowNormalizationModal] = useState<boolean>(false);
+  const isSyncingFusionRef = useRef(false);
+  const prevCompletedCountRef = useRef<number>(0);
+
+  const runFusionSync = useCallback(async (evId?: string | number) => {
+    const targetId = evId || uploadResult?.id;
+    if (!targetId || isSyncingFusionRef.current) return;
+    
+    isSyncingFusionRef.current = true;
+    setNormalizing(true);
+    try {
+      const normRes = await fetchApi(`/evidence/${targetId}/fusion/normalize`, { method: 'POST' });
+      if (normRes.ok) {
+        const normData = await normRes.json();
+        setResults((prev: any) => ({ ...prev, normalize: normData }));
+        
+        setNormalizing(false);
+        setCorrelating(true);
+        const corrRes = await fetchApi(`/evidence/${targetId}/fusion/correlate`, { method: 'POST' });
+        if (corrRes.ok) {
+          const corrData = await corrRes.json();
+          setResults((prev: any) => ({ ...prev, correlate: corrData }));
+        }
+      }
+    } catch (err) {
+      console.error("Auto fusion sync error", err);
+    } finally {
+      setNormalizing(false);
+      setCorrelating(false);
+      isSyncingFusionRef.current = false;
+    }
+  }, [uploadResult?.id]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowNormalizationModal(false);
+      }
+    };
+    if (showNormalizationModal) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showNormalizationModal]);
 
   const fetchEvidenceAndJobs = (evId: string) => {
+    setJobs({});
+    setResults({});
+    setHeatmap(null);
+    setCustodyResult(null);
+    setJobErrors({});
+
     fetchApi(`/evidence/${evId}`)
       .then(res => res.json())
       .then(data => setUploadResult(data))
@@ -105,29 +157,74 @@ export default function EvidenceDetail() {
       .then((jobsList: any[]) => {
         if (Array.isArray(jobsList)) {
           const jobsMap: any = {};
+          let hasCompleted = false;
           jobsList.forEach(j => {
             const key = j.analysis_type.toLowerCase();
             const hypKey = key.replace(/_/g, '-');
             jobsMap[key] = j;
             jobsMap[hypKey] = j;
-            if (j.status === 'COMPLETED' && j.analysis_id) {
-              fetchApi(`/analysis/${j.analysis_id}`)
-                .then(r => r.json())
-                .then(resData => {
-                  setResults((prev: any) => ({ ...prev, [key]: resData, [hypKey]: resData }));
-                })
-                .catch(() => {});
+            if (j.status === 'COMPLETED') {
+              hasCompleted = true;
+              if (j.analysis_id) {
+                fetchApi(`/analysis/${j.analysis_id}`)
+                  .then(r => r.json())
+                  .then(resData => {
+                    setResults((prev: any) => ({ ...prev, [key]: resData, [hypKey]: resData }));
+                  })
+                  .catch(() => {});
+              }
             }
           });
           setJobs(jobsMap);
+          if (hasCompleted) {
+            runFusionSync(evId);
+          }
         }
       })
       .catch(err => console.error("Error fetching jobs", err));
+
+    fetchApi(`/evidence/${evId}/analyses`)
+      .then(res => res.json())
+      .then((analysesList: any[]) => {
+        if (Array.isArray(analysesList)) {
+          setResults((prev: any) => {
+            const updated = { ...prev };
+            analysesList.forEach(a => {
+              if (a.status === 'completed' || a.status === 'not_applicable') {
+                const key = a.analysis_type.toLowerCase();
+                const hypKey = key.replace(/_/g, '-');
+                if (!updated[key]) {
+                  updated[key] = a;
+                  updated[hypKey] = a;
+                }
+              }
+            });
+            return updated;
+          });
+          if (analysesList.some(a => a.status === 'completed')) {
+            runFusionSync(evId);
+          }
+        }
+      })
+      .catch(() => {});
 
     fetchApi(`/evidence/${evId}/heatmap`)
       .then(res => res.json())
       .then(hData => setHeatmap(hData))
       .catch(() => {});
+  };
+
+  const handleAnalysisResult = (slug: string, data: any) => {
+    const key = slug.toLowerCase();
+    const hypKey = key.replace(/_/g, '-');
+    setResults((prev: any) => ({ ...prev, [key]: data, [hypKey]: data }));
+    if (uploadResult?.id) {
+      fetchApi(`/evidence/${uploadResult.id}/heatmap`)
+        .then(r => r.json())
+        .then(h => setHeatmap(h))
+        .catch(() => {});
+      runFusionSync(uploadResult.id);
+    }
   };
 
   useEffect(() => {
@@ -181,6 +278,8 @@ export default function EvidenceDetail() {
           .then(r => r.json())
           .then(h => setHeatmap(h))
           .catch(() => {});
+        // Auto-run normalization and correlation
+        runFusionSync(uploadResult.id);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Analysis request failed.';
@@ -250,29 +349,8 @@ export default function EvidenceDetail() {
       .catch(() => setVerifyingCustody(false));
   };
 
-  const handleNormalize = () => {
-    if (!uploadResult) return;
-    setNormalizing(true);
-    fetchApi(`/evidence/${uploadResult.id}/fusion/normalize`, { method: 'POST' })
-      .then(async (res) => {
-        const data = await res.json();
-        setResults((prev: any) => ({ ...prev, normalize: data }));
-        setNormalizing(false);
-      })
-      .catch(() => setNormalizing(false));
-  };
-
-  const handleCorrelate = () => {
-    if (!uploadResult) return;
-    setCorrelating(true);
-    fetchApi(`/evidence/${uploadResult.id}/fusion/correlate`, { method: 'POST' })
-      .then(async (res) => {
-        const data = await res.json();
-        setResults((prev: any) => ({ ...prev, correlate: data }));
-        setCorrelating(false);
-      })
-      .catch(() => setCorrelating(false));
-  };
+  const handleNormalize = () => runFusionSync();
+  const handleCorrelate = () => runFusionSync();
 
   const hasResult = (key: string) => Boolean(results[key] || results[key.replace('-', '_')] || jobs[key]?.status === 'COMPLETED');
 
@@ -284,6 +362,13 @@ export default function EvidenceDetail() {
   const cameraCount = ['prnu', 'camera-id'].filter(k => hasResult(k)).length;
   const physicsGeometryCount = ['geometry-perspective', 'physics-lighting'].filter(k => hasResult(k)).length;
   const totalCompleted = coreCount + compressionCount + colorCount + noiseResamplingCount + cloningCount + cameraCount + physicsGeometryCount;
+
+  useEffect(() => {
+    if (uploadResult?.id && totalCompleted > 0 && totalCompleted !== prevCompletedCountRef.current) {
+      prevCompletedCountRef.current = totalCompleted;
+      runFusionSync(uploadResult.id);
+    }
+  }, [totalCompleted, uploadResult?.id, runFusionSync]);
 
   const workbenchTabs = [
     { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', count: heatmap?.composite_regions_count || 0, suffix: 'zones' },
@@ -297,6 +382,8 @@ export default function EvidenceDetail() {
     { id: 'camera_sensor', label: 'Camera & Sensor', icon: '📷', count: cameraCount, suffix: '/2' },
     { id: 'all', label: 'All Modalities', icon: '📑', count: totalCompleted, suffix: 'active' },
   ];
+
+  const effectiveFormat = (uploadResult?.image_format || uploadResult?.mime_type?.split('/')?.[1] || '').toUpperCase();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -620,27 +707,30 @@ export default function EvidenceDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedJpegViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 structureResult={results['jpeg-structure'] || results['jpeg_structure']}
                 qtResult={results['jpeg-qt'] || results['jpeg_qt']}
                 huffmanResult={results['jpeg-huffman'] || results['jpeg_huffman']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
 
               <CompressionHistoryViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 ghostResult={results['jpeg-ghost'] || results['jpeg_ghost']}
                 adjpegResult={results['adjpeg']}
                 nadjpegResult={results['nadjpeg']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
 
               <BlockingArtifactViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 blockingResult={results['blocking-artifact'] || results['blocking_artifact']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
+                onResult={handleAnalysisResult}
               />
             </div>
           )}
@@ -650,21 +740,21 @@ export default function EvidenceDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <HistogramViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 histogramResult={results['histogram']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
 
               <ColorChannelViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 colorChannelResult={results['color-channel'] || results['color_channel']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
 
               <FourierViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 fourierResult={results['fourier']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
@@ -676,14 +766,14 @@ export default function EvidenceDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedNoiseViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 advancedNoiseResult={results['advanced-noise'] || results['advanced_noise']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
 
               <ResamplingViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 resamplingResult={results['resampling']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
@@ -695,14 +785,14 @@ export default function EvidenceDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <CloneBlockViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 cloneBlockResult={results['clone-block'] || results['clone_block']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
 
               <CloneKeypointViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 cloneKeypointResult={results['clone-keypoint'] || results['clone_keypoint']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
@@ -714,7 +804,7 @@ export default function EvidenceDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <PRNUViewer
                 evidenceId={uploadResult.id}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 prnuResult={results['prnu']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
@@ -722,7 +812,7 @@ export default function EvidenceDetail() {
               <CameraIdViewer
                 evidenceId={uploadResult.id}
                 caseId={uploadResult.case_id || caseId || 'default'}
-                containerFormat={uploadResult.file_format || ''}
+                containerFormat={effectiveFormat}
                 cameraIdResult={results['camera-id'] || results['camera_id']}
                 onRefresh={() => fetchEvidenceAndJobs(evidenceId!)}
               />
@@ -846,45 +936,358 @@ export default function EvidenceDetail() {
                     No lighting result is available yet. Solar cross-checks require usable GPS coordinates and a capture timestamp; light variation alone is not evidence of manipulation.
                   </div>
                 )}
+                     {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
+          {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
+            <div className="card" style={{ marginTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#2563eb', background: 'rgba(37, 99, 235, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                      Deterministic Fusion Engine (Rule 7B-v1)
+                    </span>
+                    {(normalizing || correlating) ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontWeight: 600 }}>
+                        <RefreshCw size={11} className="spin-animate" /> Auto-syncing fusion...
+                      </span>
+                    ) : results.correlate ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.72rem', color: '#059669', background: 'rgba(16, 185, 129, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontWeight: 600 }}>
+                        <CheckCircle2 size={11} /> Auto-synchronized
+                      </span>
+                    ) : null}
+                  </div>
+                  <h2 className="card-title" style={{ margin: 0 }}>
+                    Fusion & Multi-Modality Assessment
+                  </h2>
+                  <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: '0.25rem 0 0 0' }}>
+                    Automatically synthesizes empirical observations across all active forensic modalities into a defensible qualitative assessment.
+                  </p>
+                </div>
+
+                {/* Top Action Bar: Open Normalization Dialog & Manual Re-sync */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => setShowNormalizationModal(true)}
+                    disabled={!results.normalize}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.45rem 0.85rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      borderRadius: '6px',
+                      cursor: !results.normalize ? 'not-allowed' : 'pointer',
+                      opacity: !results.normalize ? 0.6 : 1
+                    }}
+                    title="Open dialog to inspect all normalized empirical metrics"
+                  >
+                    <Table size={14} color="#1e3a8a" />
+                    <span>View Normalization Results</span>
+                    {results.normalize?.observations?.length !== undefined && (
+                      <span style={{
+                        background: '#1e3a8a',
+                        color: '#ffffff',
+                        padding: '0.1rem 0.45rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.72rem',
+                        fontWeight: 700
+                      }}>
+                        {results.normalize.observations.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button 
+                    className="btn btn-secondary"
+                    onClick={() => runFusionSync()}
+                    disabled={normalizing || correlating || totalCompleted === 0}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.45rem 0.75rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 500,
+                      borderRadius: '6px'
+                    }}
+                    title="Force re-run normalization and cross-correlation"
+                  >
+                    <RefreshCw size={13} className={(normalizing || correlating) ? 'spin-animate' : ''} />
+                    <span>Re-sync</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Informational Prerequisite if no jobs run yet */}
+              {totalCompleted === 0 && (
+                <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '6px', fontSize: '0.825rem', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>💡</span>
+                  <div>
+                    <strong>Prerequisite:</strong> No analytical engines have run on this image yet ({totalCompleted} completed). As soon as you queue or run any forensic engine above (e.g. <strong>Core DIP Engines</strong>, <strong>Physics & Geometry</strong>, <strong>Container & Compression</strong>), normalization and correlation will execute automatically.
+                  </div>
+                </div>
+              )}
+
+              {/* In-Progress Sync Indicator */}
+              {(normalizing || correlating) && !results.correlate && (
+                <div style={{ padding: '1.5rem', textAlign: 'center', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <RefreshCw size={18} className="spin-animate" style={{ marginBottom: '0.5rem', display: 'inline-block' }} />
+                  <div>Auto-synchronizing: Extracting empirical observations and calculating correlation matrix...</div>
+                </div>
+              )}
+
+              {/* Main Correlated Assessment Display */}
+              {results.correlate && (
+                <div style={{ background: 'var(--surface-color-light)', padding: '1.25rem', borderRadius: '8px', border: '1px solid var(--border-color)', borderLeft: '4px solid #0284c7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem', fontWeight: 700 }}>
+                        Correlated Forensic Assessment
+                      </h3>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        (Rule 7B-v1 Evaluation)
+                      </span>
+                    </div>
+                    <span style={{ 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '9999px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
+                      background: results.correlate.assessment?.level === 'ELEVATED_FORENSIC_CONCERN' 
+                        ? 'rgba(239, 68, 68, 0.15)' 
+                        : results.correlate.assessment?.level === 'MODERATE_FORENSIC_CONCERN'
+                          ? 'rgba(245, 158, 11, 0.15)'
+                          : results.correlate.assessment?.level === 'LOW_FORENSIC_CONCERN'
+                            ? 'rgba(16, 185, 129, 0.15)'
+                            : 'rgba(100, 116, 139, 0.15)',
+                      color: results.correlate.assessment?.level === 'ELEVATED_FORENSIC_CONCERN' 
+                        ? '#dc2626' 
+                        : results.correlate.assessment?.level === 'MODERATE_FORENSIC_CONCERN'
+                          ? '#d97706'
+                          : results.correlate.assessment?.level === 'LOW_FORENSIC_CONCERN'
+                            ? '#059669'
+                            : '#64748b'
+                    }}>
+                      {results.correlate.assessment?.level || 'INSUFFICIENT_EVIDENCE'}
+                    </span>
+                  </div>
+
+                  <div style={{ marginTop: '0.5rem', color: 'var(--text-body)', lineHeight: 1.5, fontSize: '0.88rem' }}>
+                    {results.correlate.assessment?.summary}
+                  </div>
+
+                  {/* Evidence Families & Modalities Summary */}
+                  <div style={{ marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {results.correlate.families?.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Contributing Evidence Families:</span>
+                        {results.correlate.families.map((f: string) => (
+                          <span key={f} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {results.normalize?.modalities_present?.length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Evaluated Modalities:</span>
+                        {results.normalize.modalities_present.map((m: string) => (
+                          <span key={m} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.12rem 0.4rem', borderRadius: '4px', background: 'rgba(37, 99, 235, 0.12)', color: '#1d4ed8' }}>
+                            {m}
+                          </span>
+                        ))}
+                        <button 
+                          onClick={() => setShowNormalizationModal(true)} 
+                          style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.75rem', fontWeight: 600, padding: '0 0.25rem' }}
+                        >
+                          Inspect normalized table ({results.normalize.observations?.length || 0} metrics) →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {results.correlate.assessment?.limitations && (
+                    <div style={{ marginTop: '0.85rem', padding: '0.55rem 0.8rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '4px', borderLeft: '3px solid #f59e0b', fontSize: '0.75rem', color: '#b45309' }}>
+                      <strong>Limitations:</strong> {results.correlate.assessment.limitations}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
-          {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
-            <div className="card" style={{ marginTop: '1rem' }}>
-              <h2 className="card-title" style={{ marginBottom: '1rem' }}>
-                FUSION & MULTI-MODALITY ASSESSMENT
-              </h2>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <button 
-                  className="btn" 
-                  onClick={handleNormalize}
-                  disabled={normalizing}
-                  style={{ background: '#1e3a8a', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: normalizing ? 'not-allowed' : 'pointer', opacity: normalizing ? 0.7 : 1 }}
-                >
-                  {normalizing ? 'Normalizing Observations...' : '1. Normalize Observations'}
-                </button>
-                <button 
-                  className="btn" 
-                  onClick={handleCorrelate}
-                  disabled={correlating}
-                  style={{ background: '#0284c7', color: '#ffffff', padding: '0.85rem 1.25rem', borderRadius: '6px', fontWeight: 600, border: 'none', cursor: correlating ? 'not-allowed' : 'pointer', opacity: correlating ? 0.7 : 1 }}
-                >
-                  {correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}
-                </button>
-              </div>
-              
-              {results.correlate && (
-                <div style={{ marginTop: '1.5rem', background: 'var(--surface-color-light)', padding: '1.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', borderLeft: '4px solid #0284c7' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.05rem' }}>Correlated Forensic Assessment</h3>
-                    <span className="status-badge">{results.correlate.assessment?.level}</span>
+          {/* Normalization Observations Dialog Modal */}
+          {showNormalizationModal && (
+            <div 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.65)',
+                backdropFilter: 'blur(3px)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+                padding: '1.25rem'
+              }}
+              onClick={() => setShowNormalizationModal(false)}
+            >
+              <div 
+                style={{
+                  background: 'var(--surface-color)',
+                  borderRadius: '10px',
+                  width: '840px',
+                  maxWidth: '96vw',
+                  maxHeight: '85vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 20px 45px rgba(0,0,0,0.35)',
+                  border: '1px solid var(--border-color)',
+                  overflow: 'hidden'
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '1.15rem 1.5rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  background: 'var(--surface-color-light)'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#1e3a8a', background: 'rgba(30, 58, 138, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        Deterministic Feature Normalization
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Norm v{results.normalize?.normalization_version || '1.0'}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                      Normalized Empirical Observations
+                    </h3>
                   </div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', marginTop: '0.25rem' }}>{results.correlate.assessment?.level}</div>
-                  <div style={{ marginTop: '0.5rem', color: 'var(--text-body)', lineHeight: 1.5 }}>{results.correlate.assessment?.summary}</div>
+                  <button 
+                    onClick={() => setShowNormalizationModal(false)}
+                    aria-label="Close dialog"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '0.4rem',
+                      borderRadius: '6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
-              )}
+
+                {/* Modal Body */}
+                <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <p style={{ margin: 0, fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    Empirical metrics from individual forensic engines are mapped into standardized directions (<code style={{ color: '#dc2626' }}>elevated</code>, <code style={{ color: '#059669' }}>absent</code>, <code style={{ color: '#0284c7' }}>suppressed</code>, <code style={{ color: '#475569' }}>informational</code>) calibrated against authentic uncompressed baselines.
+                  </p>
+
+                  {/* Modality Chips */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 0.8rem', background: 'var(--surface-color-light)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Evaluated Modalities:</span>
+                    {results.normalize?.modalities_present?.length > 0 ? (
+                      results.normalize.modalities_present.map((m: string) => (
+                        <span key={m} style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.15rem 0.45rem', borderRadius: '4px', background: 'rgba(37, 99, 235, 0.12)', color: '#1d4ed8' }}>
+                          {m}
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', fontStyle: 'italic', color: '#ef4444' }}>None available yet</span>
+                    )}
+                  </div>
+
+                  {/* Table */}
+                  {results.normalize?.observations?.length > 0 ? (
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                      <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--surface-color-light)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', textAlign: 'left' }}>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Modality</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Metric Name</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Direction</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Normalized Value</th>
+                            <th style={{ padding: '0.5rem 0.75rem' }}>Reliability</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {results.normalize.observations.map((obs: any, i: number) => (
+                            <tr key={i} style={{ borderBottom: '1px solid var(--border-color-light, rgba(0,0,0,0.06))' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: 'var(--text-main)' }}>{obs.modality}</td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}><code>{obs.metric_name}</code></td>
+                              <td style={{ padding: '0.5rem 0.75rem' }}>
+                                <span style={{ 
+                                  padding: '0.15rem 0.45rem', 
+                                  borderRadius: '4px', 
+                                  fontSize: '0.72rem', 
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  background: obs.direction === 'elevated' ? 'rgba(239, 68, 68, 0.12)' : obs.direction === 'suppressed' ? 'rgba(2, 132, 199, 0.12)' : obs.direction === 'absent' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)',
+                                  color: obs.direction === 'elevated' ? '#dc2626' : obs.direction === 'suppressed' ? '#0284c7' : obs.direction === 'absent' ? '#059669' : '#475569'
+                                }}>
+                                  {obs.direction || 'neutral'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'monospace' }}>
+                                {typeof obs.normalized_value === 'number' ? obs.normalized_value.toFixed(4) : obs.raw_value || '—'}
+                              </td>
+                              <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                                {obs.technical_reliability || 'HIGH'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      No normalized observations available yet. Run analytical engines above.
+                    </div>
+                  )}
+
+                  <div style={{ padding: '0.65rem 0.85rem', background: 'rgba(59, 130, 246, 0.06)', borderRadius: '6px', borderLeft: '3px solid #3b82f6', fontSize: '0.75rem', color: '#1e40af', lineHeight: 1.4 }}>
+                    <strong>Standard:</strong> Normalized feature representations strictly adhere to ISO/IEC 27037 and SWGDE digital evidence guidelines for defensible cross-modality correlation.
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.85rem 1.5rem',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'var(--surface-color-light)'
+                }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {results.normalize?.observations?.length || 0} observations evaluated
+                  </span>
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => setShowNormalizationModal(false)}
+                    style={{ padding: '0.45rem 1.25rem', fontSize: '0.82rem' }}
+                  >
+                    Close Dialog
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </>

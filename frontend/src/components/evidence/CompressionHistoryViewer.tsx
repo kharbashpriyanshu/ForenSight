@@ -9,6 +9,7 @@ interface CompressionHistoryViewerProps {
   adjpegResult?: any;
   nadjpegResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> = ({
@@ -18,10 +19,19 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
   adjpegResult,
   nadjpegResult,
   onRefresh,
+  onResult,
 }) => {
   const [activeTab, setActiveTab] = useState<'ghost' | 'adjpeg' | 'nadjpeg'>('ghost');
   const [runningEngine, setRunningEngine] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [localGhost, setLocalGhost] = useState<any>(null);
+  const [localAdjpeg, setLocalAdjpeg] = useState<any>(null);
+  const [localNadjpeg, setLocalNadjpeg] = useState<any>(null);
+
+  const effectiveGhost = ghostResult || localGhost;
+  const effectiveAdjpeg = adjpegResult || localAdjpeg;
+  const effectiveNadjpeg = nadjpegResult || localNadjpeg;
 
   const isJpeg = ['JPEG', 'JPG'].includes((containerFormat || '').toUpperCase());
 
@@ -32,10 +42,14 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
       const res = await fetchApi(`/evidence/${evidenceId}/analysis/${engineSlug}`, {
         method: 'POST',
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || `Analysis ${engineSlug} failed.`);
       }
+      if (engineSlug === 'jpeg-ghost') setLocalGhost(data);
+      if (engineSlug === 'adjpeg') setLocalAdjpeg(data);
+      if (engineSlug === 'nadjpeg') setLocalNadjpeg(data);
+      if (onResult) onResult(engineSlug, data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Analysis trigger failed.');
@@ -49,7 +63,7 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
     return (
       <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>JPEG Compression History Forensics (V4 Step 3)</h3>
+          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>JPEG Compression History Forensics</h3>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
             NOT APPLICABLE ({containerFormat.toUpperCase()})
           </span>
@@ -66,9 +80,9 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
     );
   }
 
-  const ghostFindings = ghostResult?.structured_findings || {};
-  const adjpegFindings = adjpegResult?.structured_findings || {};
-  const nadjpegFindings = nadjpegResult?.structured_findings || {};
+  const ghostFindings = effectiveGhost?.structured_findings || {};
+  const adjpegFindings = effectiveAdjpeg?.structured_findings || {};
+  const nadjpegFindings = effectiveNadjpeg?.structured_findings || {};
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -76,9 +90,6 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-              V4 COMPRESSION FORENSICS
-            </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>DCT Quantization Cycle Analysis</span>
           </div>
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>JPEG Compression History & Double-Compression Analysis</h3>
@@ -171,7 +182,7 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
       {/* Tab 1: JPEG Ghost */}
       {activeTab === 'ghost' && (
         <div>
-          {!ghostResult ? (
+          {!effectiveGhost ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               JPEG Ghost analysis has not been executed on this evidence. Click <strong>"Run JPEG Ghost"</strong> above.
             </div>
@@ -324,7 +335,7 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
       {/* Tab 2: ADJPEG */}
       {activeTab === 'adjpeg' && (
         <div>
-          {!adjpegResult ? (
+          {!effectiveAdjpeg ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               ADJPEG analysis has not been executed on this evidence. Click <strong>"Run ADJPEG"</strong> above.
             </div>
@@ -425,7 +436,7 @@ export const CompressionHistoryViewer: React.FC<CompressionHistoryViewerProps> =
       {/* Tab 3: NADJPEG */}
       {activeTab === 'nadjpeg' && (
         <div>
-          {!nadjpegResult ? (
+          {!effectiveNadjpeg ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               NADJPEG analysis has not been executed on this evidence. Click <strong>"Run NADJPEG"</strong> above.
             </div>

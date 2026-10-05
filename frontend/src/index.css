@@ -579,3 +579,13 @@ hr { border: none; border-top: 1px solid var(--border-color-translucent); margin
     padding: 1rem;
   }
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-animate {
+  animation: spin 1s linear infinite;
+}
+

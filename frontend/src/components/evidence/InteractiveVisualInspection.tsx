@@ -42,7 +42,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
   // Filter Configuration
   const [filterMode, setFilterMode] = useState<FilterMode>('original');
   const [levelMin, setLevelMin] = useState<number>(0);
-  const [levelMax, setLevelMax] = useState<number>(40);
+  const [levelMax, setLevelMax] = useState<number>(255);
   const [levelHighlightColor, setLevelHighlightColor] = useState<string>('#b8872a');
   const [autoSweepActive, setAutoSweepActive] = useState<boolean>(false);
   const [bitPlane, setBitPlane] = useState<number>(0); // 0 = LSB, 7 = MSB
@@ -350,7 +350,10 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
   }, [imgNaturalSize.width, previewWidth, previewHeight, filterMode, splitWipeActive, splitPosition, applyFilterToImageData]);
 
   useEffect(() => {
-    renderMainCanvas();
+    let animId = requestAnimationFrame(() => {
+      renderMainCanvas();
+    });
+    return () => cancelAnimationFrame(animId);
   }, [renderMainCanvas]);
 
   // 5. Render Floating Loupe Magnifier
@@ -609,34 +612,92 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
         {/* Dynamic Mode-Specific Parameter Sliders */}
         {filterMode === 'level_sweep' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-color)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
               <span style={{ fontWeight: 600 }}>Tonal Range:</span>
-              <code style={{ background: '#f5efe4' }}>[{levelMin} — {levelMax}] / 255</code>
+              <code style={{ background: '#f5efe4', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                [{levelMin} — {levelMax}] / 255
+              </code>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-              <label>Min:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }}>
+              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Min:</label>
               <input 
-                type="range" min="0" max="250" value={levelMin} 
-                onChange={e => setLevelMin(Math.min(parseInt(e.target.value), levelMax - 2))}
-                style={{ width: '90px' }}
+                type="range" 
+                min="0" 
+                max="255" 
+                value={levelMin} 
+                onChange={e => {
+                  const val = parseInt(e.target.value) || 0;
+                  // Min is clamped to levelMax so it never increases or mutates levelMax
+                  setLevelMin(Math.min(val, levelMax));
+                }}
+                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
               />
+              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600 }}>{levelMin}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-              <label>Max:</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }}>
+              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Max:</label>
               <input 
-                type="range" min="5" max="255" value={levelMax} 
-                onChange={e => setLevelMax(Math.max(parseInt(e.target.value), levelMin + 2))}
-                style={{ width: '90px' }}
+                type="range" 
+                min="0" 
+                max="255" 
+                value={levelMax} 
+                onChange={e => {
+                  const val = parseInt(e.target.value) || 0;
+                  // Max is clamped to levelMin so it never decreases or mutates levelMin
+                  setLevelMax(Math.max(val, levelMin));
+                }}
+                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
               />
+              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600 }}>{levelMax}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-              <label>Highlight Tint:</label>
+              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Tint:</label>
               <input 
-                type="color" value={levelHighlightColor} 
+                type="color" 
+                value={levelHighlightColor} 
                 onChange={e => setLevelHighlightColor(e.target.value)}
-                style={{ width: '28px', height: '24px', padding: 0, border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+                style={{ width: '28px', height: '24px', padding: 0, border: '1px solid var(--border-color)', cursor: 'pointer', borderRadius: '4px' }}
+                title="Change Level Sweep Highlight Color"
               />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { setLevelMin(0); setLevelMax(255); }}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}
+                title="Reset to Full Range [0-255]"
+              >
+                Full Range
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { setLevelMin(0); setLevelMax(60); }}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}
+                title="Jump to Shadows [0-60]"
+              >
+                Shadows
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { setLevelMin(100); setLevelMax(160); }}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}
+                title="Jump to Midtones [100-160]"
+              >
+                Midtones
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { setLevelMin(195); setLevelMax(255); }}
+                style={{ padding: '0.2rem 0.45rem', fontSize: '0.72rem' }}
+                title="Jump to Highlights [195-255]"
+              >
+                Highlights
+              </button>
             </div>
             <button 
               className="btn btn-secondary"

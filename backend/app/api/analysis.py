@@ -43,6 +43,17 @@ def read_analysis(
     analysis = verify_analysis_access(db, analysis_id, current_user)
     return analysis
 
+@router.get("/evidence/{evidence_id}/analyses", response_model=List[AnalysisResponse])
+def list_evidence_analyses(
+    evidence_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    verify_evidence_access(db, evidence_id, current_user)
+    analyses = db.query(Analysis).filter(Analysis.evidence_id == evidence_id).order_by(Analysis.created_at.desc()).all()
+    return analyses
+
+
 @router.post("/evidence/{evidence_id}/analysis/ela", response_model=AnalysisResponse)
 def trigger_ela_analysis(
     evidence_id: int,

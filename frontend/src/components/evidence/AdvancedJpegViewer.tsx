@@ -8,6 +8,7 @@ interface AdvancedJpegViewerProps {
   qtResult?: any;
   huffmanResult?: any;
   onRefresh?: () => void;
+  onResult?: (engineSlug: string, resultData: any) => void;
 }
 
 export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
@@ -17,11 +18,19 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
   qtResult,
   huffmanResult,
   onRefresh,
+  onResult,
 }) => {
   const [activeTab, setActiveTab] = useState<'structure' | 'qt' | 'huffman'>('structure');
   const [runningEngine, setRunningEngine] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [selectedQtIndex, setSelectedQtIndex] = useState<number>(0);
+  const [localStructure, setLocalStructure] = useState<any>(null);
+  const [localQt, setLocalQt] = useState<any>(null);
+  const [localHuffman, setLocalHuffman] = useState<any>(null);
+
+  const effectiveStructure = structureResult || localStructure;
+  const effectiveQt = qtResult || localQt;
+  const effectiveHuffman = huffmanResult || localHuffman;
 
   const isJpeg = ['JPEG', 'JPG'].includes((containerFormat || '').toUpperCase());
 
@@ -32,10 +41,14 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
       const res = await fetchApi(`/evidence/${evidenceId}/analysis/${engineSlug}`, {
         method: 'POST',
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.detail || `Analysis ${engineSlug} failed.`);
       }
+      if (engineSlug === 'jpeg-structure') setLocalStructure(data);
+      if (engineSlug === 'jpeg-qt') setLocalQt(data);
+      if (engineSlug === 'jpeg-huffman') setLocalHuffman(data);
+      if (onResult) onResult(engineSlug, data);
       if (onRefresh) onRefresh();
     } catch (err: any) {
       setActionError(err.message || 'Analysis trigger failed.');
@@ -49,7 +62,7 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
     return (
       <div className="card" style={{ borderLeft: '4px solid #f59e0b' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Advanced JPEG & File Forensics (V4 Step 2)</h3>
+          <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Advanced JPEG & File Forensics</h3>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
             NOT APPLICABLE ({containerFormat.toUpperCase()})
           </span>
@@ -67,9 +80,9 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
   }
 
   // Safe extraction of structured findings
-  const structFindings = structureResult?.structured_findings || {};
-  const qtFindings = qtResult?.structured_findings || {};
-  const huffFindings = huffmanResult?.structured_findings || {};
+  const structFindings = effectiveStructure?.structured_findings || {};
+  const qtFindings = effectiveQt?.structured_findings || {};
+  const huffFindings = effectiveHuffman?.structured_findings || {};
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -77,10 +90,7 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-              V4 EXTENSION ENGINES
-            </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ITU-T T.81 / ISO 10918-1</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ITU-T T.81 / ISO 10918-1 Bitstream Parser</span>
           </div>
           <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Advanced JPEG Bitstream & Structural Forensics</h3>
         </div>
@@ -172,7 +182,7 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
       {/* Tab 1: Structure */}
       {activeTab === 'structure' && (
         <div>
-          {!structureResult ? (
+          {!effectiveStructure ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               Structure analysis has not been executed on this evidence. Click <strong>"Run Structure Analysis"</strong> above.
             </div>
@@ -294,7 +304,7 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
       {/* Tab 2: Quantization Tables */}
       {activeTab === 'qt' && (
         <div>
-          {!qtResult ? (
+          {!effectiveQt ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               Quantization analysis has not been executed on this evidence. Click <strong>"Run DQT Analysis"</strong> above.
             </div>
@@ -441,7 +451,7 @@ export const AdvancedJpegViewer: React.FC<AdvancedJpegViewerProps> = ({
       {/* Tab 3: Huffman Coding */}
       {activeTab === 'huffman' && (
         <div>
-          {!huffmanResult ? (
+          {!effectiveHuffman ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               Huffman analysis has not been executed on this evidence. Click <strong>"Run Huffman Analysis"</strong> above.
             </div>
