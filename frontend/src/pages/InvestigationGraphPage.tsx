@@ -94,6 +94,7 @@ const InvestigationGraphPage: React.FC = () => {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('dag');
   const [showAnalyses, setShowAnalyses] = useState<boolean>(false);
   const [showArtifacts, setShowArtifacts] = useState<boolean>(false);
+  const [activeRightTab, setActiveRightTab] = useState<'inspector' | 'controls'>('controls');
 
   // Canvas Refs & Viewport State
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -271,65 +272,91 @@ const InvestigationGraphPage: React.FC = () => {
       const caseNodes = activeNodes.filter(n => n.type === 'CASE');
       const otherNodes = activeNodes.filter(n => n.type !== 'EVIDENCE' && n.type !== 'CASE');
 
-      caseNodes.forEach((cn, i) => {
-        const cfg = TYPE_CONFIG[cn.type] || DEFAULT_CONFIG;
-        simMap.set(cn.id, {
-          ...cn,
-          x: (i - (caseNodes.length - 1) / 2) * 260,
-          y: -380,
-          radius: cfg.defaultRadius
-        });
-      });
-
-      const clusterSpacing = Math.max(580, 2400 / Math.max(1, evidenceNodes.length));
-      const evCenters = new Map<string, { x: number; y: number }>();
-
-      evidenceNodes.forEach((ev, i) => {
-        const cfg = TYPE_CONFIG[ev.type] || DEFAULT_CONFIG;
-        const cx = (i - (evidenceNodes.length - 1) / 2) * clusterSpacing;
-        const cy = 0;
-        evCenters.set(ev.id, { x: cx, y: cy });
-
-        simMap.set(ev.id, {
-          ...ev,
-          x: cx,
-          y: cy,
-          radius: cfg.defaultRadius
-        });
-      });
-
-      evidenceNodes.forEach(ev => {
-        const center = evCenters.get(ev.id) || { x: 0, y: 0 };
-        const children = activeEdges
-          .filter(e => e.source === ev.id || e.target === ev.id)
-          .map(e => activeNodes.find(n => n.id === (e.source === ev.id ? e.target : e.source)))
-          .filter(Boolean) as GraphNode[];
-
-        const orbitRadius = Math.max(180, children.length * 12);
-        children.forEach((child, ci) => {
-          if (child.type === 'CASE') return;
-          const cfg = TYPE_CONFIG[child.type] || DEFAULT_CONFIG;
-          const angle = (ci / Math.max(1, children.length)) * 2 * Math.PI - Math.PI / 2;
-          simMap.set(child.id, {
-            ...child,
-            x: center.x + Math.cos(angle) * orbitRadius,
-            y: center.y + Math.sin(angle) * orbitRadius,
+      if (evidenceNodes.length === 0) {
+        // When evidence is filtered out, center the Case and neatly orbit other active nodes
+        caseNodes.forEach((cn, i) => {
+          const cfg = TYPE_CONFIG[cn.type] || DEFAULT_CONFIG;
+          simMap.set(cn.id, {
+            ...cn,
+            x: (i - (caseNodes.length - 1) / 2) * 260,
+            y: 0,
             radius: cfg.defaultRadius
           });
         });
-      });
 
-      otherNodes.forEach(on => {
-        if (!simMap.has(on.id)) {
+        const orbitRadius = Math.max(220, otherNodes.length * 45);
+        otherNodes.forEach((on, i) => {
           const cfg = TYPE_CONFIG[on.type] || DEFAULT_CONFIG;
+          const angle = (i / Math.max(1, otherNodes.length)) * 2 * Math.PI - Math.PI / 2;
           simMap.set(on.id, {
             ...on,
-            x: (Math.random() - 0.5) * 600,
-            y: 350 + Math.random() * 150,
+            x: Math.cos(angle) * orbitRadius,
+            y: Math.sin(angle) * orbitRadius,
             radius: cfg.defaultRadius
           });
-        }
-      });
+        });
+      } else {
+        caseNodes.forEach((cn, i) => {
+          const cfg = TYPE_CONFIG[cn.type] || DEFAULT_CONFIG;
+          simMap.set(cn.id, {
+            ...cn,
+            x: (i - (caseNodes.length - 1) / 2) * 260,
+            y: -380,
+            radius: cfg.defaultRadius
+          });
+        });
+
+        const clusterSpacing = Math.max(580, 2400 / Math.max(1, evidenceNodes.length));
+        const evCenters = new Map<string, { x: number; y: number }>();
+
+        evidenceNodes.forEach((ev, i) => {
+          const cfg = TYPE_CONFIG[ev.type] || DEFAULT_CONFIG;
+          const cx = (i - (evidenceNodes.length - 1) / 2) * clusterSpacing;
+          const cy = 0;
+          evCenters.set(ev.id, { x: cx, y: cy });
+
+          simMap.set(ev.id, {
+            ...ev,
+            x: cx,
+            y: cy,
+            radius: cfg.defaultRadius
+          });
+        });
+
+        evidenceNodes.forEach(ev => {
+          const center = evCenters.get(ev.id) || { x: 0, y: 0 };
+          const children = activeEdges
+            .filter(e => e.source === ev.id || e.target === ev.id)
+            .map(e => activeNodes.find(n => n.id === (e.source === ev.id ? e.target : e.source)))
+            .filter(Boolean) as GraphNode[];
+
+          const orbitRadius = Math.max(180, children.length * 12);
+          children.forEach((child, ci) => {
+            if (child.type === 'CASE') return;
+            const cfg = TYPE_CONFIG[child.type] || DEFAULT_CONFIG;
+            const angle = (ci / Math.max(1, children.length)) * 2 * Math.PI - Math.PI / 2;
+            simMap.set(child.id, {
+              ...child,
+              x: center.x + Math.cos(angle) * orbitRadius,
+              y: center.y + Math.sin(angle) * orbitRadius,
+              radius: cfg.defaultRadius
+            });
+          });
+        });
+
+        otherNodes.forEach((on, oi) => {
+          if (!simMap.has(on.id)) {
+            const cfg = TYPE_CONFIG[on.type] || DEFAULT_CONFIG;
+            const angle = (oi / Math.max(1, otherNodes.length)) * 2 * Math.PI;
+            simMap.set(on.id, {
+              ...on,
+              x: Math.cos(angle) * 320,
+              y: 200 + Math.sin(angle) * 80,
+              radius: cfg.defaultRadius
+            });
+          }
+        });
+      }
     }
 
     simNodesRef.current = simMap;
@@ -665,6 +692,7 @@ const InvestigationGraphPage: React.FC = () => {
       draggedNodeRef.current = clickedNode;
       dragStartRef.current = { mouseX: rawX, mouseY: rawY, startX: clickedNode.x, startY: clickedNode.y };
       setSelectedNode(clickedNode);
+      setActiveRightTab('inspector');
     } else {
       isDraggingCanvasRef.current = true;
       dragStartRef.current = {
@@ -756,6 +784,7 @@ const InvestigationGraphPage: React.FC = () => {
       k: 1.2
     };
     setSelectedNode(node);
+    setActiveRightTab('inspector');
   };
 
   if (loading) {
@@ -794,7 +823,7 @@ const InvestigationGraphPage: React.FC = () => {
   const artifactCount = graphData.nodes.filter(n => n.type === 'ARTIFACT').length;
 
   return (
-    <div style={{ display: 'flex', gap: '1.25rem', height: 'calc(100vh - 90px)', minHeight: 0 }}>
+    <div style={{ display: 'flex', gap: '1.25rem', height: 'calc(100vh - 128px)', minHeight: 0 }}>
       {/* ===================================================================== */}
       {/* MAIN VISUAL CANVAS (MAXIMIZED, CLEAN, 0 CLUTTER ABOVE)                */}
       {/* ===================================================================== */}
@@ -979,376 +1008,473 @@ const InvestigationGraphPage: React.FC = () => {
       {/* ===================================================================== */}
       {/* DEDICATED RIGHT-HAND PANEL: GRAPH CONTROLS, FILTERS & INSPECTOR       */}
       {/* ===================================================================== */}
-      <div style={{ 
-        width: '380px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '1rem',
-        overflowY: 'auto'
-      }}>
-        {/* Panel 1: Graph Filter & Layout Controls (Moved from above graph) */}
-        <div className="card" style={{ padding: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <SlidersHorizontal size={16} style={{ color: 'var(--accent-color)' }} />
-              <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-                Graph Controls & Filters
-              </h3>
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={fetchGraph}
-              style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem' }}
-              title="Reload from server"
-            >
-              <RefreshCw size={12} />
-            </button>
-          </div>
+      <div 
+        className="card"
+        style={{ 
+          width: '400px', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          padding: 0,
+          margin: 0,
+          overflow: 'hidden',
+          borderRadius: '16px',
+          height: '100%',
+          boxShadow: 'var(--shadow-card)'
+        }}
+      >
+        {/* Top Tab Bar: Controls vs Inspector */}
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid var(--border-color-translucent)',
+          background: 'rgba(250, 246, 238, 0.75)',
+          padding: '0.45rem 0.6rem',
+          gap: '0.4rem',
+          flexShrink: 0
+        }}>
+          <button
+            type="button"
+            onClick={() => setActiveRightTab('controls')}
+            style={{
+              flex: 1,
+              padding: '0.48rem 0.65rem',
+              borderRadius: '8px',
+              border: activeRightTab === 'controls' ? '1px solid var(--border-color)' : '1px solid transparent',
+              background: activeRightTab === 'controls' ? '#ffffff' : 'transparent',
+              color: activeRightTab === 'controls' ? 'var(--primary-color)' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              cursor: 'pointer',
+              boxShadow: activeRightTab === 'controls' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <SlidersHorizontal size={13} style={{ color: activeRightTab === 'controls' ? 'var(--accent-color)' : 'currentColor' }} />
+            <span>Controls & Filters</span>
+          </button>
 
-          {/* Search Box */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={14} style={{ position: 'absolute', left: '0.65rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-            <input 
-              type="text"
-              placeholder="Search graph nodes..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ 
-                width: '100%',
-                padding: '0.45rem 0.65rem 0.45rem 1.95rem', 
-                fontSize: '0.82rem'
-              }}
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                style={{ position: 'absolute', right: '0.65rem', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-              >
-                <X size={13} />
-              </button>
+          <button
+            type="button"
+            onClick={() => setActiveRightTab('inspector')}
+            style={{
+              flex: 1,
+              padding: '0.48rem 0.65rem',
+              borderRadius: '8px',
+              border: activeRightTab === 'inspector' ? '1px solid var(--border-color)' : '1px solid transparent',
+              background: activeRightTab === 'inspector' ? '#ffffff' : 'transparent',
+              color: activeRightTab === 'inspector' ? 'var(--primary-color)' : 'var(--text-muted)',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.4rem',
+              cursor: 'pointer',
+              boxShadow: activeRightTab === 'inspector' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Search size={13} style={{ color: activeRightTab === 'inspector' ? 'var(--accent-color)' : 'currentColor' }} />
+            <span>
+              {selectedNode ? `Inspector (${selectedNode.type})` : 'Node Inspector'}
+            </span>
+            {selectedNode && (
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-color)' }} />
             )}
-          </div>
-
-          {/* Layout Mode Selector */}
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
-              Layout Structure
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', background: 'var(--surface-color-light)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--border-color-translucent)' }}>
-              <button
-                type="button"
-                onClick={() => setLayoutMode('dag')}
-                style={{
-                  background: layoutMode === 'dag' ? '#ffffff' : 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.5rem',
-                  fontSize: '0.76rem',
-                  fontWeight: 700,
-                  color: layoutMode === 'dag' ? 'var(--primary-color)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.35rem',
-                  boxShadow: layoutMode === 'dag' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
-                }}
-              >
-                <GitBranch size={13} />
-                <span>Hierarchical DAG</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setLayoutMode('cluster')}
-                style={{
-                  background: layoutMode === 'cluster' ? '#ffffff' : 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.45rem 0.5rem',
-                  fontSize: '0.76rem',
-                  fontWeight: 700,
-                  color: layoutMode === 'cluster' ? 'var(--primary-color)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.35rem',
-                  boxShadow: layoutMode === 'cluster' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
-                }}
-              >
-                <Layers size={13} />
-                <span>Evidence Clusters</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Granular Clutter Toggles */}
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
-              Content Density Toggles
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <button
-                type="button"
-                onClick={() => setShowAnalyses(prev => !prev)}
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  padding: '0.42rem 0.75rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  background: showAnalyses ? 'rgba(88, 28, 135, 0.08)' : undefined,
-                  borderColor: showAnalyses ? '#c084fc' : undefined
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#581c87' }} />
-                  <span>Analysis Engines ({analysisCount})</span>
-                </span>
-                <span style={{ fontSize: '0.72rem', color: showAnalyses ? '#7c3aed' : 'var(--text-muted)', fontWeight: 700 }}>
-                  {showAnalyses ? 'VISIBLE' : 'HIDDEN'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowArtifacts(prev => !prev)}
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  padding: '0.42rem 0.75rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  background: showArtifacts ? 'rgba(184, 135, 42, 0.08)' : undefined,
-                  borderColor: showArtifacts ? 'var(--accent-color)' : undefined
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#db2777' }} />
-                  <span>Artifact Files ({artifactCount})</span>
-                </span>
-                <span style={{ fontSize: '0.72rem', color: showArtifacts ? 'var(--accent-color)' : 'var(--text-muted)', fontWeight: 700 }}>
-                  {showArtifacts ? 'VISIBLE' : 'HIDDEN'}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Type Filter Buttons */}
-          <div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
-              Filter by Node Category
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-              {allAvailableTypes.map(t => {
-                const isSelected = filterType === t;
-                const cfg = TYPE_CONFIG[t];
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setFilterType(t)}
-                    style={{
-                      background: isSelected ? 'var(--primary-color)' : 'rgba(254, 251, 246, 0.75)',
-                      color: isSelected ? '#ffffff' : 'var(--text-main)',
-                      border: isSelected ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      padding: '0.28rem 0.6rem',
-                      fontSize: '0.74rem',
-                      fontWeight: isSelected ? 700 : 500,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {cfg && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isSelected ? '#ffffff' : cfg.fill }} />}
-                    <span>{t}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div style={{ display: 'flex', gap: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color-translucent)' }}>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setViewMode(viewMode === 'graph' ? 'grid' : 'graph')}
-              style={{ width: '100%', fontSize: '0.78rem', justifyContent: 'center' }}
-            >
-              {viewMode === 'graph' ? <Grid size={13} /> : <Network size={13} />}
-              <span>{viewMode === 'graph' ? 'Switch to Card List' : 'Switch to Visual Graph'}</span>
-            </button>
-          </div>
+          </button>
         </div>
 
-        {/* Panel 2: Selected Node Inspector */}
-        <div className="card" style={{ padding: '1.25rem', margin: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {selectedNode ? (() => {
-            const cfg = TYPE_CONFIG[selectedNode.type] || DEFAULT_CONFIG;
-            const connectedEdges = graphData.edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
+        {/* Tab 1: Controls & Filters */}
+        {activeRightTab === 'controls' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <SlidersHorizontal size={16} style={{ color: 'var(--accent-color)' }} />
+                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+                  Graph Controls & Filters
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={fetchGraph}
+                style={{ padding: '0.25rem 0.55rem', fontSize: '0.72rem' }}
+                title="Reload from server"
+              >
+                <RefreshCw size={12} />
+              </button>
+            </div>
 
-            return (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <span style={{ 
-                      fontSize: '0.68rem', 
-                      fontWeight: 800, 
-                      color: cfg.fill,
-                      background: 'rgba(0,0,0,0.06)',
-                      padding: '0.18rem 0.5rem',
-                      borderRadius: '5px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                      fontFamily: 'var(--font-tech)'
-                    }}>
-                      {selectedNode.type}
-                    </span>
-                    <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
-                      {cleanLabel(selectedNode.label, selectedNode.type)}
-                    </h3>
-                    <code style={{ fontSize: '0.72rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
-                      {selectedNode.id}
-                    </code>
+            {/* Search Box */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={14} style={{ position: 'absolute', left: '0.65rem', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+              <input 
+                type="text"
+                placeholder="Search graph nodes..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ 
+                  width: '100%',
+                  padding: '0.45rem 0.65rem 0.45rem 1.95rem', 
+                  fontSize: '0.82rem'
+                }}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  style={{ position: 'absolute', right: '0.65rem', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Layout Mode Selector */}
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
+                Layout Structure
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem', background: 'var(--surface-color-light)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--border-color-translucent)' }}>
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('dag')}
+                  style={{
+                    background: layoutMode === 'dag' ? '#ffffff' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.5rem',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    color: layoutMode === 'dag' ? 'var(--primary-color)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.35rem',
+                    boxShadow: layoutMode === 'dag' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <GitBranch size={13} />
+                  <span>Hierarchical DAG</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLayoutMode('cluster')}
+                  style={{
+                    background: layoutMode === 'cluster' ? '#ffffff' : 'transparent',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.45rem 0.5rem',
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    color: layoutMode === 'cluster' ? 'var(--primary-color)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.35rem',
+                    boxShadow: layoutMode === 'cluster' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
+                  }}
+                >
+                  <Layers size={13} />
+                  <span>Evidence Clusters</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Granular Clutter Toggles */}
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
+                Content Density Toggles
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAnalyses(prev => !prev)}
+                  className="btn btn-secondary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'space-between',
+                    padding: '0.42rem 0.75rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    background: showAnalyses ? 'rgba(88, 28, 135, 0.08)' : undefined,
+                    borderColor: showAnalyses ? '#c084fc' : undefined
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#581c87' }} />
+                    <span>Analysis Engines ({analysisCount})</span>
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: showAnalyses ? '#7c3aed' : 'var(--text-muted)', fontWeight: 700 }}>
+                    {showAnalyses ? 'VISIBLE' : 'HIDDEN'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowArtifacts(prev => !prev)}
+                  className="btn btn-secondary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'space-between',
+                    padding: '0.42rem 0.75rem',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    background: showArtifacts ? 'rgba(184, 135, 42, 0.08)' : undefined,
+                    borderColor: showArtifacts ? 'var(--accent-color)' : undefined
+                  }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#db2777' }} />
+                    <span>Artifact Files ({artifactCount})</span>
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: showArtifacts ? 'var(--accent-color)' : 'var(--text-muted)', fontWeight: 700 }}>
+                    {showArtifacts ? 'VISIBLE' : 'HIDDEN'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Type Filter Buttons */}
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', fontFamily: 'var(--font-tech)', letterSpacing: '0.05em' }}>
+                Filter by Node Category
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                {allAvailableTypes.map(t => {
+                  const isSelected = filterType === t;
+                  const cfg = TYPE_CONFIG[t];
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setFilterType(t)}
+                      style={{
+                        background: isSelected ? 'var(--primary-color)' : 'rgba(254, 251, 246, 0.75)',
+                        color: isSelected ? '#ffffff' : 'var(--text-main)',
+                        border: isSelected ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
+                        borderRadius: '8px',
+                        padding: '0.28rem 0.6rem',
+                        fontSize: '0.74rem',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {cfg && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: isSelected ? '#ffffff' : cfg.fill }} />}
+                      <span>{t}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div style={{ display: 'flex', gap: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border-color-translucent)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setViewMode(viewMode === 'graph' ? 'grid' : 'graph')}
+                style={{ width: '100%', fontSize: '0.78rem', justifyContent: 'center' }}
+              >
+                {viewMode === 'graph' ? <Grid size={13} /> : <Network size={13} />}
+                <span>{viewMode === 'graph' ? 'Switch to Card List' : 'Switch to Visual Graph'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Node Inspector (Full-height dedicated view) */}
+        {activeRightTab === 'inspector' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {selectedNode ? (() => {
+              const cfg = TYPE_CONFIG[selectedNode.type] || DEFAULT_CONFIG;
+              const connectedEdges = graphData.edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
+
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <span style={{ 
+                        fontSize: '0.68rem', 
+                        fontWeight: 800, 
+                        color: cfg.fill,
+                        background: 'rgba(0,0,0,0.06)',
+                        padding: '0.18rem 0.5rem',
+                        borderRadius: '5px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        fontFamily: 'var(--font-tech)'
+                      }}>
+                        {selectedNode.type}
+                      </span>
+                      <h3 style={{ margin: '0.4rem 0 0.2rem', fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
+                        {cleanLabel(selectedNode.label, selectedNode.type)}
+                      </h3>
+                      <code style={{ fontSize: '0.72rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
+                        {selectedNode.id}
+                      </code>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSelectedNode(null);
+                        setActiveRightTab('controls');
+                      }} 
+                      style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                      aria-label="Close inspector"
+                      title="Close & return to controls"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => setSelectedNode(null)} 
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
-                    aria-label="Close inspector"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
 
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => handleCenterOnNode(selectedNode)}
-                    style={{ fontSize: '0.74rem', padding: '0.35rem 0.7rem' }}
-                  >
-                    <Maximize2 size={12} />
-                    <span>Center</span>
-                  </button>
-
-                  {selectedNode.type === 'EVIDENCE' && (
+                  {/* Actions */}
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
-                      className="btn btn-primary"
-                      onClick={() => navigate(`/cases/${caseId}/evidence`)}
+                      className="btn btn-secondary"
+                      onClick={() => handleCenterOnNode(selectedNode)}
                       style={{ fontSize: '0.74rem', padding: '0.35rem 0.7rem' }}
                     >
-                      <span>Open Evidence</span>
-                      <ArrowRight size={12} />
+                      <Maximize2 size={12} />
+                      <span>Center on Canvas</span>
                     </button>
-                  )}
 
-                  {selectedNode.type === 'FINDING' && (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => navigate(`/cases/${caseId}/analyst`)}
-                      style={{ fontSize: '0.74rem', padding: '0.35rem 0.7rem' }}
-                    >
-                      <span>Review Finding</span>
-                      <ArrowRight size={12} />
-                    </button>
-                  )}
-                </div>
+                    {selectedNode.type === 'EVIDENCE' && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => navigate(`/cases/${caseId}/evidence`)}
+                        style={{ fontSize: '0.74rem', padding: '0.35rem 0.7rem' }}
+                      >
+                        <span>Open Evidence</span>
+                        <ArrowRight size={12} />
+                      </button>
+                    )}
 
-                {/* Telemetry / Metadata Table */}
-                <div>
-                  <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem', letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
-                    Metadata Attributes
-                  </h4>
-                  <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color-translucent)', borderRadius: '10px', padding: '0.75rem', fontSize: '0.76rem' }}>
-                    {Object.keys(selectedNode.metadata || {}).length === 0 ? (
-                      <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No additional metadata.</div>
-                    ) : (
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <tbody>
-                          {Object.entries(selectedNode.metadata).map(([k, v]) => (
-                            <tr key={k} style={{ borderBottom: '1px solid rgba(220, 210, 190, 0.4)' }}>
-                              <td style={{ padding: '0.35rem 0', fontWeight: 700, color: 'var(--text-muted)', width: '40%' }}>{k}</td>
-                              <td style={{ padding: '0.35rem 0', textAlign: 'right', color: 'var(--text-main)', wordBreak: 'break-all', fontFamily: typeof v === 'number' || String(v).length > 20 ? 'var(--font-mono)' : 'inherit' }}>
-                                {String(v)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    {selectedNode.type === 'FINDING' && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => navigate(`/cases/${caseId}/analyst`)}
+                        style={{ fontSize: '0.74rem', padding: '0.35rem 0.7rem' }}
+                      >
+                        <span>Review Finding</span>
+                        <ArrowRight size={12} />
+                      </button>
                     )}
                   </div>
-                </div>
 
-                {/* Connected Edges */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                    <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
-                      Connected Links
+                  {/* Telemetry / Metadata Table - FULLY VISIBLE & SCROLLABLE */}
+                  <div>
+                    <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem', letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
+                      Metadata Attributes ({Object.keys(selectedNode.metadata || {}).length})
                     </h4>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                      {connectedEdges.length} links
-                    </span>
+                    <div style={{ 
+                      background: 'var(--surface-color-light)', 
+                      border: '1px solid var(--border-color-translucent)', 
+                      borderRadius: '10px', 
+                      padding: '0.75rem', 
+                      fontSize: '0.76rem',
+                      maxHeight: '320px',
+                      overflowY: 'auto'
+                    }}>
+                      {Object.keys(selectedNode.metadata || {}).length === 0 ? (
+                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No additional metadata attributes recorded for this node.</div>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <tbody>
+                            {Object.entries(selectedNode.metadata).map(([k, v]) => (
+                              <tr key={k} style={{ borderBottom: '1px solid rgba(220, 210, 190, 0.4)' }}>
+                                <td style={{ padding: '0.4rem 0', fontWeight: 700, color: 'var(--text-muted)', width: '38%', verticalAlign: 'top' }}>{k}</td>
+                                <td style={{ padding: '0.4rem 0', textAlign: 'right', color: 'var(--text-main)', wordBreak: 'break-all', fontFamily: typeof v === 'number' || String(v).length > 20 ? 'var(--font-mono)' : 'inherit' }}>
+                                  {String(v)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '180px', overflowY: 'auto' }}>
-                    {connectedEdges.map((e, idx) => {
-                      const targetId = e.source === selectedNode.id ? e.target : e.source;
-                      const targetNode = graphData.nodes.find(n => n.id === targetId);
+                  {/* Connected Edges */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
+                        Connected Links
+                      </h4>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {connectedEdges.length} links
+                      </span>
+                    </div>
 
-                      return (
-                        <div 
-                          key={idx} 
-                          style={{ 
-                            background: 'var(--surface-color-light)', 
-                            padding: '0.45rem 0.65rem', 
-                            borderRadius: '8px', 
-                            border: '1px solid var(--border-color-translucent)',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            cursor: targetNode ? 'pointer' : 'default',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onClick={() => targetNode && handleCenterOnNode(targetNode)}
-                          title={targetNode ? `Jump to ${targetNode.label}` : ''}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: '0.7rem', fontFamily: 'var(--font-tech)' }}>{e.type}</span>
-                            <div style={{ fontSize: '0.72rem', color: 'var(--text-main)', marginTop: '0.1rem' }}>
-                              {e.source === selectedNode.id ? `&rarr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.target}` : `&larr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.source}`}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '220px', overflowY: 'auto' }}>
+                      {connectedEdges.map((e, idx) => {
+                        const targetId = e.source === selectedNode.id ? e.target : e.source;
+                        const targetNode = graphData.nodes.find(n => n.id === targetId);
+
+                        return (
+                          <div 
+                            key={idx} 
+                            style={{ 
+                              background: 'var(--surface-color-light)', 
+                              padding: '0.45rem 0.65rem', 
+                              borderRadius: '8px', 
+                              border: '1px solid var(--border-color-translucent)',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              cursor: targetNode ? 'pointer' : 'default',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onClick={() => targetNode && handleCenterOnNode(targetNode)}
+                            title={targetNode ? `Jump to ${targetNode.label}` : ''}
+                          >
+                            <div>
+                              <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: '0.7rem', fontFamily: 'var(--font-tech)' }}>{e.type}</span>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-main)', marginTop: '0.1rem' }}>
+                                {e.source === selectedNode.id ? `&rarr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.target}` : `&larr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.source}`}
+                              </div>
                             </div>
+                            {targetNode && <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />}
                           </div>
-                          {targetNode && <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />}
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
+                </>
+              );
+            })() : (
+              <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                <Network size={36} style={{ color: 'var(--accent-color)', opacity: 0.65 }} />
+                <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
+                  No Node Selected
                 </div>
-              </>
-            );
-          })() : (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <Network size={36} style={{ color: 'var(--accent-color)', opacity: 0.65 }} />
-              <div style={{ fontWeight: 700, fontSize: '0.98rem', color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
-                Inspect Forensic Nodes
+                <div style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
+                  Click any node on the graph canvas or in the list view to inspect its full cryptographic telemetry, EXIF parameters, and provenance links.
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setActiveRightTab('controls')}
+                  style={{ marginTop: '0.5rem', fontSize: '0.76rem' }}
+                >
+                  <SlidersHorizontal size={13} />
+                  <span>Go to Controls & Filters</span>
+                </button>
               </div>
-              <div style={{ fontSize: '0.78rem', lineHeight: 1.5 }}>
-                Click any node on the canvas to trace its provenance links, inspect EXIF/DIP parameters, and jump to related findings.
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
