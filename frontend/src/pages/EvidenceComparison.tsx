@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { ChevronsLeftRight } from 'lucide-react';
 import { fetchApi } from '../api';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 
@@ -25,9 +26,52 @@ const EvidenceComparison: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Wipe Split-View state
+  // Wipe Split-View state & Direct On-Image Dragging
   const [wipePosition, setWipePosition] = useState<number>(50);
   const [viewMode, setViewMode] = useState<'side-by-side' | 'wipe' | 'artifacts'>('side-by-side');
+
+  const wipeContainerRef = useRef<HTMLDivElement | null>(null);
+  const isDraggingWipeRef = useRef<boolean>(false);
+
+  const updateWipeFromClientX = useCallback((clientX: number) => {
+    if (!wipeContainerRef.current) return;
+    const rect = wipeContainerRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const x = clientX - rect.left;
+    const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setWipePosition(Math.round(percent * 10) / 10);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingWipeRef.current) {
+        updateWipeFromClientX(e.clientX);
+      }
+    };
+    const handleMouseUp = () => {
+      isDraggingWipeRef.current = false;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (isDraggingWipeRef.current && e.touches[0]) {
+        updateWipeFromClientX(e.touches[0].clientX);
+      }
+    };
+    const handleTouchEnd = () => {
+      isDraggingWipeRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [updateWipeFromClientX]);
 
   // Fetch available evidence items for dropdown selectors
   useEffect(() => {
@@ -223,48 +267,229 @@ const EvidenceComparison: React.FC = () => {
             </div>
           )}
 
-          {/* VIEW MODE 2: Wipe Difference Slider */}
+          {/* VIEW MODE 2: Wipe Difference Slider (Direct On-Image Dragging + Track Control) */}
           {viewMode === 'wipe' && (
             <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Wipe Difference Inspection (Wipe Split-View)</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
-                  <label>Wipe Split: <strong>{wipePosition}%</strong></label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.6rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    Wipe Difference Inspection (Wipe Split-View)
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    Click or drag directly across the image to slide the comparison curtain
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '0.8rem', background: 'var(--surface-color-light)', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid var(--border-color-translucent)' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span>Wipe Split:</span>
+                    <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary-color)' }}>{Math.round(wipePosition)}%</strong>
+                  </label>
                   <input 
                     type="range" 
                     min="0" 
                     max="100" 
                     value={wipePosition} 
                     onChange={e => setWipePosition(Number(e.target.value))}
-                    style={{ width: '150px', cursor: 'pointer' }}
+                    style={{ width: '130px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setWipePosition(50)}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: '5px',
+                      padding: '0.15rem 0.45rem',
+                      fontSize: '0.72rem',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)'
+                    }}
+                    title="Center divider at 50%"
+                  >
+                    50%
+                  </button>
                 </div>
               </div>
 
-              <div style={{ position: 'relative', width: '100%', maxWidth: '800px', height: '420px', margin: '0 auto', background: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+              {/* Direct On-Image Interactive Scrubbing Container */}
+              <div 
+                ref={wipeContainerRef}
+                onMouseDown={(e) => {
+                  isDraggingWipeRef.current = true;
+                  updateWipeFromClientX(e.clientX);
+                }}
+                onTouchStart={(e) => {
+                  isDraggingWipeRef.current = true;
+                  if (e.touches[0]) updateWipeFromClientX(e.touches[0].clientX);
+                }}
+                style={{ 
+                  position: 'relative', 
+                  width: '100%', 
+                  maxWidth: '860px', 
+                  height: '460px', 
+                  margin: '0 auto', 
+                  background: '#070b10', 
+                  borderRadius: '12px', 
+                  overflow: 'hidden', 
+                  border: '1px solid var(--border-color)',
+                  cursor: 'ew-resize',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  touchAction: 'none',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)'
+                }}
+              >
                 {/* Background Image: Evidence B */}
                 <AuthenticatedImage
                   src={`/api/evidence/${comparisonData.evidence_b?.id}/raw`}
                   alt="Evidence B"
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+                  style={{ 
+                    position: 'absolute', 
+                    top: 0, 
+                    left: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'contain',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}
                 />
 
                 {/* Foreground Image: Evidence A with clip-path wipe */}
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', clipPath: `polygon(0 0, ${wipePosition}% 0, ${wipePosition}% 100%, 0 100%)` }}>
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  left: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  clipPath: `polygon(0 0, ${wipePosition}% 0, ${wipePosition}% 100%, 0 100%)`,
+                  pointerEvents: 'none',
+                  userSelect: 'none'
+                }}>
                   <AuthenticatedImage
                     src={`/api/evidence/${comparisonData.evidence_a?.id}/raw`}
                     alt="Evidence A"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'contain',
+                      pointerEvents: 'none',
+                      userSelect: 'none'
+                    }}
                   />
                 </div>
 
-                {/* Divider Line */}
-                <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${wipePosition}%`, width: '2px', background: '#ffffff', boxShadow: '0 0 8px rgba(0,0,0,0.8)' }} />
+                {/* Badge Overlay: Evidence A (Top Left) */}
+                <div style={{
+                  position: 'absolute',
+                  top: '0.85rem',
+                  left: '0.85rem',
+                  background: 'rgba(28, 43, 58, 0.88)',
+                  backdropFilter: 'blur(8px)',
+                  color: '#ffffff',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  zIndex: 2
+                }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }} />
+                  <span>Evidence A: {comparisonData.evidence_a?.original_filename}</span>
+                </div>
+
+                {/* Badge Overlay: Evidence B (Top Right) */}
+                <div style={{
+                  position: 'absolute',
+                  top: '0.85rem',
+                  right: '0.85rem',
+                  background: 'rgba(28, 43, 58, 0.88)',
+                  backdropFilter: 'blur(8px)',
+                  color: '#ffffff',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                  zIndex: 2
+                }}>
+                  <span>Evidence B: {comparisonData.evidence_b?.original_filename}</span>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                </div>
+
+                {/* Vertical Divider Curtain Line */}
+                <div style={{ 
+                  position: 'absolute', 
+                  top: 0, 
+                  bottom: 0, 
+                  left: `${wipePosition}%`, 
+                  width: '2px', 
+                  background: '#ffffff', 
+                  boxShadow: '0 0 10px rgba(0,0,0,0.85), 0 0 4px rgba(255,255,255,0.9)',
+                  pointerEvents: 'none',
+                  zIndex: 3
+                }} />
+
+                {/* Interactive Center Scrubbing Handle */}
+                <div style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: `${wipePosition}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  background: 'rgba(28, 43, 58, 0.95)',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  cursor: 'ew-resize',
+                  backdropFilter: 'blur(8px)',
+                  zIndex: 5
+                }}>
+                  <ChevronsLeftRight size={18} />
+                </div>
+
+                {/* Helper hint pill */}
+                <div style={{
+                  position: 'absolute',
+                  bottom: '0.85rem',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(6px)',
+                  color: 'rgba(255, 255, 255, 0.85)',
+                  padding: '0.22rem 0.65rem',
+                  borderRadius: '20px',
+                  fontSize: '0.68rem',
+                  pointerEvents: 'none',
+                  letterSpacing: '0.03em',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  zIndex: 2
+                }}>
+                  Click & drag anywhere on the image to scrub
+                </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '800px', margin: '0.5rem auto 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>&larr; Evidence A: {comparisonData.evidence_a?.original_filename}</span>
-                <span>Evidence B: {comparisonData.evidence_b?.original_filename} &rarr;</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '860px', margin: '0.6rem auto 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <span>&larr; Showing {Math.round(wipePosition)}% Evidence A ({comparisonData.evidence_a?.original_filename})</span>
+                <span>Showing {Math.round(100 - wipePosition)}% Evidence B ({comparisonData.evidence_b?.original_filename}) &rarr;</span>
               </div>
             </div>
           )}
