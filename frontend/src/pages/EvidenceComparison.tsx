@@ -380,56 +380,6 @@ const EvidenceComparison: React.FC = () => {
                   />
                 </div>
 
-                {/* Badge Overlay: Evidence A (Top Left) */}
-                <div style={{
-                  position: 'absolute',
-                  top: '0.85rem',
-                  left: '0.85rem',
-                  background: 'rgba(28, 43, 58, 0.88)',
-                  backdropFilter: 'blur(8px)',
-                  color: '#ffffff',
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  zIndex: 2
-                }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }} />
-                  <span>Evidence A: {comparisonData.evidence_a?.original_filename}</span>
-                </div>
-
-                {/* Badge Overlay: Evidence B (Top Right) */}
-                <div style={{
-                  position: 'absolute',
-                  top: '0.85rem',
-                  right: '0.85rem',
-                  background: 'rgba(28, 43, 58, 0.88)',
-                  backdropFilter: 'blur(8px)',
-                  color: '#ffffff',
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.02em',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  pointerEvents: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                  zIndex: 2
-                }}>
-                  <span>Evidence B: {comparisonData.evidence_b?.original_filename}</span>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-                </div>
-
                 {/* Vertical Divider Curtain Line */}
                 <div style={{ 
                   position: 'absolute', 
@@ -437,8 +387,8 @@ const EvidenceComparison: React.FC = () => {
                   bottom: 0, 
                   left: `${wipePosition}%`, 
                   width: '2px', 
-                  background: '#ffffff', 
-                  boxShadow: '0 0 10px rgba(0,0,0,0.85), 0 0 4px rgba(255,255,255,0.9)',
+                  background: 'linear-gradient(to bottom, #d4a043, #b8872a 40%, #b8872a 60%, #d4a043)', 
+                  boxShadow: '0 0 10px rgba(184, 135, 42, 0.5), 0 0 2px rgba(255, 255, 255, 0.7)',
                   pointerEvents: 'none',
                   zIndex: 3
                 }} />
@@ -452,44 +402,65 @@ const EvidenceComparison: React.FC = () => {
                   width: '38px',
                   height: '38px',
                   borderRadius: '50%',
-                  background: 'rgba(28, 43, 58, 0.95)',
-                  border: '2px solid #ffffff',
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2)',
+                  background: 'linear-gradient(135deg, #1c2b3a 0%, #2a3e52 100%)',
+                  border: '2px solid #b8872a',
+                  boxShadow: '0 4px 14px rgba(28, 43, 58, 0.45), 0 0 10px rgba(184, 135, 42, 0.35)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ffffff',
+                  color: '#f6f2eb',
                   cursor: 'ew-resize',
                   backdropFilter: 'blur(8px)',
+                  transition: 'box-shadow 0.15s ease',
                   zIndex: 5
                 }}>
-                  <ChevronsLeftRight size={18} />
-                </div>
-
-                {/* Helper hint pill */}
-                <div style={{
-                  position: 'absolute',
-                  bottom: '0.85rem',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: 'rgba(0, 0, 0, 0.65)',
-                  backdropFilter: 'blur(6px)',
-                  color: 'rgba(255, 255, 255, 0.85)',
-                  padding: '0.22rem 0.65rem',
-                  borderRadius: '20px',
-                  fontSize: '0.68rem',
-                  pointerEvents: 'none',
-                  letterSpacing: '0.03em',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  zIndex: 2
-                }}>
-                  Click & drag anywhere on the image to scrub
+                  <ChevronsLeftRight size={17} style={{ color: '#d4a043' }} />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '860px', margin: '0.6rem auto 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                <span>&larr; Showing {Math.round(wipePosition)}% Evidence A ({comparisonData.evidence_a?.original_filename})</span>
-                <span>Showing {Math.round(100 - wipePosition)}% Evidence B ({comparisonData.evidence_b?.original_filename}) &rarr;</span>
+              {/* Clean Reference Legend Below Canvas */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                maxWidth: '860px', 
+                margin: '0.65rem auto 0', 
+                fontSize: '0.78rem',
+                padding: '0 0.25rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#1c2b3a' }} />
+                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Evidence A:</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{comparisonData.evidence_a?.original_filename}</span>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    fontFamily: 'var(--font-mono)', 
+                    background: 'rgba(28, 43, 58, 0.08)', 
+                    color: 'var(--primary-color)', 
+                    padding: '0.1rem 0.4rem', 
+                    borderRadius: '4px',
+                    fontWeight: 700 
+                  }}>
+                    {Math.round(wipePosition)}%
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    fontFamily: 'var(--font-mono)', 
+                    background: 'rgba(184, 135, 42, 0.12)', 
+                    color: 'var(--accent-color)', 
+                    padding: '0.1rem 0.4rem', 
+                    borderRadius: '4px',
+                    fontWeight: 700 
+                  }}>
+                    {Math.round(100 - wipePosition)}%
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>{comparisonData.evidence_b?.original_filename}</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>:Evidence B</span>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                </div>
               </div>
             </div>
           )}
