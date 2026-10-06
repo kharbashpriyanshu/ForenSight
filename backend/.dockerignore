@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+storage/
+datasets/external/
+datasets/benchmark/
+*_experiment_out/
+forensight.db

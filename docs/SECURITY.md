@@ -20,11 +20,17 @@ The demo seeder provisions known demonstration passwords and exits without runni
 ## 2. Authentication & Credential Management
 
 - **Cryptographic Password Hashing**: Passwords are never stored in plaintext. They are hashed using `bcrypt` via `passlib[bcrypt]`.
-- **JWT Session Tokens**:
-  - Signed using symmetric HMAC-SHA256 (`HS256`).
-  - Claims encode user identity (`sub`), expiration (`exp`), and role.
-  - Secret keys are provided via the `SECRET_KEY` environment variable. Production environments must inject a high-entropy 256-bit secret.
-  - Token validation is enforced via the centralized FastAPI dependency `get_current_user`. Unauthenticated requests immediately yield HTTP 401 Unauthorized.
+- **Browser sessions**:
+  - The browser receives a 15-minute HS256 access JWT in an `HttpOnly`, `SameSite=Lax` cookie and a rotating, opaque refresh token in a second `HttpOnly` cookie. Refresh-token hashes are stored per session; logout, expiry, and session revocation take effect on the next request.
+  - Unsafe cookie-authenticated requests require a double-submit CSRF token that is also bound by hash to the session. Requests carrying a browser `Origin` must match the configured CORS origins.
+  - Use HTTPS in production; production cookies are `Secure`. The application UI and API should be served on the same site behind the documented reverse proxy.
+  - Legacy bearer JWTs remain accepted for migration until their embedded expiry, but the login endpoint no longer issues bearer tokens. Stateless legacy tokens cannot be revoked individually; new browser authentication uses revocable cookie sessions.
+- **Optional TOTP multi-factor authentication**:
+  - Accounts can enroll an RFC 6238 authenticator with password confirmation, then verify the first code before enabling it.
+  - TOTP seeds are encrypted using a key derived from `SECRET_KEY`; rotating that key requires MFA recovery/re-enrollment planning. Ten one-time recovery codes are returned only once and stored as hashes.
+  - Ten consecutive password or MFA failures lock the account for 15 minutes. TOTP steps and recovery codes cannot be reused.
+  - Endpoints: `POST /api/auth/mfa/setup`, `/api/auth/mfa/enable`, and `/api/auth/mfa/disable`. Setup and disable require the current password; enable and disable require a fresh authenticator code.
+- **Secret keys**: `SECRET_KEY` must be a high-entropy value. Keep it stable and backed up securely; it signs access/challenge tokens and protects stored MFA seeds.
 
 ---
 
@@ -52,7 +58,7 @@ Authorization is enforced at the route level through centralized dependency func
 Forensic artifacts (such as ELA error maps and Copy-Move correspondence visualizations) are sensitive derivatives of case evidence. They are **never** served via unauthenticated static web server directories.
 
 - **Protected Endpoint**: `GET /api/artifacts/{artifact_path:path}`
-- **Authentication**: Requires valid Bearer JWT. Unauthenticated requests return `401 Unauthorized`.
+- **Authentication**: Requires a valid cookie session or bearer JWT. Unauthenticated requests return `401 Unauthorized`.
 - **Case Ownership Verification**: The endpoint maps the requested artifact back to its parent Evidence and Case, rejecting cross-case access attempts with `403 Forbidden`.
 - **Path Traversal Mitigation**:
   - Rejects null-byte injections (`%00`) with `403 Forbidden`.

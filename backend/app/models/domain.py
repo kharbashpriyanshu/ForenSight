@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -189,6 +189,8 @@ class AnalysisJob(Base):
     analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=True)
     analysis_type = Column(String, index=True)
     engine_version = Column(String, nullable=False, default="1.0.0")
+    request_hash = Column(String(64), nullable=False, unique=True, default=lambda: uuid.uuid4().hex)
+    parameters = Column(JSON, nullable=False, default=dict)
     
     status = Column(String, default="QUEUED")
     progress_percent = Column(Integer, nullable=False, default=0)
@@ -204,8 +206,23 @@ class AnalysisJob(Base):
     
     evidence = relationship("Evidence", backref="jobs")
 
+
+class AnalysisJobOutbox(Base):
+    __tablename__ = "analysis_job_outbox"
+
+    id = Column(Integer, primary_key=True)
+    job_id = Column(Integer, ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    next_attempt_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
+    dispatched_at = Column(DateTime, nullable=True)
+    last_error = Column(Text, nullable=True)
+
+    job = relationship("AnalysisJob")
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
+    __table_args__ = (UniqueConstraint("case_id", "sequence_number", name="uq_audit_case_sequence"),)
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(String, index=True)
     evidence_id = Column(Integer, nullable=True)
@@ -213,6 +230,9 @@ class AuditEvent(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     actor = Column(String, nullable=True)
     safe_metadata = Column(String, nullable=True)
+    sequence_number = Column(Integer, nullable=False)
+    previous_hash = Column(String(64), nullable=False)
+    event_hash = Column(String(64), nullable=False, index=True)
 
 class Report(Base):
     __tablename__ = "reports"
@@ -232,6 +252,30 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String, default="INVESTIGATOR")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    totp_enabled = Column(Boolean, nullable=False, default=False)
+    totp_secret_encrypted = Column(Text, nullable=True)
+    totp_pending_secret_encrypted = Column(Text, nullable=True)
+    totp_pending_expires_at = Column(DateTime, nullable=True)
+    totp_last_step = Column(Integer, nullable=False, default=-1)
+    totp_recovery_hashes = Column(JSON, nullable=False, default=list)
+    auth_failed_attempts = Column(Integer, nullable=False, default=0)
+    auth_locked_until = Column(DateTime, nullable=True)
+    mfa_failed_attempts = Column(Integer, nullable=False, default=0)
+    mfa_locked_until = Column(DateTime, nullable=True)
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    session_identifier = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    refresh_token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    previous_refresh_token_hash = Column(String(64), nullable=True, index=True)
+    csrf_token_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True, index=True)
+    user_agent = Column(String(300), nullable=True)
 
 def generate_finding_id():
     return f"FS-FND-{uuid.uuid4().hex[:8].upper()}"

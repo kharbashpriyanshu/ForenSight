@@ -27,6 +27,9 @@ Every state change, evidence acquisition, analysis job submission, finding creat
 | `timestamp` | `DateTime` | UTC timestamp of event generation |
 | `actor` | `String` | Username of the investigator or system process |
 | `safe_metadata` | `String` (JSON) | Sanitized contextual metadata |
+| `sequence_number` | `Integer` | Per-case monotonic event sequence |
+| `previous_hash` | `String(64)` | SHA-256 hash of the previous event in this case |
+| `event_hash` | `String(64)` | SHA-256 hash of the canonical event payload |
 
 ---
 
@@ -64,9 +67,24 @@ The audit system organizes events into five primary categories:
 - **Read-Only Storage:** Uploaded files in `storage/evidence/` are treated as immutable isolates.
 - **Continuous Integrity Check:** Evidence detail and comparison views display the full SHA-256 digest to detect accidental bit-rot or alteration.
 
+## 5. Tamper-evident event chain and external checkpoints
+
+Each case has an independent chain beginning with a zero-hash genesis link. PostgreSQL and SQLite triggers reject ordinary event updates and deletes. This makes changes detectable and prevents routine application mutation; it does not prevent a database administrator from rewriting rows and triggers.
+
+Run an integrity scan and create a signed checkpoint using the configured Ed25519 export key:
+
+```bash
+cd backend
+python scripts/audit_integrity.py verify-chain
+python scripts/audit_integrity.py checkpoint ../audit-checkpoints/audit-<UTC-stamp>.json
+python scripts/audit_integrity.py verify-checkpoint ../audit-checkpoints/audit-<UTC-stamp>.json --trusted-fingerprint <known-public-key-sha256>
+```
+
+Store checkpoints in an independently administered, access-controlled or immutable location. Compare successive case heads and retain the trusted signer fingerprint out of band. A signed checkpoint detects later rewriting relative to that checkpoint; it cannot establish that earlier events were truthful.
+
 ---
 
-## 5. Multi-User RBAC & Audit Trail Scoping
+## 6. Multi-User RBAC & Audit Trail Scoping
 
 - **Investigator Scope:** Users with the `INVESTIGATOR` role can only view audit events associated with cases they own.
 - **Admin Oversight:** Users with the `ADMIN` role can view audit trails for any case, as well as the global system audit stream (`GET /api/audit`).

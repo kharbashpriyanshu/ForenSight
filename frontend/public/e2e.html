@@ -17,18 +17,20 @@
                 log("1. Authenticating...");
                 const authRes = await fetch(API + '/auth/login', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: 'username=admin&password=forensight_admin'
                 });
                 const authData = await authRes.json();
-                const token = authData.access_token;
-                log("   Success! Token: " + token.substring(0, 10) + "...");
-                
-                const headers = {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'};
+                if (!authRes.ok) throw new Error(authData.detail || 'Login failed');
+                log("   Secure cookie session established.");
+                const csrf = decodeURIComponent((document.cookie.match(/(?:^|;\s*)fs_csrf=([^;]*)/) || [])[1] || '');
+                const headers = {'X-CSRF-Token': csrf, 'Content-Type': 'application/json'};
                 
                 log("2. Creating case...");
                 const caseRes = await fetch(API + '/cases', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: headers,
                     body: JSON.stringify({title: "E2E API Test Case"})
                 });
@@ -37,6 +39,7 @@
                 
                 log("3. Fetching Audit Trail...");
                 const auditRes = await fetch(API + '/cases/' + caseData.case_identifier + '/audit', {
+                    credentials: 'include',
                     headers: headers
                 });
                 const auditData = await auditRes.json();

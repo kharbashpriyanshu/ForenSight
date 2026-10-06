@@ -49,3 +49,6 @@ Thumbs.db
 # Database and Storage
 forensight.db
 storage/
+backend/datasets/external/*
+!backend/datasets/external/README.md
+!backend/datasets/external/manifest.template.json

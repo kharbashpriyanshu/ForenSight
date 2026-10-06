@@ -93,6 +93,7 @@ jobs:
       ENVIRONMENT: development
       SECRET_KEY: ci-development-secret-not-used-by-containers
       POSTGRES_PASSWORD: ci-local-password-for-compose-validation
+      REDIS_PASSWORD: ci-local-redis-password-for-compose-validation
       BACKEND_CORS_ORIGINS: http://localhost,http://localhost:5173
     steps:
       - name: Checkout Code

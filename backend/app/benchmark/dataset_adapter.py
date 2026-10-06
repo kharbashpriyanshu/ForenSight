@@ -495,7 +495,31 @@ def register_dataset(
     validated_masks = 0
     seen_hashes: Dict[str, str] = {} # sha256 -> image_id
 
+    if not manifest.images:
+        errors.append("Dataset manifest contains no image records")
+    dataset_type = manifest.dataset_type.strip().upper()
+    if dataset_type not in {"CONTROLLED", "EXTERNAL"}:
+        errors.append("dataset_type must be either CONTROLLED or EXTERNAL")
+    image_ids = [record.image_id for record in manifest.images]
+    if len(image_ids) != len(set(image_ids)):
+        errors.append("Dataset manifest contains duplicate image_id values")
+    if dataset_type == "EXTERNAL":
+        required_provenance = (
+            "source_url", "license_id", "license_url", "rights_review_reference",
+            "acquisition_date", "acquisition_method", "ground_truth_source",
+            "split_policy", "held_out_grouping", "known_limitations",
+        )
+        provenance = manifest.provenance or {}
+        for key in required_provenance:
+            value = provenance.get(key)
+            if not isinstance(value, str) or not value.strip() or value.strip().upper() in {"UNKNOWN", "TBD", "TODO"}:
+                errors.append(f"External dataset provenance requires a reviewed '{key}' value")
+        if any(not record.source_license.strip() or record.source_license.strip().upper() == "UNKNOWN" for record in manifest.images):
+            errors.append("Every external image record must declare its source_license")
+
     for rec in manifest.images:
+        if len(rec.sha256) != 64 or any(char not in "0123456789abcdefABCDEF" for char in rec.sha256):
+            errors.append(f"Invalid or missing SHA-256 digest for {rec.image_id}")
         try:
             img_p = validate_safe_relative_path(dataset_root, rec.filename)
         except Exception as e:

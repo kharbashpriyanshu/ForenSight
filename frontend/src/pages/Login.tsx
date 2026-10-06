@@ -8,6 +8,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,21 +24,34 @@ export default function Login() {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
+      if (mfaChallenge) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/mfa/verify`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challenge_token: mfaChallenge, code: mfaCode }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Authenticator code was not accepted');
+        login();
+        navigate('/cases');
+      } else {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Invalid credentials');
+        if (data.requires_mfa) {
+          setMfaChallenge(data.challenge_token);
+          setPassword('');
+          return;
+        }
+        login();
+        navigate('/cases');
       }
-
-      const data = await response.json();
-      login(data.access_token);
-      navigate('/cases');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
     } finally {
@@ -128,27 +143,40 @@ export default function Login() {
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <label htmlFor="username" style={{ display: 'block', marginBottom: '0.45rem', color: 'var(--text-body)', fontSize: '0.825rem', fontWeight: 600 }}>
-              Investigator Username
-            </label>
-            <input 
-              id="username"
-              name="username"
-              type="text" 
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '0.7rem 0.85rem', 
-                borderRadius: '8px', 
-                border: '1px solid var(--border-color)', 
-                background: 'rgba(255, 255, 255, 0.85)', 
-                color: 'var(--text-main)', 
-                boxSizing: 'border-box' 
-              }}
-            />
+            {mfaChallenge ? (
+              <>
+                <label htmlFor="mfa-code" style={{ display: 'block', marginBottom: '0.45rem', color: 'var(--text-body)', fontSize: '0.825rem', fontWeight: 600 }}>
+                  Authenticator or recovery code
+                </label>
+                <input
+                  id="mfa-code"
+                  name="mfa-code"
+                  type="text"
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                  autoFocus
+                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.85)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                />
+                <button type="button" className="btn btn-secondary" onClick={() => { setMfaChallenge(''); setMfaCode(''); }}>
+                  Back to password
+                </button>
+              </>
+            ) : (
+              <>
+                <label htmlFor="username" style={{ display: 'block', marginBottom: '0.45rem', color: 'var(--text-body)', fontSize: '0.825rem', fontWeight: 600 }}>
+                  Investigator Username
+                </label>
+                <input
+                  id="username" name="username" type="text" value={username}
+                  onChange={(e) => setUsername(e.target.value)} autoComplete="username"
+                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.85)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                />
+              </>
+            )}
           </div>
-          <div>
+          {!mfaChallenge && <div>
             <label htmlFor="password" style={{ display: 'block', marginBottom: '0.45rem', color: 'var(--text-body)', fontSize: '0.825rem', fontWeight: 600 }}>
               Access Password
             </label>
@@ -168,7 +196,7 @@ export default function Login() {
                 boxSizing: 'border-box' 
               }}
             />
-          </div>
+          </div>}
           <button 
             type="submit" 
             className="btn btn-primary" 
@@ -182,7 +210,7 @@ export default function Login() {
             }} 
             disabled={loading}
           >
-            {loading ? 'Authenticating Investigator...' : 'Sign In to Station'}
+            {loading ? 'Authenticating Investigator...' : mfaChallenge ? 'Verify and Sign In' : 'Sign In to Station'}
           </button>
         </form>
         

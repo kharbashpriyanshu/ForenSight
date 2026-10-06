@@ -19,7 +19,7 @@ ForenSight follows a modern decoupled architecture, separating the client-side p
                     │   React 19 / Vite SPA     │
                     └─────────────┬─────────────┘
                                   │
-                                  │ HTTPS / REST (Bearer JWT Auth)
+                                  │ HTTPS / REST (HttpOnly Cookie Session; legacy Bearer)
                                   ▼
 ═══════════════════════════ TRUST BOUNDARY ═══════════════════════════
                     ┌───────────────────────────┐
@@ -67,16 +67,16 @@ The system maintains a strict separation of concerns:
 - **Frontend** handles user interface, multi-user authentication state, case management views, interactive evidence visualization, asynchronous job polling, authenticated artifact rendering, and report presentation.
 - **Backend** is strictly responsible for data processing, database interactions, centralized RBAC authorization, classical DIP algorithms, evidence fusion (Rule 7B-v1), and audit logging.
 
-They communicate exclusively via a defined REST API over HTTP with Bearer JWT tokens.
+They communicate through the REST API. Browser authentication uses short-lived HttpOnly access cookies and rotating refresh sessions; legacy bearer tokens remain accepted until their own expiry.
 
 ## Asynchronous Worker Architecture & Celery Dual-Mode
 
 Synchronous execution of computer vision tasks (e.g., SIFT feature extraction, RANSAC matching, DCT quantization parsing) blocks web server worker threads. ForenSight employs an asynchronous worker model:
 
 1. **API Job Submission**: Client submits job (`POST /api/jobs/analysis/{evidence_id}/{analysis_type}`).
-2. **State Transition**: Job is recorded as `QUEUED`, and dispatched via Celery.
+2. **State Transition**: The job and a durable outbox row are committed together. A canonical request hash makes repeat submissions idempotent; explicit reruns receive a new identity.
 3. **Task Execution**:
-   - `CELERY_TASK_ALWAYS_EAGER=false` (Production/Docker): Pushed to Redis broker (`redis://redis:6379/0`), picked up by Celery worker container.
+   - `CELERY_TASK_ALWAYS_EAGER=false` (Production/Docker): The outbox dispatcher publishes to the authenticated private Redis broker; Celery Beat retries pending publications and the worker ignores duplicate deliveries for completed or currently running jobs.
    - `CELERY_TASK_ALWAYS_EAGER=true` (Local Fallback): Executed immediately in-process, allowing development without active Redis/Docker daemons.
 4. **Lifecycle States**: Deterministically moves: `QUEUED` → `RUNNING` → `COMPLETED` or `FAILED`.
 5. **Sanitized Failure Handling**: If an engine encounters unhandled errors or invalid formats, the job transitions to `FAILED` with a human-readable, safe error message. Stack traces, file system paths, and internal exceptions are strictly stripped.
@@ -86,9 +86,9 @@ Synchronous execution of computer vision tasks (e.g., SIFT feature extraction, R
 Forensic artifacts (such as ELA difference maps and Copy-Move match visualizations) are sensitive investigative materials:
 
 - **Authenticated Route**: Stored artifacts are accessed via `GET /api/artifacts/{artifact_path:path}`.
-- **Authorization Scoping**: Requires a valid Bearer JWT. Enforces case ownership: Investigators can only view artifacts from their own cases; cross-case requests receive `403 Forbidden`; Admins have global visibility.
+- **Authorization Scoping**: Requires an active cookie session or legacy bearer JWT. Cookie-authenticated writes also require a CSRF token. Enforces case ownership: Investigators can only view artifacts from their own cases; cross-case requests receive `403 Forbidden`; Admins have global visibility.
 - **Traversal Mitigation**: Path parameters are resolved against the absolute storage directory, strictly rejecting `..` directory traversal and null byte injections.
-- **Frontend `AuthenticatedImage`**: React component fetches binary blobs via `fetch()` with `Authorization: Bearer <token>`, converts to object URLs with `URL.createObjectURL`, and frees memory on unmount with `URL.revokeObjectURL`. If an engine produces structured findings without an image artifact (e.g., Metadata analysis), the UI displays an informative fallback notice.
+- **Frontend `AuthenticatedImage`**: React component fetches binary blobs with the HttpOnly cookie session, converts them to object URLs with `URL.createObjectURL`, and frees memory on unmount with `URL.revokeObjectURL`. If an engine produces structured findings without an image artifact (e.g., Metadata analysis), the UI displays an informative fallback notice.
 
 ## Database Architecture & ORM Schema
 

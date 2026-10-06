@@ -1,0 +1,6 @@
+FROM postgres:15
+
+RUN groupadd --system --gid 10001 forensight-backup \
+    && useradd --system --uid 10001 --gid forensight-backup --home-dir /home/forensight-backup --create-home forensight-backup \
+    && install -d -o 10001 -g 10001 /backups
+USER 10001:10001

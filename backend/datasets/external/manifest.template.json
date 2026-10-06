@@ -1,0 +1,22 @@
+{
+  "manifest_version": "1.0.0",
+  "dataset_id": "replace-with-publisher-dataset-and-release",
+  "dataset_version": "replace-with-publisher-release-version",
+  "dataset_name": "replace-with-full-published-title",
+  "dataset_type": "EXTERNAL",
+  "description": "Describe the dataset population, annotations, acquisition conditions, and known scope limitations.",
+  "creation_date": "YYYY-MM-DD",
+  "provenance": {
+    "source_url": "https://replace-with-publisher-source",
+    "license_id": "replace-with-exact-publisher-terms-or-access-agreement",
+    "license_url": "https://replace-with-license-or-terms-page",
+    "rights_review_reference": "replace-with-lab-review-record-id-and-review-date",
+    "acquisition_date": "YYYY-MM-DD",
+    "acquisition_method": "Describe direct publisher download or documented transfer.",
+    "ground_truth_source": "Identify the publisher annotation files and their documented provenance.",
+    "split_policy": "Describe source-aware development and held-out split construction.",
+    "held_out_grouping": "State which source devices, scenes, or manipulation families are held out.",
+    "known_limitations": "Describe annotation uncertainty, collection bias, and out-of-scope modalities."
+  },
+  "images": []
+}

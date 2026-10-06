@@ -52,3 +52,9 @@ Evaluations are strictly separated into two distinct cohorts:
 > 1. Forensic results indicate mathematical and statistical properties; they do **not** constitute legal verdicts or automated assertions of guilt.
 > 2. The absence of an anomaly does not certify authenticity, as sophisticated anti-forensic techniques can conceal traces.
 > 3. Detection of an anomaly does not prove malicious intent, as standard photo editors, resizing, and transcoding introduce forensic artifacts.
+
+## 5. External data registration gate
+
+External manifests must carry a provenance record with publisher/source URL, exact license or access terms, a lab rights-review reference, acquisition date and method, annotation source, split policy, held-out grouping, and known limitations. Each image also needs a declared source license and a valid SHA-256 digest. Registration rejects empty image lists and duplicate image identifiers. This gate checks that fields are recorded; it does not certify legal sufficiency, annotation truth, or representativeness.
+
+The external dataset template and acquisition procedure are in `backend/datasets/external/`. Dataset files are intentionally absent from this repository. No external benchmark result should be reported until the licensed dataset is present, registered, integrity-verified, evaluated, and reproducibly rerun.

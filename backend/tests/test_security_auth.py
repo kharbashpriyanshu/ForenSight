@@ -277,19 +277,22 @@ def test_multi_user_login_and_credential_validation(auth_test_env):
         res = client.post("/api/auth/login", data={"username": uname, "password": pw})
         assert res.status_code == 200
         data = res.json()
-        assert "access_token" in data
-        assert data["token_type"] == "bearer"
+        assert data["authenticated"] is True
+        assert "access_token" not in data
+        assert "fs_access=" in res.headers["set-cookie"]
+        assert "fs_refresh=" in res.headers["set-cookie"]
+        assert "fs_csrf=" in res.headers["set-cookie"]
         assert "password" not in data
         assert "hashed_password" not in data
 
     # 2. Bad password rejection
     res_bad = client.post("/api/auth/login", data={"username": "investigator_a", "password": "wrong_password"})
-    assert res_bad.status_code == 400
+    assert res_bad.status_code == 401
     assert "Incorrect username or password" in res_bad.json()["detail"]
 
     # 3. Nonexistent user rejection
     res_none = client.post("/api/auth/login", data={"username": "ghost_user", "password": "any"})
-    assert res_none.status_code == 400
+    assert res_none.status_code == 401
 
 
 def test_investigator_case_list_scoping(auth_test_env):

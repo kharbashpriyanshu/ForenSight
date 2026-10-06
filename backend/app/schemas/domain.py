@@ -2,6 +2,12 @@ from pydantic import BaseModel
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from pydantic import ConfigDict
+from pydantic import Field
+
+
+class AnalysisJobCreate(BaseModel):
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+    force_rerun: bool = False
 
 class EvidenceBase(BaseModel):
     original_filename: str

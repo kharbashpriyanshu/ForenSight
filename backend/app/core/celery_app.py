@@ -25,6 +25,10 @@ celery_app.conf.update(
     task_soft_time_limit=settings.ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS,
     task_time_limit=settings.ANALYSIS_JOB_TIME_LIMIT_SECONDS,
     beat_schedule={
+        "dispatch-pending-analysis-jobs": {
+            "task": "dispatch_pending_analysis_jobs",
+            "schedule": timedelta(seconds=15),
+        },
         "reconcile-stale-analysis-jobs": {
             "task": "reconcile_stale_analysis_jobs",
             "schedule": timedelta(minutes=1),

@@ -8,6 +8,7 @@ interface CacheEntry {
 const GET_CACHE_TTL_MS = 20000; // 20 seconds in-memory cache for ultra-fast routing
 const getCache = new Map<string, CacheEntry>();
 const inFlightRequests = new Map<string, Promise<Response>>();
+let refreshInFlight: Promise<boolean> | null = null;
 
 /**
  * Invalidate cached GET responses.
@@ -16,6 +17,7 @@ const inFlightRequests = new Map<string, Promise<Response>>();
 export function invalidateApiCache(filterPattern?: string) {
   if (!filterPattern) {
     getCache.clear();
+    inFlightRequests.clear();
   } else {
     for (const key of getCache.keys()) {
       if (key.includes(filterPattern)) {
@@ -23,6 +25,31 @@ export function invalidateApiCache(filterPattern?: string) {
       }
     }
   }
+}
+
+function readCsrfCookie(): string {
+  const match = document.cookie.match(/(?:^|;\s*)fs_csrf=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+export async function refreshApiSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'X-CSRF-Token': readCsrfCookie() },
+        });
+        return response.ok;
+      } catch {
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight ?? Promise.resolve(false);
 }
 
 /**
@@ -56,7 +83,6 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
     }
   }
 
-  const token = localStorage.getItem('token');
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
   const abortFromCaller = () => controller.abort(options.signal?.reason);
@@ -68,8 +94,9 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
   }
   
   const headers = new Headers(options.headers || {});
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  if (!isGet) {
+    const csrf = readCsrfCookie();
+    if (csrf) headers.set('X-CSRF-Token', csrf);
   }
   if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
@@ -81,8 +108,23 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
       response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
         signal: controller.signal,
       });
+      const authWithoutRefresh = ['/auth/login', '/auth/mfa/verify', '/auth/refresh', '/auth/logout'];
+      if (response.status === 401 && !authWithoutRefresh.includes(endpoint)) {
+        const refreshed = await refreshApiSession();
+        if (refreshed) {
+          const csrf = readCsrfCookie();
+          if (csrf) headers.set('X-CSRF-Token', csrf);
+          response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+            credentials: 'include',
+            signal: controller.signal,
+          });
+        }
+      }
     } catch (error) {
       if (controller.signal.aborted && !options.signal?.aborted) {
         throw new Error(`The request timed out after ${Math.ceil(timeoutMs / 1000)} seconds. Retry when the service is available.`);
@@ -100,7 +142,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
     }
 
     if (response.status === 401) {
-      localStorage.removeItem('token');
+      invalidateApiCache();
       window.location.href = '/login';
     }
 

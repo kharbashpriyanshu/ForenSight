@@ -1,35 +1,63 @@
-from typing import Union
-from fastapi import Depends, HTTPException, status
+import hashlib
+import hmac
+from datetime import datetime
+from typing import Optional, Union
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from app.db.database import get_db
-from app.models.domain import User, InvestigationCase, Evidence, Analysis, AnalysisJob, Report
+from app.models.domain import User, UserSession, InvestigationCase, Evidence, Analysis, AnalysisJob, Report
 from app.services.cases import CaseService
 from app.core.config import settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
+    request: Request, db: Session = Depends(get_db), token: Optional[str] = Depends(oauth2_scheme)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    cookie_auth = token is None
+    if cookie_auth:
+        token = request.cookies.get("fs_access")
+    if not token:
+        raise credentials_exception
     try:
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=["HS256"]
         )
+        if payload.get("purpose") == "mfa_challenge":
+            raise credentials_exception
         username: str = payload.get("sub")
+        session_id = payload.get("sid")
         if username is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
+    if cookie_auth and not session_id:
+        raise credentials_exception
     user = db.query(User).filter(User.username == username).first()
     if user is None:
         raise credentials_exception
+
+    if session_id:
+        session = db.query(UserSession).filter(
+            UserSession.session_identifier == session_id,
+            UserSession.user_id == user.id,
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at > datetime.utcnow(),
+        ).first()
+        if not session:
+            raise credentials_exception
+        if cookie_auth and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
+            csrf_cookie = request.cookies.get("fs_csrf", "")
+            csrf_header = request.headers.get("X-CSRF-Token", "")
+            if not csrf_cookie or not hmac.compare_digest(csrf_cookie, csrf_header) or not hmac.compare_digest(session.csrf_token_hash, hashlib.sha256(csrf_cookie.encode("utf-8")).hexdigest()):
+                raise HTTPException(status_code=403, detail="CSRF token validation failed")
     return user
 
 

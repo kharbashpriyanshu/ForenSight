@@ -226,6 +226,10 @@ class DatasetManifest(BaseModel):
     dataset_type: str = Field(..., description="'CONTROLLED' or 'EXTERNAL'")
     description: str = Field(..., description="Methodology, goals, and known limitations")
     creation_date: str = Field(..., description="ISO 8601 date string")
+    provenance: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Required provenance and rights-review record for EXTERNAL datasets",
+    )
     images: List[ImageRecord] = Field(default_factory=list)
 
     model_config = ConfigDict(extra="ignore")

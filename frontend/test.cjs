@@ -108,7 +108,7 @@ async function mockApiRequest(request) {
   const route = `${request.method()} ${url.pathname}`;
 
   if (url.pathname === '/api/auth/login' && request.method() === 'POST') {
-    return jsonResponse({ access_token: 'e2e-token', token_type: 'bearer' });
+    return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR', mfa_enabled: false });
   }
   if (url.pathname === '/api/cases' && request.method() === 'GET') {
     return jsonResponse(state.caseCreated ? [caseData] : []);

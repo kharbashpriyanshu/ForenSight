@@ -20,7 +20,8 @@ class Settings(BaseSettings):
     CELERY_TASK_ALWAYS_EAGER: bool = True
     ENVIRONMENT: str = "development"
     SECRET_KEY: str = "development-only-secret-change-before-deployment"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7 # 7 days
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    SESSION_REFRESH_EXPIRE_DAYS: int = 30
     ANALYSIS_JOB_STALE_AFTER_SECONDS: int = 900
     ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS: int = 300
     ANALYSIS_JOB_TIME_LIMIT_SECONDS: int = 330
@@ -58,6 +59,17 @@ def validate_runtime_settings() -> None:
     if len(database_password) < 16 or any(marker in database_password.lower() for marker in ("forensight_password", "password", "change-me", "local-dev")):
         problems.append("DATABASE_URL must use a unique password of at least 16 characters")
 
+    for name, redis_url in (
+        ("CELERY_BROKER_URL", settings.CELERY_BROKER_URL),
+        ("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND),
+        ("REDIS_URL", settings.REDIS_URL),
+    ):
+        parsed_redis = urlparse(redis_url)
+        redis_password = parsed_redis.password or ""
+        if parsed_redis.scheme not in {"redis", "rediss"} or not parsed_redis.hostname or len(redis_password) < 16:
+            problems.append(f"{name} must use Redis with a unique password of at least 16 characters")
+            break
+
     export_key = settings.CASE_EXPORT_SIGNING_PRIVATE_KEY.strip()
     if not export_key:
         problems.append("CASE_EXPORT_SIGNING_PRIVATE_KEY must be configured for signed case exports")
@@ -75,6 +87,10 @@ def validate_runtime_settings() -> None:
 
     if settings.MAX_UPLOAD_SIZE <= 0 or settings.MAX_IMAGE_PIXELS <= 0:
         problems.append("Upload and image pixel limits must be positive")
+    if settings.ACCESS_TOKEN_EXPIRE_MINUTES < 5 or settings.ACCESS_TOKEN_EXPIRE_MINUTES > 60:
+        problems.append("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 60")
+    if settings.SESSION_REFRESH_EXPIRE_DAYS < 1 or settings.SESSION_REFRESH_EXPIRE_DAYS > 90:
+        problems.append("SESSION_REFRESH_EXPIRE_DAYS must be between 1 and 90")
 
     if problems:
         raise RuntimeError("Invalid production configuration: " + "; ".join(problems))

@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Activity, FolderOpen, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -64,6 +65,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <AccountSecurityPanel />
             <span className="status-badge">
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />
               Multi-User RBAC Active

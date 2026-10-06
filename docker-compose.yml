@@ -12,17 +12,20 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U forensight"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7
-    ports:
-      - "6379:6379"
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    volumes:
+      - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -u \"redis://:$$REDIS_PASSWORD@127.0.0.1:6379/0\" ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -32,12 +35,14 @@ services:
       context: ./backend
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-forensight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-forensight}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/1
       - CELERY_TASK_ALWAYS_EAGER=false
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      - SESSION_REFRESH_EXPIRE_DAYS=${SESSION_REFRESH_EXPIRE_DAYS:-30}
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-http://localhost,http://localhost:5173}
       - CASE_EXPORT_SIGNING_PRIVATE_KEY=${CASE_EXPORT_SIGNING_PRIVATE_KEY:-}
       - ANALYSIS_JOB_STALE_AFTER_SECONDS=${ANALYSIS_JOB_STALE_AFTER_SECONDS:-900}
@@ -45,6 +50,12 @@ services:
       - ANALYSIS_JOB_TIME_LIMIT_SECONDS=${ANALYSIS_JOB_TIME_LIMIT_SECONDS:-330}
     ports:
       - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=256m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\""]
       interval: 10s
@@ -63,16 +74,22 @@ services:
       context: ./backend
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-forensight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-forensight}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/1
       - CELERY_TASK_ALWAYS_EAGER=false
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
       - ANALYSIS_JOB_STALE_AFTER_SECONDS=${ANALYSIS_JOB_STALE_AFTER_SECONDS:-900}
       - ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS=${ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS:-300}
       - ANALYSIS_JOB_TIME_LIMIT_SECONDS=${ANALYSIS_JOB_TIME_LIMIT_SECONDS:-330}
     command: celery -A app.core.celery_app worker --loglevel=info
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=512m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       db:
         condition: service_healthy
@@ -88,15 +105,21 @@ services:
       context: ./backend
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-forensight}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-forensight}
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/1
+      - REDIS_URL=redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - SECRET_KEY=${SECRET_KEY:?Set SECRET_KEY in .env}
       - ANALYSIS_JOB_STALE_AFTER_SECONDS=${ANALYSIS_JOB_STALE_AFTER_SECONDS:-900}
       - ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS=${ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS:-300}
       - ANALYSIS_JOB_TIME_LIMIT_SECONDS=${ANALYSIS_JOB_TIME_LIMIT_SECONDS:-330}
-    command: celery -A app.core.celery_app beat --loglevel=info
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=32m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       db:
         condition: service_healthy
@@ -104,6 +127,37 @@ services:
         condition: service_healthy
       backend:
         condition: service_healthy
+
+  backup:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.backup
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${POSTGRES_USER:-forensight}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      PGDATABASE: ${POSTGRES_DB:-forensight}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      BACKUP_ROOT: /backups
+    entrypoint: ["sh", "/usr/local/bin/backup_loop.sh"]
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./backend/scripts/backup_loop.sh:/usr/local/bin/backup_loop.sh:ro
+      - ./backend/storage:/evidence:ro
+      - backupdata:/backups
 
   frontend:
     build:
@@ -115,3 +169,5 @@ services:
 
 volumes:
   pgdata:
+  redisdata:
+  backupdata:

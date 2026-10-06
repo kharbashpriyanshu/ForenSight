@@ -31,4 +31,11 @@ python scripts/verify_case_bundle.py ../FS-CASE-XXXXXXXX.forensight --trusted-fi
 
 Without `--trusted-fingerprint`, the tool checks that the bundle is internally consistent but reports that signer identity is unverified. Keep the manifest signature and public-key fingerprint with the handoff record.
 
-The archive is a portable case-scoped data package, not a PostgreSQL backup or an automatic importer. Bundle consumers must preserve the source archive and verify it before any manual processing.
+The archive is a portable case-scoped data package, not a PostgreSQL backup. Import it into a separate station only after verifying the signer's fingerprint through a trusted channel:
+
+```bash
+cd backend
+python scripts/import_case_bundle.py ../FS-CASE-XXXXXXXX.forensight --trusted-fingerprint <trusted-public-key-sha256> --owner-username <local-investigator>
+```
+
+The importer creates a new case, assigns it to an existing local user, regenerates database identifiers, restores checked evidence and artifact files, and validates source audit chains when present. Older bundles without hash-chain fields are tagged as lacking source-chain data. The import itself is recorded as a new audit event. It does not merge into an existing case or restore user accounts, credentials, or global database state.
