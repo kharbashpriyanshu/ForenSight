@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ChevronsLeftRight } from 'lucide-react';
+import { ChevronsLeftRight, Layers, Columns2 } from 'lucide-react';
 import { fetchApi } from '../api';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 
@@ -8,6 +8,20 @@ interface EvidenceOption {
   id: number;
   original_filename: string;
   sha256_hash: string;
+}
+
+function formatArtifactTitle(raw: string): string {
+  return raw
+    .replace(/_\d+$/, '')
+    .replace(/^([A-Z]+)_[A-Z]+_/, '$1 ')
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase())
+    .replace(/\bJpeg\b/gi, 'JPEG')
+    .replace(/\bDct\b/gi, 'DCT')
+    .replace(/\bEla\b/gi, 'ELA')
+    .replace(/\bPrnu\b/gi, 'PRNU')
+    .replace(/\bMap\b/gi, 'Residual Map');
 }
 
 const EvidenceComparison: React.FC = () => {
@@ -122,43 +136,113 @@ const EvidenceComparison: React.FC = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+              <span style={{ 
+                fontSize: '0.68rem', 
+                fontWeight: 800, 
+                color: 'var(--accent-color, #b8872a)', 
+                background: 'rgba(184, 135, 42, 0.12)', 
+                padding: '0.2rem 0.55rem', 
+                borderRadius: '5px', 
+                textTransform: 'uppercase',
+                border: '1px solid rgba(184, 135, 42, 0.28)',
+                letterSpacing: '0.04em',
+                fontFamily: 'var(--font-tech)'
+              }}>
                 Forensic Correlation Lab
               </span>
             </div>
-            <h2 className="card-title" style={{ margin: 0 }}>Comparative Evidence Analysis (Compare Mode)</h2>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
+            <h2 className="card-title" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>
+              Comparative Evidence Analysis (Compare Mode)
+            </h2>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>
               Side-by-side synchronized view, wipe difference slider, and physical compression matrix
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <div style={{ display: 'flex', background: 'var(--surface-color-light)', padding: '0.2rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+            <div style={{ 
+              display: 'flex', 
+              background: 'var(--surface-color-light)', 
+              padding: '0.25rem', 
+              borderRadius: '8px', 
+              border: '1px solid var(--border-color-translucent)',
+              gap: '0.25rem'
+            }}>
               <button 
-                className={viewMode === 'side-by-side' ? 'primary-button' : 'secondary-button'} 
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                type="button"
+                style={{ 
+                  fontSize: '0.76rem', 
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  border: viewMode === 'side-by-side' ? '1px solid var(--border-color)' : '1px solid transparent',
+                  background: viewMode === 'side-by-side' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'side-by-side' ? 'var(--primary-color)' : 'var(--text-muted)',
+                  fontWeight: viewMode === 'side-by-side' ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: viewMode === 'side-by-side' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={() => setViewMode('side-by-side')}
               >
-                Side-by-Side
+                <Columns2 size={13} />
+                <span>Side-by-Side</span>
               </button>
               <button 
-                className={viewMode === 'wipe' ? 'primary-button' : 'secondary-button'} 
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                type="button"
+                style={{ 
+                  fontSize: '0.76rem', 
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  border: viewMode === 'wipe' ? '1px solid var(--border-color)' : '1px solid transparent',
+                  background: viewMode === 'wipe' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'wipe' ? 'var(--primary-color)' : 'var(--text-muted)',
+                  fontWeight: viewMode === 'wipe' ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: viewMode === 'wipe' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={() => setViewMode('wipe')}
               >
-                Wipe Difference Slider
+                <ChevronsLeftRight size={13} />
+                <span>Wipe Split-View</span>
               </button>
               <button 
-                className={viewMode === 'artifacts' ? 'primary-button' : 'secondary-button'} 
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+                type="button"
+                style={{ 
+                  fontSize: '0.76rem', 
+                  padding: '0.4rem 0.75rem',
+                  borderRadius: '6px',
+                  border: viewMode === 'artifacts' ? '1px solid var(--border-color)' : '1px solid transparent',
+                  background: viewMode === 'artifacts' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'artifacts' ? 'var(--primary-color)' : 'var(--text-muted)',
+                  fontWeight: viewMode === 'artifacts' ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: viewMode === 'artifacts' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
                 onClick={() => setViewMode('artifacts')}
               >
-                Artifact Maps
+                <Layers size={13} />
+                <span>Artifact Maps</span>
               </button>
             </div>
 
-            <button className="secondary-button" onClick={() => navigate(`/cases/${caseId}/evidence`)} style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}>
+            <button 
+              type="button"
+              className="btn btn-secondary" 
+              onClick={() => navigate(`/cases/${caseId}/evidence`)} 
+              style={{ fontSize: '0.78rem', padding: '0.4rem 0.8rem' }}
+            >
               &larr; Evidence Library
             </button>
           </div>
@@ -210,8 +294,25 @@ const EvidenceComparison: React.FC = () => {
       {comparisonData && !loading && (
         <>
           {/* Scientific Disclaimer */}
-          <div style={{ background: 'rgba(59, 130, 246, 0.08)', borderLeft: '4px solid var(--primary-color)', padding: '0.75rem 1rem', borderRadius: '4px', fontSize: '0.8rem', color: 'var(--text-main)' }}>
-            <strong>Comparative Guardrail:</strong> {comparisonData.disclaimer || 'Comparison reflects physical and compression differences. It does not output an automated manipulation verdict.'}
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderLeft: '4px solid var(--accent-color)', 
+            padding: '0.85rem 1.15rem', 
+            borderRadius: '8px', 
+            fontSize: '0.82rem', 
+            color: 'var(--text-main)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            boxShadow: '0 2px 6px rgba(45, 35, 20, 0.04)'
+          }}>
+            <strong style={{ fontFamily: 'var(--font-tech)', color: 'var(--accent-color)', letterSpacing: '0.04em' }}>
+              COMPARATIVE GUARDRAIL:
+            </strong> 
+            <span style={{ color: 'var(--text-body)' }}>
+              {comparisonData.disclaimer || 'Comparison reflects physical, digital, and compression processing differences. It does not compute an automated manipulation score.'}
+            </span>
           </div>
 
           {/* VIEW MODE 1: Side-by-Side View */}
@@ -220,22 +321,25 @@ const EvidenceComparison: React.FC = () => {
               {/* Evidence A */}
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--primary-color)' }}>
-                    Evidence A: {comparisonData.evidence_a?.original_filename}
-                  </h3>
-                  <span className="badge">ID #{comparisonData.evidence_a?.id}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }} />
+                    <h3 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+                      Evidence A: {comparisonData.evidence_a?.original_filename}
+                    </h3>
+                  </div>
+                  <span className="badge" style={{ fontFamily: 'var(--font-mono)' }}>ID #{comparisonData.evidence_a?.id}</span>
                 </div>
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', height: '280px', background: '#0a0a0c', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', height: '300px', background: '#faf8f5', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.75rem', boxShadow: 'inset 0 1px 4px rgba(45, 35, 20, 0.04)' }}>
                   <AuthenticatedImage 
                     src={`/api/evidence/${comparisonData.evidence_a?.id}/raw`} 
                     alt="Evidence A" 
-                    style={{ maxHeight: '280px', maxWidth: '100%', objectFit: 'contain' }}
+                    style={{ maxHeight: '300px', maxWidth: '100%', objectFit: 'contain' }}
                   />
                 </div>
-                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', background: 'var(--surface-color-light)', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color-translucent)' }}>
                   <div><strong>Dimensions:</strong> {comparisonData.evidence_a?.width} × {comparisonData.evidence_a?.height} px</div>
                   <div><strong>Format:</strong> {comparisonData.evidence_a?.mime_type}</div>
-                  <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', wordBreak: 'break-all', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     SHA-256: {comparisonData.evidence_a?.sha256_hash}
                   </div>
                 </div>
@@ -244,22 +348,25 @@ const EvidenceComparison: React.FC = () => {
               {/* Evidence B */}
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#10b981' }}>
-                    Evidence B: {comparisonData.evidence_b?.original_filename}
-                  </h3>
-                  <span className="badge">ID #{comparisonData.evidence_b?.id}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                    <h3 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--accent-color)', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+                      Evidence B: {comparisonData.evidence_b?.original_filename}
+                    </h3>
+                  </div>
+                  <span className="badge" style={{ fontFamily: 'var(--font-mono)' }}>ID #{comparisonData.evidence_b?.id}</span>
                 </div>
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '4px', height: '280px', background: '#0a0a0c', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '10px', height: '300px', background: '#faf8f5', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '0.75rem', boxShadow: 'inset 0 1px 4px rgba(45, 35, 20, 0.04)' }}>
                   <AuthenticatedImage 
                     src={`/api/evidence/${comparisonData.evidence_b?.id}/raw`} 
                     alt="Evidence B" 
-                    style={{ maxHeight: '280px', maxWidth: '100%', objectFit: 'contain' }}
+                    style={{ maxHeight: '300px', maxWidth: '100%', objectFit: 'contain' }}
                   />
                 </div>
-                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', background: 'var(--surface-color-light)', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color-translucent)' }}>
                   <div><strong>Dimensions:</strong> {comparisonData.evidence_b?.width} × {comparisonData.evidence_b?.height} px</div>
                   <div><strong>Format:</strong> {comparisonData.evidence_b?.mime_type}</div>
-                  <div style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', wordBreak: 'break-all', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     SHA-256: {comparisonData.evidence_b?.sha256_hash}
                   </div>
                 </div>
@@ -329,7 +436,7 @@ const EvidenceComparison: React.FC = () => {
                   maxWidth: '860px', 
                   height: '460px', 
                   margin: '0 auto', 
-                  background: '#070b10', 
+                  background: '#faf8f5', 
                   borderRadius: '12px', 
                   overflow: 'hidden', 
                   border: '1px solid var(--border-color)',
@@ -337,7 +444,7 @@ const EvidenceComparison: React.FC = () => {
                   userSelect: 'none',
                   WebkitUserSelect: 'none',
                   touchAction: 'none',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.18)'
+                  boxShadow: 'inset 0 1px 4px rgba(45, 35, 20, 0.05), 0 2px 10px rgba(45, 35, 20, 0.04)'
                 }}
               >
                 {/* Background Image: Evidence B */}
@@ -387,8 +494,8 @@ const EvidenceComparison: React.FC = () => {
                   bottom: 0, 
                   left: `${wipePosition}%`, 
                   width: '2px', 
-                  background: 'linear-gradient(to bottom, #d4a043, #b8872a 40%, #b8872a 60%, #d4a043)', 
-                  boxShadow: '0 0 10px rgba(184, 135, 42, 0.5), 0 0 2px rgba(255, 255, 255, 0.7)',
+                  background: 'var(--accent-color, #b8872a)', 
+                  boxShadow: '0 0 8px rgba(184, 135, 42, 0.4), 0 0 2px rgba(255, 255, 255, 0.8)',
                   pointerEvents: 'none',
                   zIndex: 3
                 }} />
@@ -399,22 +506,22 @@ const EvidenceComparison: React.FC = () => {
                   top: '50%',
                   left: `${wipePosition}%`,
                   transform: 'translate(-50%, -50%)',
-                  width: '38px',
-                  height: '38px',
+                  width: '36px',
+                  height: '36px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #1c2b3a 0%, #2a3e52 100%)',
-                  border: '2px solid #b8872a',
-                  boxShadow: '0 4px 14px rgba(28, 43, 58, 0.45), 0 0 10px rgba(184, 135, 42, 0.35)',
+                  background: '#ffffff',
+                  border: '2px solid var(--accent-color, #b8872a)',
+                  boxShadow: '0 3px 12px rgba(45, 35, 20, 0.18), 0 0 0 2px rgba(255, 255, 255, 0.9)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#f6f2eb',
+                  color: 'var(--primary-color, #1c2b3a)',
                   cursor: 'ew-resize',
                   backdropFilter: 'blur(8px)',
-                  transition: 'box-shadow 0.15s ease',
+                  transition: 'transform 0.1s ease, box-shadow 0.15s ease',
                   zIndex: 5
                 }}>
-                  <ChevronsLeftRight size={17} style={{ color: '#d4a043' }} />
+                  <ChevronsLeftRight size={17} style={{ color: 'var(--accent-color, #b8872a)' }} />
                 </div>
               </div>
 
@@ -424,42 +531,44 @@ const EvidenceComparison: React.FC = () => {
                 justifyContent: 'space-between', 
                 alignItems: 'center',
                 maxWidth: '860px', 
-                margin: '0.65rem auto 0', 
+                margin: '0.75rem auto 0', 
                 fontSize: '0.78rem',
-                padding: '0 0.25rem'
+                padding: '0 0.35rem'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#1c2b3a' }} />
-                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Evidence A:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }} />
+                  <span style={{ fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-tech)' }}>Evidence A:</span>
                   <span style={{ color: 'var(--text-muted)' }}>{comparisonData.evidence_a?.original_filename}</span>
                   <span style={{ 
-                    fontSize: '0.7rem', 
+                    fontSize: '0.72rem', 
                     fontFamily: 'var(--font-mono)', 
                     background: 'rgba(28, 43, 58, 0.08)', 
                     color: 'var(--primary-color)', 
-                    padding: '0.1rem 0.4rem', 
-                    borderRadius: '4px',
-                    fontWeight: 700 
+                    padding: '0.15rem 0.5rem', 
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    border: '1px solid rgba(28, 43, 58, 0.12)'
                   }}>
                     {Math.round(wipePosition)}%
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ 
-                    fontSize: '0.7rem', 
+                    fontSize: '0.72rem', 
                     fontFamily: 'var(--font-mono)', 
                     background: 'rgba(184, 135, 42, 0.12)', 
                     color: 'var(--accent-color)', 
-                    padding: '0.1rem 0.4rem', 
-                    borderRadius: '4px',
-                    fontWeight: 700 
+                    padding: '0.15rem 0.5rem', 
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    border: '1px solid rgba(184, 135, 42, 0.25)'
                   }}>
                     {Math.round(100 - wipePosition)}%
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>{comparisonData.evidence_b?.original_filename}</span>
-                  <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>:Evidence B</span>
-                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                  <span style={{ fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-tech)' }}>: Evidence B</span>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-color)' }} />
                 </div>
               </div>
             </div>
@@ -468,35 +577,153 @@ const EvidenceComparison: React.FC = () => {
           {/* VIEW MODE 3: Artifact Maps Comparison */}
           {viewMode === 'artifacts' && (
             <div className="card">
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.05rem' }}>Forensic Artifact Maps (A vs B)</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-color-translucent)', paddingBottom: '0.75rem' }}>
                 <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: 'var(--primary-color)' }}>
-                    Item A Artifacts
-                  </h4>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                    Forensic Artifact Maps (A vs B)
+                  </h3>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                    Comparative heatmap overlays (Perspective, Lighting & Solar, JPEG DCT, Noise)
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                {/* Column A */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    background: 'var(--surface-color-light)', 
+                    padding: '0.5rem 0.85rem', 
+                    borderRadius: '8px', 
+                    border: '1px solid var(--border-color-translucent)' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }} />
+                      <h4 style={{ margin: 0, fontSize: '0.86rem', color: 'var(--primary-color)', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
+                        Item A Artifacts
+                      </h4>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {comparisonData.evidence_a?.original_filename}
+                    </span>
+                  </div>
+
                   {Object.keys(comparisonData.evidence_a?.artifacts || {}).length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No generated visual artifacts for Item A.</div>
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '2.5rem 1rem', 
+                      background: 'var(--surface-color-light)', 
+                      borderRadius: '10px', 
+                      border: '1px dashed var(--border-color)',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <Layers size={28} style={{ opacity: 0.5, marginBottom: '0.5rem' }} />
+                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-main)' }}>No generated artifact maps for Item A</div>
+                      <div style={{ fontSize: '0.74rem', marginTop: '0.25rem' }}>Run automated analysis engines on this evidence item in the Evidence Library.</div>
+                    </div>
                   ) : (
                     Object.entries(comparisonData.evidence_a.artifacts).map(([k, uri]: [string, any]) => (
-                      <div key={k} style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.25rem' }}>{k}</div>
-                        <AuthenticatedImage src={uri} alt={k} style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', border: '1px solid var(--border-color)', borderRadius: '4px' }} />
+                      <div 
+                        key={k} 
+                        style={{ 
+                          background: '#faf8f5', 
+                          border: '1px solid var(--border-color)', 
+                          borderRadius: '10px', 
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 8px rgba(45, 35, 20, 0.04)'
+                        }}
+                      >
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          padding: '0.5rem 0.85rem', 
+                          background: 'rgba(250, 246, 238, 0.85)',
+                          borderBottom: '1px solid var(--border-color-translucent)'
+                        }}>
+                          <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-tech)', letterSpacing: '0.02em' }}>
+                            {formatArtifactTitle(k)}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', background: 'rgba(28, 43, 58, 0.08)', color: 'var(--primary-color)', padding: '0.12rem 0.4rem', borderRadius: '4px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                            MAP
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf8f5', minHeight: '220px' }}>
+                          <AuthenticatedImage src={uri} alt={k} style={{ maxWidth: '100%', maxHeight: '240px', objectFit: 'contain' }} />
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
 
-                <div>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#10b981' }}>
-                    Item B Artifacts
-                  </h4>
+                {/* Column B */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    background: 'var(--surface-color-light)', 
+                    padding: '0.5rem 0.85rem', 
+                    borderRadius: '8px', 
+                    border: '1px solid var(--border-color-translucent)' 
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-color)' }} />
+                      <h4 style={{ margin: 0, fontSize: '0.86rem', color: 'var(--accent-color)', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
+                        Item B Artifacts
+                      </h4>
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                      {comparisonData.evidence_b?.original_filename}
+                    </span>
+                  </div>
+
                   {Object.keys(comparisonData.evidence_b?.artifacts || {}).length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No generated visual artifacts for Item B.</div>
+                    <div style={{ 
+                      textAlign: 'center', 
+                      padding: '2.5rem 1rem', 
+                      background: 'var(--surface-color-light)', 
+                      borderRadius: '10px', 
+                      border: '1px dashed var(--border-color)',
+                      color: 'var(--text-muted)'
+                    }}>
+                      <Layers size={28} style={{ opacity: 0.5, marginBottom: '0.5rem', color: 'var(--accent-color)' }} />
+                      <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-main)' }}>No generated visual artifacts for Item B</div>
+                      <div style={{ fontSize: '0.74rem', marginTop: '0.25rem' }}>Run automated analysis engines on this evidence item in the Evidence Library.</div>
+                    </div>
                   ) : (
                     Object.entries(comparisonData.evidence_b.artifacts).map(([k, uri]: [string, any]) => (
-                      <div key={k} style={{ marginBottom: '1rem' }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '0.25rem' }}>{k}</div>
-                        <AuthenticatedImage src={uri} alt={k} style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain', border: '1px solid var(--border-color)', borderRadius: '4px' }} />
+                      <div 
+                        key={k} 
+                        style={{ 
+                          background: '#faf8f5', 
+                          border: '1px solid var(--border-color)', 
+                          borderRadius: '10px', 
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 8px rgba(45, 35, 20, 0.04)'
+                        }}
+                      >
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          padding: '0.5rem 0.85rem', 
+                          background: 'rgba(250, 246, 238, 0.85)',
+                          borderBottom: '1px solid var(--border-color-translucent)'
+                        }}>
+                          <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-main)', fontFamily: 'var(--font-tech)', letterSpacing: '0.02em' }}>
+                            {formatArtifactTitle(k)}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', background: 'rgba(184, 135, 42, 0.12)', color: 'var(--accent-color)', padding: '0.12rem 0.4rem', borderRadius: '4px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                            MAP
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf8f5', minHeight: '220px' }}>
+                          <AuthenticatedImage src={uri} alt={k} style={{ maxWidth: '100%', maxHeight: '240px', objectFit: 'contain' }} />
+                        </div>
                       </div>
                     ))
                   )}
