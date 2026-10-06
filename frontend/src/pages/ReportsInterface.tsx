@@ -20,6 +20,8 @@ export default function ReportsInterface() {
   const [generating, setGenerating] = useState(false);
   const [formatOption, setFormatOption] = useState<'pdf' | 'json'>('pdf');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [exportingBundle, setExportingBundle] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   useEffect(() => {
     fetchReports();
@@ -83,6 +85,31 @@ export default function ReportsInterface() {
     }
   };
 
+  const handleCaseExport = async () => {
+    setExportingBundle(true);
+    setExportError('');
+    try {
+      const res = await fetchApi(`/cases/${caseId}/export`, { cache: 'no-store' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Export failed with HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${caseId}.forensight`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Could not export this case.');
+    } finally {
+      setExportingBundle(false);
+    }
+  };
+
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading reports...</div>;
 
   return (
@@ -93,7 +120,7 @@ export default function ReportsInterface() {
           <div>
             <h2 className="card-title" style={{ margin: 0 }}>Forensic Investigation Reports</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Court-admissible PDF forensic reports and raw reproducible JSON exports
+              Review-ready PDF reports and reproducible JSON exports for analyst and independent review
             </div>
           </div>
 
@@ -114,8 +141,13 @@ export default function ReportsInterface() {
             >
               {generating ? 'Compiling Report...' : 'Generate New Report'}
             </button>
+            <button className="secondary-button" onClick={() => void handleCaseExport()} disabled={exportingBundle}>
+              {exportingBundle ? 'Signing case bundle…' : 'Export signed case bundle'}
+            </button>
           </div>
         </div>
+
+        {exportError && <div role="alert" style={{ marginTop: '0.75rem', color: '#ef4444' }}>{exportError}</div>}
 
         <div style={{ marginTop: '1.25rem', background: 'rgba(59, 130, 246, 0.05)', borderLeft: '4px solid var(--primary-color)', padding: '0.75rem 1rem', borderRadius: '4px', fontSize: '0.85rem' }}>
           <strong>Publication Standard:</strong> Generated reports include Title Header, Case Registry, Ingested Evidence Hashes, Multi-Modality Observations (ELA, Noise, JPEG-DCT, Copy-Move, Metadata), Fusion 7B-v1 Assessment, Technical Chain of Custody, and Explicit Scientific Limitations.

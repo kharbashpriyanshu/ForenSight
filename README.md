@@ -10,6 +10,8 @@ It is intentionally focused on **digital image evidence**; it is not a disk-imag
 - **Claim-First Intake**: Record the reported claim, event date/location, source reference, how each file was received, and reported capture time separately from engine observations.
 - **Image Version Lineage**: Find exact file duplicates and likely visual derivatives across crops, recompression, resizing, and screenshots. Every relation is a candidate until an analyst reviews it and sets direction.
 - **Batch Processing**: Multipart batch evidence ingestion with independent fault isolation, batch job queuing, and case-scoped progress monitoring.
+- **Processing-History Hypotheses**: Groups completed JPEG-compression and resampling observations into unranked candidate sequences with source analyses and explicit ordering uncertainty.
+- **Portable Case Bundle**: Export case-scoped records, original evidence bitstreams, and available analysis artifacts as a checksummed `.forensight` archive signed with Ed25519; a standalone verifier checks the signature and member hashes.
 - **Image Examination**: Metadata, ELA, noise, JPEG structure/compression, copy-move, resampling, color/frequency analysis, and PRNU-related tooling. Applicability depends on the input and method.
 - **Multi-Modality Heatmaps**: Spatial anomaly candidate overlays without synthetic probability masks.
 - **Side-by-Side Comparison**: Synchronized dual-canvas viewport comparing file metadata, dimensions, hash signatures, compression parameters, and modality artifacts.
@@ -108,7 +110,9 @@ cp .env.example .env
 # Set a strong SECRET_KEY in .env before using this outside a local demo.
 docker compose up -d --build
 ```
-Access the containerized platform at `http://localhost` (port 80). Local Vite development uses `http://localhost:5173`.
+The example Compose configuration binds to loopback. Set `ENVIRONMENT=development` for a local run; production requires unique secrets, HTTPS CORS origins, and a case-export signing key. For remote access, put a TLS reverse proxy in front. See [Deployment](docs/DEPLOYMENT.md).
+
+Generate an export signing key with `python backend/scripts/generate_case_export_key.py`, store the printed private value in `.env`, and share the public fingerprint through a trusted channel. Recipients can verify an archive with `python backend/scripts/verify_case_bundle.py case.forensight --trusted-fingerprint <sha256>`.
 
 ### Local Development Installation
 *For environments without Docker:*
@@ -137,6 +141,8 @@ npm run dev
 - [Deployment Guide (Local & Docker Compose)](docs/DEPLOYMENT.md)
 - [CI/CD Pipeline Specification](docs/CI_CD.md)
 - [Security Architecture & RBAC Policy](docs/SECURITY.md)
+- [Current implementation and validation status](FORENSIGHT_CURRENT_STATUS.md)
+- [Signed case bundle format](docs/CASE_BUNDLE.md)
 - [Demonstration Workflow Script](docs/demo-workflow.md)
 - [Technical Master Reference](docs/FORENSIGHT_TECHNICAL_MASTER.md)
 - [Benchmark Harness Guide](docs/FORENSIGHT_BENCHMARKING.md)
@@ -156,7 +162,10 @@ Run frontend checks from `frontend/`:
 ```bash
 npm ci
 npm run build
+npm run test:e2e
 ```
+
+The browser workflow test mocks the API and covers login, case creation, evidence intake, one analysis job, and report generation. It does not measure forensic accuracy or require a live database.
 
 The CI workflow additionally verifies the frozen V3 core and exercises Docker and PostgreSQL/Redis paths. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml) for the authoritative current commands. Test totals may change; use the latest CI run rather than a hard-coded count.
 

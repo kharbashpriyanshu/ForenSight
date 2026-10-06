@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.database import SessionLocal, engine, Base
 from app.models.domain import User, InvestigationCase
 from app.core.security import get_password_hash, verify_password
+from app.core.config import settings
 
 DEMO_USERS = [
     {
@@ -87,6 +88,8 @@ def seed_identities(db: Session) -> None:
             print(f"[DEMO SEED] User {username} already has case: {demo_case.case_identifier} ({demo_case.title})")
 
 def main() -> None:
+    if settings.ENVIRONMENT.strip().lower() in {"production", "prod"}:
+        raise SystemExit("Refusing to create known demo credentials in production")
     print("=== ForenSight Idempotent Demo Seeding ===")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()

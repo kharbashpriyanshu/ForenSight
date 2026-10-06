@@ -5,10 +5,19 @@ from app.models.domain import AnalysisJob, Evidence, Analysis, generate_job_id, 
 from app.services.audit import AuditService
 from app.schemas.domain import AnalysisJobResponse
 from app.workers.analysis_worker import run_analysis_task
+from app.engine_extensions.registry import engine_registry
 from app.api.deps import get_current_user, verify_evidence_access, verify_job_access
 from typing import List
 
 router = APIRouter()
+
+
+def _engine_version(analysis_type: str) -> str:
+    if analysis_type.lower() in {"metadata", "ela", "noise", "jpeg-dct", "jpeg_dct", "copy-move", "copy_move"}:
+        return "V3.0.0"
+    engine_id = analysis_type.upper().replace("_", "-")
+    engine = engine_registry.get_engine(engine_id)
+    return getattr(engine, "engine_version", "V3.0.0") if engine else "V3.0.0"
 
 @router.post("/jobs/analysis/{evidence_id}/{analysis_type}", response_model=AnalysisJobResponse, status_code=202)
 def queue_analysis_job(
@@ -18,12 +27,14 @@ def queue_analysis_job(
     current_user: User = Depends(get_current_user),
 ):
     evidence = verify_evidence_access(db, evidence_id, current_user)
+    engine_version = _engine_version(analysis_type)
 
     # Prevent duplicates if already queued or completed successfully
     existing_job = db.query(AnalysisJob).filter(
         AnalysisJob.evidence_id == evidence_id,
         AnalysisJob.analysis_type == analysis_type,
-        AnalysisJob.status.in_(["QUEUED", "RUNNING", "COMPLETED"])
+        AnalysisJob.engine_version == engine_version,
+        AnalysisJob.status.in_(["QUEUED", "RUNNING", "RETRYING", "COMPLETED"])
     ).first()
     
     if existing_job and existing_job.status == "COMPLETED":
@@ -36,6 +47,7 @@ def queue_analysis_job(
     job = AnalysisJob(
         evidence_id=evidence_id,
         analysis_type=analysis_type,
+        engine_version=engine_version,
         status="QUEUED"
     )
     db.add(job)

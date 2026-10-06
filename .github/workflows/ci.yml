@@ -81,9 +81,19 @@ jobs:
           cd frontend
           npm run build
 
+      - name: Run Mocked Critical Browser Workflow
+        run: |
+          cd frontend
+          npm run test:e2e
+
   docker-compose-validation:
     name: Docker Compose Syntax & Build Validation
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: development
+      SECRET_KEY: ci-development-secret-not-used-by-containers
+      POSTGRES_PASSWORD: ci-local-password-for-compose-validation
+      BACKEND_CORS_ORIGINS: http://localhost,http://localhost:5173
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

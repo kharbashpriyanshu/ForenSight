@@ -1,5 +1,6 @@
 from celery import Celery
 from app.core.config import settings
+from datetime import timedelta
 
 celery_app = Celery(
     "forensics_worker",
@@ -15,6 +16,20 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_always_eager=settings.CELERY_TASK_ALWAYS_EAGER
+)
+
+celery_app.conf.update(
+    task_acks_late=True,
+    task_reject_on_worker_lost=True,
+    worker_prefetch_multiplier=1,
+    task_soft_time_limit=settings.ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS,
+    task_time_limit=settings.ANALYSIS_JOB_TIME_LIMIT_SECONDS,
+    beat_schedule={
+        "reconcile-stale-analysis-jobs": {
+            "task": "reconcile_stale_analysis_jobs",
+            "schedule": timedelta(minutes=1),
+        },
+    },
 )
 
 import app.workers.analysis_worker

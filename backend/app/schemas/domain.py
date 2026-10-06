@@ -83,7 +83,11 @@ class CaseIntakeContextUpdate(BaseModel):
 
 class AnalysisBase(BaseModel):
     analysis_type: str
+    engine_version: str = "1.0.0"
     status: str
+    progress_percent: int = 0
+    progress_message: Optional[str] = None
+    attempt_count: int = 0
     summary: Optional[str] = None
     structured_findings: Optional[Dict[str, Any]] = None
 
@@ -148,6 +152,10 @@ class AnalysisJobResponse(BaseModel):
     analysis_id: Optional[int] = None
     analysis_type: str
     status: str
+    engine_version: str = "legacy"
+    progress_percent: int = 0
+    progress_message: Optional[str] = None
+    attempt_count: int = 0
     queued_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

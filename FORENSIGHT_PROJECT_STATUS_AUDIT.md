@@ -1,6 +1,7 @@
 # FORENSIGHT_PROJECT_STATUS_AUDIT.md
 ## ForenSight — Complete Forensic Engineering Audit
 **Audit Date:** 2026-10-04
+> Historical snapshot. See [`FORENSIGHT_CURRENT_STATUS.md`](FORENSIGHT_CURRENT_STATUS.md) for current implementation and validation status.
 **Auditor:** Antigravity (Read-only audit — no source code modified)
 **Repository:** d:\Project Resume\ForenSight
 **Branch:** main (up to date with origin/main)

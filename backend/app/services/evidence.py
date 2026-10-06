@@ -1,12 +1,13 @@
 import os
 import uuid
 import hashlib
-from io import BytesIO
+import tempfile
+import warnings
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from app.models.domain import Evidence, EvidenceIntakeContext, InvestigationCase
 from app.core.config import settings
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, UnidentifiedImageError, DecompressionBombError, DecompressionBombWarning
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -18,69 +19,101 @@ class EvidenceService:
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
 
-        file.file.seek(0, 2)
-        file_size = file.file.tell()
-        file.file.seek(0)
-
-        if file_size > settings.MAX_UPLOAD_SIZE:
-            raise HTTPException(status_code=413, detail="File too large")
-        if file_size == 0:
-            raise HTTPException(status_code=400, detail="Empty file")
-
-        ext = os.path.splitext(file.filename)[1].lower()
+        original_filename = (file.filename or "evidence").replace("\\", "/").rsplit("/", 1)[-1]
+        ext = os.path.splitext(original_filename)[1].lower()
         if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=400, detail=f"Unsupported file extension. Allowed: {ALLOWED_EXTENSIONS}")
+            raise HTTPException(status_code=400, detail="Unsupported file extension. Allowed: .jpg, .jpeg, .png, .webp")
 
-        if file.content_type not in ALLOWED_MIME_TYPES:
-            raise HTTPException(status_code=400, detail=f"Unsupported MIME type. Allowed: {ALLOWED_MIME_TYPES}")
+        claimed_mime = (file.content_type or "").split(";", 1)[0].strip().lower()
+        if claimed_mime not in ALLOWED_MIME_TYPES:
+            raise HTTPException(status_code=400, detail="Unsupported MIME type. Allowed: image/jpeg, image/png, image/webp")
 
         sha256_hash = hashlib.sha256()
-        file_bytes = b""
-        while chunk := file.file.read(8192):
-            sha256_hash.update(chunk)
-            file_bytes += chunk
-        
-        file_hash = sha256_hash.hexdigest()
-
+        file_size = 0
         try:
-            image = Image.open(BytesIO(file_bytes))
-            image.verify()
-            image = Image.open(BytesIO(file_bytes))
-            image.load()
-            width, height = image.size
-            image_format = image.format
-        except (UnidentifiedImageError, SyntaxError, OSError):
-            raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
+            file.file.seek(0)
+        except (AttributeError, OSError):
+            pass
+        storage_dir = os.path.abspath(settings.STORAGE_DIR)
+        os.makedirs(storage_dir, exist_ok=True)
+        staging_path = None
+        final_path = None
+        committed = False
+        try:
+            with tempfile.NamedTemporaryFile(mode="wb", dir=storage_dir, prefix=".ingest-", suffix=".part", delete=False) as staged:
+                staging_path = staged.name
+                while True:
+                    chunk = file.file.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    file_size += len(chunk)
+                    if file_size > settings.MAX_UPLOAD_SIZE:
+                        raise HTTPException(status_code=413, detail="File too large")
+                    sha256_hash.update(chunk)
+                    staged.write(chunk)
+                staged.flush()
+                os.fsync(staged.fileno())
 
-        safe_filename = f"{uuid.uuid4().hex}{ext}"
-        os.makedirs(settings.STORAGE_DIR, exist_ok=True)
-        stored_path = os.path.join(settings.STORAGE_DIR, safe_filename)
+            if file_size == 0:
+                raise HTTPException(status_code=400, detail="Empty file")
 
-        with open(stored_path, "wb") as f:
-            f.write(file_bytes)
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", DecompressionBombWarning)
+                with Image.open(staging_path) as image:
+                    width, height = image.size
+                    image_format = (image.format or "").upper()
+                    if width <= 0 or height <= 0 or width * height > settings.MAX_IMAGE_PIXELS:
+                        raise HTTPException(status_code=413, detail="Image dimensions exceed the configured pixel limit")
+                    image.verify()
 
-        db_evidence = Evidence(
-            case_id=case_id,
-            original_filename=os.path.basename(file.filename),
-            stored_path=stored_path,
-            mime_type=file.content_type,
-            file_size=file_size,
-            sha256_hash=file_hash,
-            image_format=image_format,
-            width=width,
-            height=height
-        )
-        db.add(db_evidence)
-        db.commit()
-        db.refresh(db_evidence)
+            expected_mime = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}.get(image_format)
+            if expected_mime is None or expected_mime != claimed_mime:
+                raise HTTPException(status_code=400, detail="Image contents do not match the supported format and declared MIME type")
+            expected_extensions = {"JPEG": {".jpg", ".jpeg"}, "PNG": {".png"}, "WEBP": {".webp"}}
+            if ext not in expected_extensions[image_format]:
+                raise HTTPException(status_code=400, detail="Image contents do not match the filename extension")
 
-        safe_context = intake_context or {}
-        if any(value and str(value).strip() for value in safe_context.values()):
-            db.add(EvidenceIntakeContext(evidence_id=db_evidence.id, **safe_context))
+            safe_filename = f"{uuid.uuid4().hex}{ext}"
+            final_path = os.path.join(storage_dir, safe_filename)
+            os.replace(staging_path, final_path)
+            staging_path = None
+
+            db_evidence = Evidence(
+                case_id=case_id,
+                original_filename=original_filename,
+                stored_path=final_path,
+                mime_type=expected_mime,
+                file_size=file_size,
+                sha256_hash=sha256_hash.hexdigest(),
+                image_format=image_format,
+                width=width,
+                height=height,
+            )
+            db.add(db_evidence)
+            db.flush()
+            safe_context = intake_context or {}
+            if any(value and str(value).strip() for value in safe_context.values()):
+                db.add(EvidenceIntakeContext(evidence_id=db_evidence.id, **safe_context))
             db.commit()
+            committed = True
             db.refresh(db_evidence)
-
-        return db_evidence
+            return db_evidence
+        except HTTPException:
+            db.rollback()
+            raise
+        except (UnidentifiedImageError, SyntaxError, OSError, DecompressionBombError, DecompressionBombWarning):
+            db.rollback()
+            raise HTTPException(status_code=400, detail="Invalid, corrupted, or unsafe image file") from None
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            for path in (staging_path, final_path if not committed else None):
+                if path and os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
 
     @staticmethod
     def get_evidence(db: Session, evidence_id: int):

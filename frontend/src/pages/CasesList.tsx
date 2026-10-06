@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { fetchApi, prefetchApi } from '../api';
+
+const PAGE_SIZE = 100;
 
 export default function CasesList() {
   const [cases, setCases] = useState<any[]>([]);
@@ -13,31 +15,41 @@ export default function CasesList() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const navigate = useNavigate();
 
-  const fetchCases = () => {
-    setLoading(true);
+  const fetchCases = useCallback((skip = 0, append = false) => {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     setError('');
-    fetchApi('/cases')
+    const query = new URLSearchParams({ skip: String(skip), limit: String(PAGE_SIZE) });
+    if (searchQuery.trim()) query.set('search', searchQuery.trim());
+    fetchApi(`/cases?${query.toString()}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
           throw new Error(data.detail || 'Failed to load cases');
         }
-        setCases(Array.isArray(data) ? data : []);
+        const page = Array.isArray(data) ? data : [];
+        setCases(previous => append ? [...previous, ...page] : page);
+        setHasMore(page.length === PAGE_SIZE);
         setLoading(false);
+        setLoadingMore(false);
       })
       .catch(err => {
         console.error("Error fetching cases", err);
         setError(err.message || 'Unable to connect to investigation service');
-        setCases([]);
+        if (!append) setCases([]);
         setLoading(false);
+        setLoadingMore(false);
       });
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
-    fetchCases();
-  }, []);
+    const timer = window.setTimeout(() => fetchCases(), 250);
+    return () => window.clearTimeout(timer);
+  }, [fetchCases]);
 
   const handleCreateCase = (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,7 +142,7 @@ export default function CasesList() {
         }}>
           <div><strong>Error:</strong> {error}</div>
           <button 
-            onClick={fetchCases}
+            onClick={() => fetchCases()}
             style={{
               background: '#ef4444',
               color: '#fff',
@@ -246,6 +258,14 @@ export default function CasesList() {
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+          <button className="secondary-button" onClick={() => fetchCases(cases.length, true)} disabled={loadingMore}>
+            {loadingMore ? 'Loading more cases…' : searchQuery.trim() ? 'Load next 100 matches' : 'Load next 100 cases'}
+          </button>
         </div>
       )}
     </div>

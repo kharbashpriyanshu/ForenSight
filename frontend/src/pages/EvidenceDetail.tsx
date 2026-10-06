@@ -1,26 +1,26 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
-import AdvancedJpegViewer from '../components/evidence/AdvancedJpegViewer';
-import CompressionHistoryViewer from '../components/evidence/CompressionHistoryViewer';
-import BlockingArtifactViewer from '../components/evidence/BlockingArtifactViewer';
-import HistogramViewer from '../components/evidence/HistogramViewer';
-import ColorChannelViewer from '../components/evidence/ColorChannelViewer';
-import FourierViewer from '../components/evidence/FourierViewer';
-import { AdvancedNoiseViewer } from '../components/evidence/AdvancedNoiseViewer';
-import { ResamplingViewer } from '../components/evidence/ResamplingViewer';
-import { CloneBlockViewer } from '../components/evidence/CloneBlockViewer';
-import { CloneKeypointViewer } from '../components/evidence/CloneKeypointViewer';
-import { PRNUViewer } from '../components/evidence/PRNUViewer';
-import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
-import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
-import { PerspectiveForensicsViewer } from '../components/evidence/PerspectiveForensicsViewer';
-import { LightingSolarForensicsViewer } from '../components/evidence/LightingSolarForensicsViewer';
-import { X, Table, RefreshCw, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, ArrowRight, Info, GitMerge } from 'lucide-react';
+const AdvancedJpegViewer = lazy(() => import('../components/evidence/AdvancedJpegViewer'));
+const CompressionHistoryViewer = lazy(() => import('../components/evidence/CompressionHistoryViewer'));
+const BlockingArtifactViewer = lazy(() => import('../components/evidence/BlockingArtifactViewer'));
+const HistogramViewer = lazy(() => import('../components/evidence/HistogramViewer'));
+const ColorChannelViewer = lazy(() => import('../components/evidence/ColorChannelViewer'));
+const FourierViewer = lazy(() => import('../components/evidence/FourierViewer'));
+const AdvancedNoiseViewer = lazy(() => import('../components/evidence/AdvancedNoiseViewer').then((m) => ({ default: m.AdvancedNoiseViewer })));
+const ResamplingViewer = lazy(() => import('../components/evidence/ResamplingViewer').then((m) => ({ default: m.ResamplingViewer })));
+const CloneBlockViewer = lazy(() => import('../components/evidence/CloneBlockViewer').then((m) => ({ default: m.CloneBlockViewer })));
+const CloneKeypointViewer = lazy(() => import('../components/evidence/CloneKeypointViewer').then((m) => ({ default: m.CloneKeypointViewer })));
+const PRNUViewer = lazy(() => import('../components/evidence/PRNUViewer').then((m) => ({ default: m.PRNUViewer })));
+const CameraIdViewer = lazy(() => import('../components/evidence/CameraIdViewer').then((m) => ({ default: m.CameraIdViewer })));
+const InteractiveVisualInspection = lazy(() => import('../components/evidence/InteractiveVisualInspection'));
+const PerspectiveForensicsViewer = lazy(() => import('../components/evidence/PerspectiveForensicsViewer').then((m) => ({ default: m.PerspectiveForensicsViewer })));
+const LightingSolarForensicsViewer = lazy(() => import('../components/evidence/LightingSolarForensicsViewer').then((m) => ({ default: m.LightingSolarForensicsViewer })));
+import { X, Table, RefreshCw, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, ArrowRight, Info, GitMerge, History } from 'lucide-react';
 
 interface HeatmapRegion {
   modality: string;
@@ -55,6 +55,7 @@ interface HeatmapData {
 
 export default function EvidenceDetail() {
   const { caseId, evidenceId } = useParams<{ caseId: string, evidenceId: string }>();
+  const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any | null>(null);
@@ -526,6 +527,16 @@ export default function EvidenceDetail() {
 
       {uploadResult && (
         <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              className="secondary-button"
+              onClick={() => navigate(`/cases/${caseId}/evidence/${uploadResult.id}/history`)}
+              aria-label="Open processing history hypotheses"
+            >
+              <History size={16} style={{ verticalAlign: 'middle', marginRight: '0.4rem' }} />
+              Processing-history hypotheses
+            </button>
+          </div>
           {/* Top Bar: Integrity Card + Quick Verify */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
             <EvidenceIntegrityCard evidence={uploadResult} />

@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Query
+from sqlalchemy import or_
 from fastapi.responses import FileResponse
 import pathlib
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.db.database import get_db
 from app.schemas.domain import InvestigationCaseCreate, InvestigationCaseResponse, EvidenceResponse, CaseIntakeContextUpdate
 from app.services.cases import CaseService
 from app.services.evidence import EvidenceService
 from app.services.audit import AuditService
 from app.api.deps import get_current_user
-from app.models.domain import User
+from app.models.domain import User, InvestigationCase
 from app.models.domain import CaseIntakeContext
 from app.core.config import settings
 from app.api.deps import verify_case_access
@@ -49,11 +50,20 @@ def create_case(case: InvestigationCaseCreate, db: Session = Depends(get_db), cu
     return new_case
 
 @router.get("/cases", response_model=List[InvestigationCaseResponse])
-def read_cases(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    cases = CaseService.get_cases(db, skip=0, limit=1000)
+def read_cases(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
+    search: Optional[str] = Query(default=None, max_length=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(InvestigationCase)
     if current_user.role != "ADMIN":
-        cases = [c for c in cases if c.user_id == current_user.id]
-    return cases[skip:skip+limit]
+        query = query.filter(InvestigationCase.user_id == current_user.id)
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+        query = query.filter(or_(InvestigationCase.title.ilike(pattern), InvestigationCase.case_identifier.ilike(pattern)))
+    return query.order_by(InvestigationCase.created_at.desc(), InvestigationCase.id.desc()).offset(skip).limit(limit).all()
 
 @router.get("/cases/{case_id}", response_model=InvestigationCaseResponse)
 def read_case(case_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -156,7 +166,6 @@ def read_case_overview(case_id: str, db: Session = Depends(get_db), current_user
     return stats
 
 
-from typing import Optional
 from app.models.domain import Evidence, Analysis, EvidenceObservation
 from app.schemas.domain import EvidenceComparisonResponse, EvidenceComparisonItem
 

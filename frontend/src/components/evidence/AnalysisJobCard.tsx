@@ -22,7 +22,7 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
     const [showArtifact, setShowArtifact] = useState(true);
     const [showRaw, setShowRaw] = useState(false);
 
-    const isRunning = job?.status === 'QUEUED' || job?.status === 'RUNNING';
+    const isRunning = job?.status === 'QUEUED' || job?.status === 'RUNNING' || job?.status === 'RETRYING';
     const isCompleted = job?.status === 'COMPLETED';
     const isFailed = job?.status === 'FAILED';
 
@@ -98,7 +98,14 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
             {/* Running status */}
             {isRunning && (
                 <div style={{ fontSize: '0.85rem', color: '#3b82f6' }}>
-                    Job {job?.job_identifier} is currently queued / executing...
+                    <div>{job?.progress_message || (job?.status === 'QUEUED' ? 'Waiting for an analysis worker…' : job?.status === 'RETRYING' ? 'Retry is scheduled…' : 'Analysis is running…')}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginTop: '0.45rem' }}>
+                        <progress value={job?.progress_percent || 0} max={100} aria-label={`${analysisType} progress`} style={{ flex: 1, height: '0.55rem' }} />
+                        <strong>{job?.progress_percent || 0}%</strong>
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                        Job {job?.job_identifier} · attempt {job?.attempt_count || 0}
+                    </div>
                 </div>
             )}
 
@@ -177,7 +184,7 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
 
                     {/* Reproducibility Metadata Footer */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem' }}>
-                        <span>Engine: <strong>Classical V1 (Frozen)</strong></span>
+                        <span>Engine version: <strong>{job?.engine_version || 'legacy'}</strong></span>
                         <span>Job ID: {job?.job_identifier || 'N/A'}</span>
                     </div>
                 </div>

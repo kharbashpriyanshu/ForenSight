@@ -4,8 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 
 export default function Login() {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('forensight_admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -22,7 +22,7 @@ export default function Login() {
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/auth/login`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

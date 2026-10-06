@@ -1,5 +1,15 @@
 # React + TypeScript + Vite
 
+ForenSight's browser client uses same-origin `/api` requests. Vite proxies those requests to `http://localhost:8000` during local development, and the container Nginx config proxies them to the backend service.
+
+Run the mocked critical workflow from this directory:
+
+```bash
+npm run test:e2e
+```
+
+The Puppeteer workflow exercises login, case creation, evidence upload, one analysis job, and report generation with mocked API responses.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

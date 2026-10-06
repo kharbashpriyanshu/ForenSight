@@ -1,6 +1,7 @@
 # FORENSIGHT — MASTER PROJECT STATUS & COMPLETION AUDIT
 
 **Audit Date:** 2026-10-05  
+> Historical snapshot: repository counts and branch references are fixed to the revision inspected on this date. See [`FORENSIGHT_CURRENT_STATUS.md`](FORENSIGHT_CURRENT_STATUS.md) for the current working tree.
 **Auditor:** Antigravity Autonomous Diagnostic Agent (Google DeepMind)  
 **Execution Environment:** Windows Server / PowerShell / Python 3.12 Virtualenv / Node.js 20  
 **Repository Branch / Commit:** `main` @ `60e47f6` (`Improve physics geometry evidence workflow`)  

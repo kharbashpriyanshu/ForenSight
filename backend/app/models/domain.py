@@ -188,8 +188,12 @@ class AnalysisJob(Base):
     evidence_id = Column(Integer, ForeignKey("evidence.id"), index=True)
     analysis_id = Column(Integer, ForeignKey("analyses.id"), nullable=True)
     analysis_type = Column(String, index=True)
+    engine_version = Column(String, nullable=False, default="1.0.0")
     
     status = Column(String, default="QUEUED")
+    progress_percent = Column(Integer, nullable=False, default=0)
+    progress_message = Column(String, nullable=True)
+    attempt_count = Column(Integer, nullable=False, default=0)
     
     queued_at = Column(DateTime, default=datetime.datetime.utcnow)
     started_at = Column(DateTime, nullable=True)

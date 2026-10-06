@@ -11,6 +11,10 @@ ForenSight operates on sensitive digital evidence. The security architecture gua
 2. **Strict Multi-Tenant / Investigator Case Isolation**: Investigators can only inspect, process, or download evidence, jobs, analysis results, artifacts, and audit trails belonging to their assigned cases. Cross-case data leakage is strictly prohibited.
 3. **Defense Against Untrusted Input**: File uploads, path parameters, and image decoding operations are guarded against directory traversal, remote code execution (RCE), format exploitation, and memory starvation.
 
+Production settings reject the development JWT key, wildcard or non-HTTPS CORS origins, weak/sample PostgreSQL passwords, SQLite, and a missing case-export signing key. Compose host ports bind to loopback; deploy behind a TLS reverse proxy.
+
+The demo seeder provisions known demonstration passwords and exits without running in production. Create production investigator accounts through a separately controlled provisioning process.
+
 ---
 
 ## 2. Authentication & Credential Management
@@ -94,4 +98,18 @@ In Phase 7, the platform underwent rigorous adversarial testing:
 - **Directory Traversal Fuzzing**: Path traversal attacks against `/api/artifacts/{path}` using `../`, `%2e%2e%2f`, Windows absolute paths, UNC shares, and null bytes are rejected with `HTTP 403 Forbidden`.
 - **Adversarial Case Isolation Matrix**: Audited across 17 distinct API surfaces, ensuring complete multi-tenant boundary enforcement.
 - **Investigation Replay & Tampering Detection**: An automated replay service recalculates on-disk SHA-256 hashes against original database assertions, immediately triggering an `INTEGRITY_VIOLATION` if any byte on disk has been altered.
+
+## 9. Upload Resource Limits
+
+- Ingestion streams uploaded bytes to a staging file while computing SHA-256 and enforcing `MAX_UPLOAD_SIZE`.
+- The decoder-reported format must agree with the filename extension and declared MIME type.
+- Pillow decompression-bomb warnings are treated as failures, and images above `MAX_IMAGE_PIXELS` are rejected before pixel decoding.
+- The staged bitstream is atomically moved into evidence storage only after validation. A database failure removes the staged evidence file.
+
+## 10. Signed Case Bundles
+
+- `.forensight` archives include case-scoped JSON records, original bitstreams, available artifacts, a signed manifest, and member hashes.
+- Ed25519 keys are deployment-specific. The embedded public key is not a trust anchor by itself; verify its fingerprint out of band.
+- `backend/scripts/verify_case_bundle.py` validates the signature and content hashes without extracting archive paths.
+- Bundle signing is disabled until `CASE_EXPORT_SIGNING_PRIVATE_KEY` is configured. Never commit that private key.
 
