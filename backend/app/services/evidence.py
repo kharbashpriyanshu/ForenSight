@@ -7,7 +7,8 @@ from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from app.models.domain import Evidence, EvidenceIntakeContext, InvestigationCase
 from app.core.config import settings
-from PIL import Image, UnidentifiedImageError, DecompressionBombError, DecompressionBombWarning
+from PIL import Image, UnidentifiedImageError
+from PIL.Image import DecompressionBombError, DecompressionBombWarning
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
