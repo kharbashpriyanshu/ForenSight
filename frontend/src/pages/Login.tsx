@@ -92,28 +92,19 @@ export default function Login() {
         zIndex: 1,
         animation: 'pageFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            width: '48px', 
-            height: '48px', 
-            borderRadius: '12px', 
-            background: 'linear-gradient(135deg, #1c2b3a 0%, #2d4258 100%)', 
-            color: '#f5f0e2', 
-            fontWeight: 800, 
-            fontSize: '1.2rem', 
-            marginBottom: '1rem',
-            boxShadow: '0 8px 20px -4px rgba(28, 43, 58, 0.32), inset 0 1px 0 rgba(255, 240, 190, 0.3)'
-          }}>
-            FS
-          </div>
-          <h1 style={{ color: 'var(--text-main)', fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.025em', marginBottom: '0.35rem' }}>ForenSight</h1>
-          <p style={{ color: '#b8872a', fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Digital Evidence OS
-          </p>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.65rem', lineHeight: 1.45 }}>
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <img 
+            src="/forensight-logo.png" 
+            alt="ForenSight - Digital Image Forensics Platform" 
+            style={{ 
+              width: '100%', 
+              maxWidth: '260px', 
+              height: 'auto',
+              marginBottom: '0.5rem',
+              filter: 'drop-shadow(0 4px 12px rgba(28, 43, 58, 0.12))'
+            }} 
+          />
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.25rem', lineHeight: 1.45 }}>
             Preserve evidence • Measure forensic signals • Cryptographic chain of custody
           </p>
         </div>

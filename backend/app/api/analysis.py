@@ -569,16 +569,42 @@ def get_artifact(
     try:
         base_dir = pathlib.Path(settings.STORAGE_DIR).resolve()
         target_path = (base_dir / artifact_path).resolve()
+        target_path.relative_to(base_dir)
     except Exception:
         raise HTTPException(status_code=403, detail="Invalid artifact path")
         
-    try:
-        target_path.relative_to(base_dir)
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Invalid artifact path")
-        
     if not target_path.exists() or not target_path.is_file():
-        raise HTTPException(status_code=404, detail="Artifact not found")
+        # Fallback: check subdirectories within STORAGE_DIR for matches
+        found = False
+        candidates = [
+            base_dir / "evidence" / "analyses" / artifact_path,
+            base_dir / "evidence" / "analyses" / "prnu" / artifact_path,
+            base_dir / "evidence" / "analyses" / "camera_id" / artifact_path,
+            base_dir / "analyses" / artifact_path,
+            base_dir / "analyses" / "prnu" / artifact_path,
+            base_dir / "analyses" / "camera_id" / artifact_path,
+        ]
+        for cand in candidates:
+            if cand.exists() and cand.is_file():
+                target_path = cand.resolve()
+                found = True
+                break
+        
+        if not found:
+            base_name = os.path.basename(artifact_path)
+            for root, _, files in os.walk(str(base_dir)):
+                if base_name in files:
+                    resolved = (pathlib.Path(root) / base_name).resolve()
+                    try:
+                        resolved.relative_to(base_dir)
+                        target_path = resolved
+                        found = True
+                        break
+                    except ValueError:
+                        pass
+        
+        if not found or not target_path.exists() or not target_path.is_file():
+            raise HTTPException(status_code=404, detail="Artifact not found")
 
     # Authorize access: ADMIN has global access; INVESTIGATOR must own the associated case
     if current_user.role != "ADMIN":

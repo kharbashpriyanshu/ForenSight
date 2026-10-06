@@ -121,9 +121,15 @@ export const CameraIdViewer: React.FC<CameraIdViewerProps> = ({
   const topCandidate = findings.top_candidate;
   const candidates: any[] = findings.candidates || [];
   const isCompleted = cameraIdResult && cameraIdResult.status === 'completed';
+  const artifacts = findings.artifacts || {};
 
-  const analysisPlotArtifact = cameraIdResult?.artifacts?.find((a: any) => a.filename?.includes('analysis.png') || a.artifact_type === 'PLOT');
-  const comparisonPlotArtifact = cameraIdResult?.artifacts?.find((a: any) => a.filename?.includes('comparison.png') || a.artifact_type === 'VISUALIZATION');
+  const analysisPlotPath = artifacts.camera_id_analysis || 
+    (Array.isArray(cameraIdResult?.artifacts) ? cameraIdResult.artifacts.find((a: any) => a.filename?.includes('analysis') || a.artifact_id === 'camera_id_analysis')?.file_path : null) || 
+    'camera_id_analysis.png';
+
+  const comparisonPlotPath = artifacts.camera_id_comparison || 
+    (Array.isArray(cameraIdResult?.artifacts) ? cameraIdResult.artifacts.find((a: any) => a.filename?.includes('comparison') || a.artifact_id === 'camera_id_comparison')?.file_path : null) || 
+    'camera_id_comparison.png';
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -397,9 +403,9 @@ export const CameraIdViewer: React.FC<CameraIdViewerProps> = ({
           {activeTab === 'surface' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ background: '#000', borderRadius: '6px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '340px' }}>
-                {analysisPlotArtifact ? (
+                {isCompleted && analysisPlotPath ? (
                   <AuthenticatedImage
-                    src={`/api/artifacts/${analysisPlotArtifact.file_path || analysisPlotArtifact.filename}`}
+                    src={`/api/artifacts/${analysisPlotPath}`}
                     alt="Cross-correlation surface and candidate ranking"
                     style={{ maxHeight: '480px', width: 'auto', objectFit: 'contain' }}
                   />
@@ -446,9 +452,9 @@ export const CameraIdViewer: React.FC<CameraIdViewerProps> = ({
           {activeTab === 'comparison' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ background: '#000', borderRadius: '6px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '340px' }}>
-                {comparisonPlotArtifact ? (
+                {isCompleted && comparisonPlotPath ? (
                   <AuthenticatedImage
-                    src={`/api/artifacts/${comparisonPlotArtifact.file_path || comparisonPlotArtifact.filename}`}
+                    src={`/api/artifacts/${comparisonPlotPath}`}
                     alt="Query residual vs reference visual alignment"
                     style={{ maxHeight: '480px', width: 'auto', objectFit: 'contain' }}
                   />

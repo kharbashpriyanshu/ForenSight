@@ -14,24 +14,20 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div style={{ 
-            background: 'linear-gradient(135deg, #1c2b3a 0%, #2d4258 100%)', 
-            width: '32px', 
-            height: '32px', 
-            borderRadius: '8px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: '#f5f0e2', 
-            fontWeight: 800, 
-            fontSize: '0.85rem',
-            boxShadow: '0 4px 10px rgba(28, 43, 58, 0.28), inset 0 1px 0 rgba(255, 240, 190, 0.3)'
-          }}>
-            FS
-          </div>
+          <img 
+            src="/forensight-icon.png" 
+            alt="ForenSight Emblem" 
+            style={{ 
+              height: '38px', 
+              width: 'auto', 
+              objectFit: 'contain',
+              flexShrink: 0,
+              filter: 'drop-shadow(0 2px 6px rgba(28, 43, 58, 0.22))'
+            }} 
+          />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>ForenSight</div>
-            <div style={{ fontSize: '0.65rem', color: '#b8872a', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
+            <div style={{ fontWeight: 800, fontSize: '1.12rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>ForenSight</div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', marginTop: '0.15rem' }}>Evidence OS</div>
           </div>
         </div>
         <nav className="sidebar-nav">
@@ -69,6 +65,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span className="status-badge">
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />
               Multi-User RBAC Active
             </span>
             <button 

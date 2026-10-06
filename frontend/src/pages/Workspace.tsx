@@ -12,24 +12,20 @@ const Workspace: React.FC = () => {
     <div className="app-container">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div style={{ 
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', 
-            width: '34px', 
-            height: '34px', 
-            borderRadius: '9px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: '#ffffff', 
-            fontWeight: 800, 
-            fontSize: '0.875rem',
-            boxShadow: '0 4px 12px rgba(30, 58, 138, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
-          }}>
-            FS
-          </div>
+          <img 
+            src="/forensight-icon.png" 
+            alt="ForenSight Emblem" 
+            style={{ 
+              height: '38px', 
+              width: 'auto', 
+              objectFit: 'contain',
+              flexShrink: 0,
+              filter: 'drop-shadow(0 2px 6px rgba(28, 43, 58, 0.22))'
+            }} 
+          />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)' }}>ForenSight</div>
-            <div style={{ fontSize: '0.65rem', color: '#1d4ed8', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Evidence OS</div>
+            <div style={{ fontWeight: 800, fontSize: '1.12rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>ForenSight</div>
+            <div style={{ fontSize: '0.66rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', marginTop: '0.15rem' }}>Evidence OS</div>
           </div>
         </div>
         
@@ -125,28 +121,30 @@ const Workspace: React.FC = () => {
       <main className="main-content">
         <header className="topbar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <Link to="/cases" style={{ color: '#2563eb', fontSize: '0.825rem', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <Link to="/cases" style={{ color: 'var(--primary-color)', fontSize: '0.825rem', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem', transition: 'all 0.15s ease' }}>
               &larr; Cases
             </Link>
             <span style={{ color: 'var(--border-color)' }}>/</span>
             <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.85rem' }}>
-              Case <code style={{ color: '#1e3a8a', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>{caseId}</code>
+              Case <code style={{ color: 'var(--primary-color)', background: 'rgba(28, 43, 58, 0.06)', border: '1px solid rgba(28, 43, 58, 0.14)', backdropFilter: 'blur(8px)', padding: '0.18rem 0.45rem', borderRadius: '6px', fontWeight: 600 }}>{caseId}</code>
             </div>
             <span style={{ 
               fontSize: '0.65rem', 
               fontWeight: 700, 
-              background: 'rgba(37, 99, 235, 0.08)', 
-              color: '#1d4ed8', 
-              border: '1px solid rgba(37, 99, 235, 0.2)', 
-              padding: '0.15rem 0.5rem', 
+              background: 'rgba(184, 135, 42, 0.10)', 
+              color: '#92560a', 
+              border: '1px solid rgba(184, 135, 42, 0.25)', 
+              padding: '0.15rem 0.55rem', 
               borderRadius: '9999px',
-              letterSpacing: '0.05em'
+              letterSpacing: '0.06em',
+              fontFamily: 'var(--font-tech)'
             }}>
               EVIDENCE WORKSPACE
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <span className="status-badge" style={{ fontSize: '0.725rem' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />
               RBAC Guard Active
             </span>
             <button 

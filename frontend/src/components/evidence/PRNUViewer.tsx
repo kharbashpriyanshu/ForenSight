@@ -41,9 +41,15 @@ export const PRNUViewer: React.FC<PRNUViewerProps> = ({
   const findings = prnuResult?.structured_findings || {};
   const suitability = findings.suitability || {};
   const isCompleted = prnuResult && prnuResult.status === 'completed';
+  const artifacts = findings.artifacts || {};
 
-  const residualArtifact = prnuResult?.artifacts?.find((a: any) => a.filename?.includes('residual') || a.artifact_type === 'VISUALIZATION');
-  const diagnosticArtifact = prnuResult?.artifacts?.find((a: any) => a.filename?.includes('analysis.png') || a.artifact_type === 'PLOT');
+  const residualPath = artifacts.prnu_residual || 
+    (Array.isArray(prnuResult?.artifacts) ? prnuResult.artifacts.find((a: any) => a.filename?.includes('residual') || a.artifact_id === 'prnu_residual')?.file_path : null) || 
+    'prnu_residual.png';
+
+  const diagnosticPath = artifacts.prnu_analysis || 
+    (Array.isArray(prnuResult?.artifacts) ? prnuResult.artifacts.find((a: any) => a.filename?.includes('analysis') || a.artifact_id === 'prnu_analysis')?.file_path : null) || 
+    'prnu_analysis.png';
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -189,9 +195,9 @@ export const PRNUViewer: React.FC<PRNUViewerProps> = ({
           {activeTab === 'residual' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ background: '#000', borderRadius: '6px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '340px' }}>
-                {residualArtifact ? (
+                {isCompleted && residualPath ? (
                   <AuthenticatedImage
-                    src={`/api/artifacts/${residualArtifact.file_path || residualArtifact.filename}`}
+                    src={`/api/artifacts/${residualPath}`}
                     alt="PRNU Noise Residual Map"
                     style={{ maxHeight: '480px', width: 'auto', objectFit: 'contain' }}
                   />
@@ -238,9 +244,9 @@ export const PRNUViewer: React.FC<PRNUViewerProps> = ({
           {activeTab === 'diagnostic' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ background: '#000', borderRadius: '6px', overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '340px' }}>
-                {diagnosticArtifact ? (
+                {isCompleted && diagnosticPath ? (
                   <AuthenticatedImage
-                    src={`/api/artifacts/${diagnosticArtifact.file_path || diagnosticArtifact.filename}`}
+                    src={`/api/artifacts/${diagnosticPath}`}
                     alt="PRNU Diagnostic Plots"
                     style={{ maxHeight: '480px', width: 'auto', objectFit: 'contain' }}
                   />

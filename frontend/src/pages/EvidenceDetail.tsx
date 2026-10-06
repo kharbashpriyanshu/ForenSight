@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
@@ -19,7 +20,7 @@ import { CameraIdViewer } from '../components/evidence/CameraIdViewer';
 import InteractiveVisualInspection from '../components/evidence/InteractiveVisualInspection';
 import { PerspectiveForensicsViewer } from '../components/evidence/PerspectiveForensicsViewer';
 import { LightingSolarForensicsViewer } from '../components/evidence/LightingSolarForensicsViewer';
-import { X, Table, RefreshCw, CheckCircle2, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, Layers, ArrowRight, Info } from 'lucide-react';
+import { X, Table, RefreshCw, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, ArrowRight, Info, GitMerge } from 'lucide-react';
 
 interface HeatmapRegion {
   modality: string;
@@ -89,10 +90,12 @@ export default function EvidenceDetail() {
   // Categorized Forensic Workbench active tab
   const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
 
-  // Normalization Modal & Auto-Fusion State
+  // Normalization & Correlation Modals & Auto-Fusion State
   const [showNormalizationModal, setShowNormalizationModal] = useState<boolean>(false);
+  const [showCorrelationModal, setShowCorrelationModal] = useState<boolean>(false);
   const isSyncingFusionRef = useRef(false);
   const prevCompletedCountRef = useRef<number>(0);
+  const savedScrollTopRef = useRef<number>(0);
 
   const runFusionSync = useCallback(async (evId?: string | number) => {
     const targetId = evId || uploadResult?.id;
@@ -123,7 +126,15 @@ export default function EvidenceDetail() {
     }
   }, [uploadResult?.id]);
 
-  const handleOpenNormalizeModal = useCallback(() => {
+  const handleOpenNormalizeModal = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const container = document.querySelector('.page-container') as HTMLElement | null;
+    if (container) {
+      savedScrollTopRef.current = container.scrollTop;
+    }
     // Open modal immediately without waiting for any network request
     setShowNormalizationModal(true);
 
@@ -143,17 +154,86 @@ export default function EvidenceDetail() {
     }
   }, [uploadResult?.id, results.normalize, normalizing]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowNormalizationModal(false);
-      }
-    };
-    if (showNormalizationModal) {
-      window.addEventListener('keydown', handleKeyDown);
+  const handleCloseNormalizeModal = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showNormalizationModal]);
+    setShowNormalizationModal(false);
+    const container = document.querySelector('.page-container') as HTMLElement | null;
+    if (container && savedScrollTopRef.current > 0) {
+      container.scrollTop = savedScrollTopRef.current;
+    }
+  }, []);
+
+  const handleOpenCorrelateModal = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const container = document.querySelector('.page-container') as HTMLElement | null;
+    if (container) {
+      savedScrollTopRef.current = container.scrollTop;
+    }
+    setShowCorrelationModal(true);
+
+    const targetId = uploadResult?.id;
+    if (!results.correlate && !correlating && targetId) {
+      setCorrelating(true);
+      fetchApi(`/evidence/${targetId}/fusion/correlate`, { method: 'POST' })
+        .then(res => res.ok ? res.json() : null)
+        .then(corrData => {
+          if (corrData) {
+            setResults((prev: any) => ({ ...prev, correlate: corrData }));
+          }
+        })
+        .catch(err => console.error("Auto correlate error", err))
+        .finally(() => setCorrelating(false));
+    }
+  }, [uploadResult?.id, results.correlate, correlating]);
+
+  const handleCloseCorrelateModal = useCallback((e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowCorrelationModal(false);
+    const container = document.querySelector('.page-container') as HTMLElement | null;
+    if (container && savedScrollTopRef.current > 0) {
+      container.scrollTop = savedScrollTopRef.current;
+    }
+  }, []);
+
+  const handleReCorrelate = useCallback(() => {
+    if (!uploadResult?.id || correlating) return;
+    setCorrelating(true);
+    fetchApi(`/evidence/${uploadResult.id}/fusion/correlate`, { method: 'POST' })
+      .then(res => res.ok ? res.json() : null)
+      .then(corrData => {
+        if (corrData) {
+          setResults((prev: any) => ({ ...prev, correlate: corrData }));
+        }
+      })
+      .catch(err => console.error("Re-correlate error", err))
+      .finally(() => setCorrelating(false));
+  }, [uploadResult?.id, correlating]);
+
+  useEffect(() => {
+    if (showNormalizationModal || showCorrelationModal) {
+      const container = document.querySelector('.page-container') as HTMLElement | null;
+      if (container && savedScrollTopRef.current > 0) {
+        container.scrollTop = savedScrollTopRef.current;
+      }
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          handleCloseNormalizeModal();
+          handleCloseCorrelateModal();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showNormalizationModal, showCorrelationModal, handleCloseNormalizeModal, handleCloseCorrelateModal]);
 
   const fetchEvidenceAndJobs = (evId: string) => {
     setJobs({});
@@ -403,7 +483,7 @@ export default function EvidenceDetail() {
   const effectiveFormat = (uploadResult?.image_format || uploadResult?.mime_type?.split('/')?.[1] || '').toUpperCase();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
       {/* Evidence Acquisition Form (if new) */}
       {!uploadResult && (
         <div className="card">
@@ -521,18 +601,17 @@ export default function EvidenceDetail() {
           {/* Categorized Forensic Workbench Navigation */}
           <div style={{
             position: 'sticky',
-            top: '0px',
+            top: 0,
             zIndex: 90,
-            background: 'var(--surface-color)',
-            backdropFilter: 'var(--glass-blur)',
+            background: 'var(--surface-color-solid, #faf7f1)',
             border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            padding: '0.5rem',
-            margin: '1.25rem 0 0.5rem 0',
+            borderRadius: '10px',
+            padding: '0.45rem 0.65rem',
+            margin: '0 0 0.5rem 0',
             display: 'flex',
-            gap: '0.4rem',
+            gap: '0.45rem',
             overflowX: 'auto',
-            boxShadow: 'var(--shadow-card)',
+            boxShadow: '0 4px 16px -2px rgba(26, 22, 16, 0.12), 0 2px 6px -1px rgba(26, 22, 16, 0.08)',
             alignItems: 'center'
           }}>
             {workbenchTabs.map(t => {
@@ -1130,6 +1209,7 @@ export default function EvidenceDetail() {
               {/* Two Large Action Buttons (Command Center Layout) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.35rem' }}>
                 <button 
+                  type="button"
                   className="btn" 
                   onClick={handleOpenNormalizeModal}
                   style={{ 
@@ -1204,9 +1284,9 @@ export default function EvidenceDetail() {
                 </button>
 
                 <button 
+                  type="button"
                   className="btn" 
-                  onClick={() => runFusionSync()}
-                  disabled={correlating}
+                  onClick={handleOpenCorrelateModal}
                   style={{ 
                     background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #075985 100%)', 
                     color: '#ffffff', 
@@ -1214,27 +1294,25 @@ export default function EvidenceDetail() {
                     borderRadius: '10px', 
                     fontWeight: 700, 
                     border: '1px solid rgba(255, 255, 255, 0.25)', 
-                    cursor: correlating ? 'not-allowed' : 'pointer', 
-                    opacity: correlating ? 0.75 : 1,
+                    cursor: 'pointer', 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.65rem',
                     boxShadow: '0 4px 16px -2px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
                     transition: 'transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease',
-                    letterSpacing: '-0.01em'
+                    letterSpacing: '-0.01em',
+                    position: 'relative'
                   }}
                   onMouseEnter={e => {
-                    if (!correlating) {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px -2px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-                    }
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px -2px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = '0 4px 16px -2px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)';
                   }}
-                  title="Correlate active observations into a qualitative forensic assessment"
+                  title="Open dialog to view correlated forensic assessment and multi-modality matrix"
                 >
                   <span style={{
                     fontSize: '0.62rem',
@@ -1249,8 +1327,22 @@ export default function EvidenceDetail() {
                     Step 02
                   </span>
                   <ShieldCheck size={16} style={{ color: '#bae6fd' }} />
-                  <span style={{ fontSize: '0.95rem' }}>{correlating ? 'Correlating & Assessing...' : '2. Correlate & Assess'}</span>
-                  {results.correlate?.assessment?.level && (
+                  <span style={{ fontSize: '0.95rem' }}>2. Correlate & Assess</span>
+                  {correlating ? (
+                    <span style={{ 
+                      background: 'rgba(255, 255, 255, 0.2)', 
+                      color: '#ffffff', 
+                      padding: '0.15rem 0.55rem', 
+                      borderRadius: '9999px', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem'
+                    }}>
+                      <RefreshCw size={11} className="spin-animate" /> Correlating
+                    </span>
+                  ) : results.correlate?.assessment?.level && (
                     <span style={{ 
                       background: 'rgba(255, 255, 255, 0.22)', 
                       color: '#ffffff', 
@@ -1360,23 +1452,50 @@ export default function EvidenceDetail() {
                         </div>
                       </div>
 
-                      {/* Polished Executive Status Badge */}
-                      <div style={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.45rem',
-                        padding: '0.35rem 0.85rem', 
-                        borderRadius: '9999px', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 800,
-                        letterSpacing: '0.04em',
-                        background: levelBg,
-                        border: `1px solid ${levelBorder}`,
-                        color: levelColor,
-                        boxShadow: `0 2px 8px ${levelBg}`
-                      }}>
-                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: levelColor, boxShadow: `0 0 6px ${levelColor}` }} />
-                        <span>{humanizedLevel}</span>
+                      {/* Polished Executive Status Badge & Dialog Trigger */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                        <div style={{ 
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          padding: '0.35rem 0.85rem', 
+                          borderRadius: '9999px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 800,
+                          letterSpacing: '0.04em',
+                          background: levelBg,
+                          border: `1px solid ${levelBorder}`,
+                          color: levelColor,
+                          boxShadow: `0 2px 8px ${levelBg}`
+                        }}>
+                          <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: levelColor, boxShadow: `0 0 6px ${levelColor}` }} />
+                          <span>{humanizedLevel}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleOpenCorrelateModal}
+                          style={{
+                            background: 'var(--surface-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            color: 'var(--text-main)',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary-color)')}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-color)')}
+                          title="Open detailed correlation dialog"
+                        >
+                          <span>Open Dialog</span>
+                          <ArrowRight size={12} />
+                        </button>
                       </div>
                     </div>
 
@@ -1435,6 +1554,7 @@ export default function EvidenceDetail() {
                             </span>
                           ))}
                           <button 
+                            type="button"
                             onClick={handleOpenNormalizeModal}
                             style={{ 
                               background: 'transparent', 
@@ -1454,6 +1574,30 @@ export default function EvidenceDetail() {
                             onMouseLeave={e => (e.currentTarget.style.color = '#2563eb')}
                           >
                             <span>Inspect normalized table ({results.normalize.observations?.length || 0} metrics)</span>
+                            <ArrowRight size={13} />
+                          </button>
+                          <span style={{ color: 'var(--border-color)' }}>•</span>
+                          <button 
+                            type="button"
+                            onClick={handleOpenCorrelateModal}
+                            style={{ 
+                              background: 'transparent', 
+                              border: 'none', 
+                              color: '#0284c7', 
+                              cursor: 'pointer', 
+                              fontSize: '0.78rem', 
+                              fontWeight: 700, 
+                              padding: '0.15rem 0.4rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              textDecoration: 'none',
+                              transition: 'color 0.15s ease'
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#0369a1')}
+                            onMouseLeave={e => (e.currentTarget.style.color = '#0284c7')}
+                          >
+                            <span>Open correlation dialog ({results.correlate.relations?.length || 0} relations)</span>
                             <ArrowRight size={13} />
                           </button>
                         </div>
@@ -1495,8 +1639,8 @@ export default function EvidenceDetail() {
             </div>
           )}
 
-          {/* Normalization Observations Dialog Modal */}
-          {showNormalizationModal && (
+          {/* Normalization Observations Dialog Modal (Portaled to document.body) */}
+          {showNormalizationModal && typeof document !== 'undefined' && createPortal(
             <div 
               style={{
                 position: 'fixed',
@@ -1504,27 +1648,33 @@ export default function EvidenceDetail() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: 'rgba(0, 0, 0, 0.65)',
+                width: '100vw',
+                height: '100vh',
+                background: 'rgba(0, 0, 0, 0.72)',
+                backdropFilter: 'blur(3px)',
+                WebkitBackdropFilter: 'blur(3px)',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                zIndex: 9999,
-                padding: '1.25rem'
+                zIndex: 999999,
+                padding: '1.25rem',
+                boxSizing: 'border-box'
               }}
-              onClick={() => setShowNormalizationModal(false)}
+              onClick={handleCloseNormalizeModal}
             >
               <div 
                 style={{
-                  background: 'var(--surface-color)',
-                  borderRadius: '10px',
-                  width: '840px',
+                  background: 'var(--surface-color-solid, #faf7f1)',
+                  borderRadius: '12px',
+                  width: '860px',
                   maxWidth: '96vw',
-                  maxHeight: '85vh',
+                  maxHeight: '88vh',
                   display: 'flex',
                   flexDirection: 'column',
-                  boxShadow: '0 16px 36px rgba(0,0,0,0.3)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
                   border: '1px solid var(--border-color)',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  fontFamily: "'Plus Jakarta Sans', var(--font-sans)"
                 }}
                 onClick={e => e.stopPropagation()}
               >
@@ -1552,6 +1702,7 @@ export default function EvidenceDetail() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <button
+                      type="button"
                       onClick={() => {
                         if (uploadResult?.id) {
                           setNormalizing(true);
@@ -1584,7 +1735,8 @@ export default function EvidenceDetail() {
                       <span>{normalizing ? 'Normalizing...' : 'Re-normalize'}</span>
                     </button>
                     <button 
-                      onClick={() => setShowNormalizationModal(false)}
+                      type="button"
+                      onClick={handleCloseNormalizeModal}
                       aria-label="Close dialog"
                       style={{
                         background: 'transparent',
@@ -1681,6 +1833,7 @@ export default function EvidenceDetail() {
                     <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                       <p style={{ margin: '0 0 0.75rem 0' }}>No normalized observations available yet.</p>
                       <button
+                        type="button"
                         className="btn btn-primary"
                         onClick={handleOpenNormalizeModal}
                         style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
@@ -1704,19 +1857,481 @@ export default function EvidenceDetail() {
                   borderTop: '1px solid var(--border-color)',
                   background: 'var(--surface-color-light)'
                 }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {normalizing ? 'Evaluating observations...' : `${results.normalize?.observations?.length || 0} observations evaluated`}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {normalizing ? 'Evaluating observations...' : `${results.normalize?.observations?.length || 0} observations evaluated`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCloseNormalizeModal();
+                        handleOpenCorrelateModal();
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#0284c7',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      <span>Jump to Step 02: Correlation</span>
+                      <ArrowRight size={12} />
+                    </button>
+                  </div>
                   <button 
+                    type="button"
                     className="btn btn-primary"
-                    onClick={() => setShowNormalizationModal(false)}
+                    onClick={handleCloseNormalizeModal}
                     style={{ padding: '0.45rem 1.25rem', fontSize: '0.82rem' }}
                   >
                     Close Dialog
                   </button>
                 </div>
               </div>
-            </div>
+            </div>,
+            document.body
+          )}
+
+          {/* Correlated Assessment & Multi-Modality Synthesis Modal (Portaled to document.body) */}
+          {showCorrelationModal && typeof document !== 'undefined' && createPortal(
+            <div 
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                width: '100vw',
+                height: '100vh',
+                background: 'rgba(0, 0, 0, 0.72)',
+                backdropFilter: 'blur(3px)',
+                WebkitBackdropFilter: 'blur(3px)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 999999,
+                padding: '1.25rem',
+                boxSizing: 'border-box'
+              }}
+              onClick={handleCloseCorrelateModal}
+            >
+              <div 
+                style={{
+                  background: 'var(--surface-color-solid, #faf7f1)',
+                  borderRadius: '12px',
+                  width: '900px',
+                  maxWidth: '96vw',
+                  maxHeight: '88vh',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.45)',
+                  border: '1px solid var(--border-color)',
+                  overflow: 'hidden',
+                  fontFamily: "'Plus Jakarta Sans', var(--font-sans)"
+                }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '1.15rem 1.5rem',
+                  borderBottom: '1px solid var(--border-color)',
+                  background: 'var(--surface-color-light)'
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                        Rule 7B-v1 Qualitative Fusion
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        ISO/IEC 27037 Evidence Matrix
+                      </span>
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                      Correlated Forensic Assessment & Relations
+                    </h3>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={handleReCorrelate}
+                      disabled={correlating}
+                      style={{
+                        background: 'var(--surface-color)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '4px',
+                        padding: '0.3rem 0.65rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        color: 'var(--text-secondary)',
+                        cursor: correlating ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                      title="Re-run correlation evaluation"
+                    >
+                      <RefreshCw size={11} className={correlating ? 'spin-animate' : ''} />
+                      <span>{correlating ? 'Correlating...' : 'Re-correlate'}</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={handleCloseCorrelateModal}
+                      aria-label="Close dialog"
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        cursor: 'pointer',
+                        padding: '0.4rem',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Modal Body */}
+                <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                  {correlating ? (
+                    <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                      <RefreshCw size={28} className="spin-animate" style={{ color: '#0284c7' }} />
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                        Synthesizing Multi-Modality Correlation Matrix...
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Evaluating cross-engine concordance, physics consistency, and container integrity
+                      </div>
+                    </div>
+                  ) : results.correlate ? (() => {
+                    const concernLevel = results.correlate.assessment?.level || 'INSUFFICIENT_EVIDENCE';
+                    const isElevated = concernLevel === 'ELEVATED_FORENSIC_CONCERN';
+                    const isModerate = concernLevel === 'MODERATE_FORENSIC_CONCERN';
+                    const isLow = concernLevel === 'LOW_FORENSIC_CONCERN';
+                    
+                    const levelColor = isElevated ? '#dc2626' : isModerate ? '#d97706' : isLow ? '#059669' : '#64748b';
+                    const levelBg = isElevated 
+                      ? 'rgba(239, 68, 68, 0.08)' 
+                      : isModerate 
+                        ? 'rgba(245, 158, 11, 0.08)' 
+                        : isLow 
+                          ? 'rgba(16, 185, 129, 0.08)' 
+                          : 'rgba(100, 116, 139, 0.08)';
+                    const levelBorder = isElevated 
+                      ? 'rgba(239, 68, 68, 0.28)' 
+                      : isModerate 
+                        ? 'rgba(245, 158, 11, 0.28)' 
+                        : isLow 
+                          ? 'rgba(16, 185, 129, 0.28)' 
+                          : 'rgba(100, 116, 139, 0.28)';
+
+                    const humanizedLevel = isElevated 
+                      ? 'ELEVATED FORENSIC CONCERN' 
+                      : isModerate 
+                        ? 'MODERATE FORENSIC CONCERN' 
+                        : isLow 
+                          ? 'LOW / NOMINAL CONCERN' 
+                          : 'INSUFFICIENT EVIDENCE';
+
+                    return (
+                      <>
+                        {/* Executive Assessment Hero Banner */}
+                        <div style={{
+                          background: levelBg,
+                          border: `1px solid ${levelBorder}`,
+                          borderLeft: `5px solid ${levelColor}`,
+                          borderRadius: '10px',
+                          padding: '1.15rem 1.35rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.65rem'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                background: '#ffffff',
+                                border: `1px solid ${levelBorder}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: levelColor
+                              }}>
+                                {isElevated ? <ShieldAlert size={18} /> : isModerate ? <AlertTriangle size={17} /> : <ShieldCheck size={18} />}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  Synthesized Assessment
+                                </div>
+                                <div style={{ fontSize: '1rem', fontWeight: 800, color: levelColor }}>
+                                  {humanizedLevel}
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ 
+                              fontSize: '0.7rem', 
+                              fontFamily: "'JetBrains Mono', monospace", 
+                              color: 'var(--text-muted)', 
+                              background: 'var(--surface-color)', 
+                              padding: '0.2rem 0.5rem', 
+                              borderRadius: '4px',
+                              border: '1px solid var(--border-color)' 
+                            }}>
+                              Rule {results.correlate.assessment?.rule_version || '7B-v1'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.6, fontWeight: 500 }}>
+                            {results.correlate.assessment?.summary}
+                          </div>
+                        </div>
+
+                        {/* Contributing Families & Evaluated Modalities Chips */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
+                          <div style={{ padding: '0.75rem 0.95rem', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>
+                              Contributing Evidence Families ({results.correlate.families?.length || 0})
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {results.correlate.families?.length > 0 ? results.correlate.families.map((f: string) => (
+                                <span key={f} style={{ 
+                                  fontSize: '0.72rem', 
+                                  fontWeight: 700, 
+                                  padding: '0.2rem 0.55rem', 
+                                  borderRadius: '5px', 
+                                  background: 'rgba(2, 132, 199, 0.1)', 
+                                  border: '1px solid rgba(2, 132, 199, 0.22)',
+                                  color: '#0284c7'
+                                }}>
+                                  {f}
+                                </span>
+                              )) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No families active</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: '0.75rem 0.95rem', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>
+                              Evaluated Modalities ({results.normalize?.modalities_present?.length || 0})
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {results.normalize?.modalities_present?.length > 0 ? results.normalize.modalities_present.map((m: string) => (
+                                <span key={m} style={{ 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 800, 
+                                  padding: '0.18rem 0.45rem', 
+                                  borderRadius: '4px', 
+                                  background: 'rgba(30, 58, 138, 0.08)', 
+                                  border: '1px solid rgba(30, 58, 138, 0.18)',
+                                  color: '#1e3a8a',
+                                  textTransform: 'uppercase'
+                                }}>
+                                  {m}
+                                </span>
+                              )) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>None evaluated</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Inter-Modality Relations & Corroborations */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                              <GitMerge size={15} style={{ color: '#0284c7' }} />
+                              <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                Cross-Modality Corroboration & Conflict Matrix
+                              </h4>
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                              {results.correlate.relations?.length || 0} relations identified
+                            </span>
+                          </div>
+
+                          {results.correlate.relations?.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                              {results.correlate.relations.map((rel: any, idx: number) => {
+                                const isCorroborating = rel.relation_type === 'CORROBORATING';
+                                const isContradicting = rel.relation_type === 'CONTRADICTING';
+                                const relBadgeColor = isCorroborating ? '#059669' : isContradicting ? '#dc2626' : '#0284c7';
+                                const relBadgeBg = isCorroborating ? 'rgba(16, 185, 129, 0.1)' : isContradicting ? 'rgba(239, 68, 68, 0.1)' : 'rgba(2, 132, 199, 0.1)';
+
+                                return (
+                                  <div key={idx} style={{
+                                    padding: '0.85rem 1rem',
+                                    borderRadius: '8px',
+                                    background: 'var(--surface-color-light)',
+                                    border: '1px solid var(--border-color)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '0.4rem'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span style={{
+                                          fontSize: '0.7rem',
+                                          fontWeight: 800,
+                                          padding: '0.15rem 0.5rem',
+                                          borderRadius: '4px',
+                                          background: relBadgeBg,
+                                          color: relBadgeColor,
+                                          textTransform: 'uppercase',
+                                          letterSpacing: '0.04em'
+                                        }}>
+                                          {rel.relation_type || 'INDEPENDENT'}
+                                        </span>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                                          Strength: <strong style={{ color: 'var(--text-main)' }}>{rel.strength || 'MEDIUM'}</strong>
+                                        </span>
+                                      </div>
+                                      <span style={{ fontSize: '0.68rem', color: 'var(--text-subtle)', fontFamily: 'monospace' }}>
+                                        obs #{rel.observation_a_id} ↔ #{rel.observation_b_id}
+                                      </span>
+                                    </div>
+
+                                    <div style={{ fontSize: '0.825rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                                      {rel.explanation}
+                                    </div>
+
+                                    {rel.limitations && (
+                                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', borderTop: '1px dashed var(--border-color)', paddingTop: '0.35rem', marginTop: '0.2rem' }}>
+                                        <strong>Scope:</strong> {rel.limitations}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                              🛡️ Clean Baseline: Evaluated modalities do not exhibit contradictory signals or mutual anomaly reinforcement.
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Contributing Observations (if any) */}
+                        {Array.isArray(results.correlate.assessment?.contributing_observations) && results.correlate.assessment.contributing_observations.length > 0 && (
+                          <div style={{ padding: '0.75rem 0.95rem', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.04em' }}>
+                              Primary Contributing Observations ({results.correlate.assessment.contributing_observations.length})
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              {results.correlate.assessment.contributing_observations.map((obs: any, i: number) => (
+                                <span key={i} style={{ 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 600, 
+                                  padding: '0.2rem 0.5rem', 
+                                  borderRadius: '4px', 
+                                  background: 'var(--surface-color)', 
+                                  border: '1px solid var(--border-color)',
+                                  color: 'var(--text-main)'
+                                }}>
+                                  {typeof obs === 'object' ? `${obs.modality || ''} ${obs.metric_name || ''}`.trim() : String(obs)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Legal & ISO Limitations Banner */}
+                        <div style={{ 
+                          padding: '0.8rem 1rem', 
+                          background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(253, 230, 138, 0.2) 100%)', 
+                          borderRadius: '8px', 
+                          border: '1px solid rgba(245, 158, 11, 0.3)', 
+                          borderLeft: '4px solid #d97706',
+                          fontSize: '0.78rem', 
+                          color: '#78350f',
+                          display: 'flex',
+                          gap: '0.65rem',
+                          alignItems: 'flex-start'
+                        }}>
+                          <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
+                          <div style={{ lineHeight: 1.5 }}>
+                            <strong style={{ color: '#92400e', fontWeight: 750 }}>
+                              ISO/IEC 27037 ADMISSIBILITY NOTICE:
+                            </strong>{' '}
+                            {Array.isArray(results.correlate.assessment?.limitations) 
+                              ? results.correlate.assessment.limitations.join(' ') 
+                              : String(results.correlate.assessment?.limitations || 'Observations are qualitative assessments synthesized from empirical digital forensic algorithms, not absolute binary proof. Examiner corroboration required.')}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })() : (
+                    <div style={{ textAlign: 'center', padding: '2.5rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      <p style={{ margin: '0 0 0.75rem 0' }}>No correlation assessment generated yet.</p>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleReCorrelate}
+                        style={{ padding: '0.45rem 1rem', fontSize: '0.8rem' }}
+                      >
+                        Run Correlation Engine
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.85rem 1.5rem',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'var(--surface-color-light)'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCloseCorrelateModal();
+                      handleOpenNormalizeModal();
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#2563eb',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      padding: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem'
+                    }}
+                  >
+                    <span>View Step 01: Normalized Metrics Table</span>
+                    <ArrowRight size={13} />
+                  </button>
+
+                  <button 
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleCloseCorrelateModal}
+                    style={{ padding: '0.45rem 1.25rem', fontSize: '0.82rem' }}
+                  >
+                    Close Dialog
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
           )}
         </>
       )}
