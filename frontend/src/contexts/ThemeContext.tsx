@@ -1,0 +1,104 @@
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+
+export type ThemePreference = 'light' | 'dark' | 'system';
+export type ResolvedTheme = 'light' | 'dark';
+
+interface ThemeContextValue {
+  theme: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  setTheme: (theme: ThemePreference) => void;
+  isDark: boolean;
+}
+
+const THEME_STORAGE_KEY = 'forensight-theme';
+
+const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
+
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
+function getStoredPreference(): ThemePreference {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      return stored;
+    }
+  } catch {
+    // Local storage access denied (private browsing / iframe restriction)
+  }
+  return 'system';
+}
+
+function applyThemeAttribute(resolved: ResolvedTheme) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', resolved);
+    // Also update style color-scheme for native inputs and scrollbars
+    document.documentElement.style.colorScheme = resolved;
+  }
+}
+
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setThemeState] = useState<ThemePreference>(getStoredPreference);
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme);
+
+  // Compute resolved theme
+  const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme;
+
+  const setTheme = useCallback((newTheme: ThemePreference) => {
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+    } catch {
+      // Local storage unavailable
+    }
+  }, []);
+
+  // Listen for operating system theme changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setSystemTheme(e.matches ? 'dark' : 'light');
+    };
+
+    // Modern API with fallback
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    } else if (mediaQuery.addListener) {
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+  }, []);
+
+  // Sync data-theme attribute on root element whenever resolved theme changes
+  useEffect(() => {
+    applyThemeAttribute(resolvedTheme);
+  }, [resolvedTheme]);
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        theme,
+        resolvedTheme,
+        setTheme,
+        isDark: resolvedTheme === 'dark',
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+}
