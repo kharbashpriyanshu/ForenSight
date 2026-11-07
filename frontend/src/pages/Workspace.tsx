@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams, Link } from 'react-router-dom';
 import { ClipboardList, Compass, FileText, GitBranch, GitCompare, History, Image, LayoutDashboard, Link2, Network, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { prefetchApi } from '../api';
+import ThemeToggle from '../components/layout/ThemeToggle';
 
 const Workspace: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
@@ -143,6 +144,7 @@ const Workspace: React.FC = () => {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <ThemeToggle />
             <span className="status-badge" style={{ fontSize: '0.725rem' }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />
               RBAC Guard Active

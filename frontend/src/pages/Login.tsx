@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import ThemeToggle from '../components/layout/ThemeToggle';
 
 
 export default function Login() {
@@ -65,11 +66,52 @@ export default function Login() {
       minHeight: '100vh', 
       alignItems: 'center', 
       justifyContent: 'center', 
-      background: 'radial-gradient(circle at 20% 20%, rgba(212, 160, 67, 0.14) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(184, 135, 42, 0.10) 0%, transparent 50%), #f6f2eb', 
+      background: 'radial-gradient(circle at 20% 20%, rgba(212, 160, 67, 0.12) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(184, 135, 42, 0.08) 0%, transparent 50%), var(--surface-canvas)', 
       padding: '1.5rem',
       position: 'relative',
       overflow: 'hidden'
     }}>
+      {/* Public Authentication Header with Theme Toggle */}
+      <header
+        className="auth-header"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '1rem 1.75rem',
+          zIndex: 10,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <img 
+            src="/forensight-icon.png" 
+            alt="ForenSight Emblem" 
+            style={{ 
+              height: '32px', 
+              width: 'auto', 
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
+            }} 
+          />
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>
+              ForenSight
+            </div>
+            <div style={{ fontSize: '0.64rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)' }}>
+              Evidence OS
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <ThemeToggle />
+        </div>
+      </header>
+
       {/* Decorative ambient glowing orbs */}
       <div style={{
         position: 'absolute',
@@ -99,11 +141,11 @@ export default function Login() {
         maxWidth: '430px', 
         padding: '2.75rem 2.25rem', 
         borderRadius: '16px', 
-        boxShadow: '0 20px 50px -10px rgba(26, 22, 16, 0.09), inset 0 1px 0 0 rgba(255, 253, 248, 0.95)', 
-        background: 'rgba(252, 249, 244, 0.88)', 
+        boxShadow: 'var(--shadow-xl)', 
+        background: 'var(--surface-color)', 
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
-        border: '1px solid rgba(255, 253, 248, 0.90)',
+        border: '1px solid var(--border-default)',
         zIndex: 1,
         animation: 'pageFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
       }}>
@@ -157,9 +199,9 @@ export default function Login() {
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value)}
                   autoFocus
-                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.85)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-main)', boxSizing: 'border-box' }}
                 />
-                <button type="button" className="btn btn-secondary" onClick={() => { setMfaChallenge(''); setMfaCode(''); }}>
+                <button type="button" className="btn btn-secondary" onClick={() => { setMfaChallenge(''); setMfaCode(''); }} style={{ marginTop: '0.5rem' }}>
                   Back to password
                 </button>
               </>
@@ -171,7 +213,7 @@ export default function Login() {
                 <input
                   id="username" name="username" type="text" value={username}
                   onChange={(e) => setUsername(e.target.value)} autoComplete="username"
-                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'rgba(255, 255, 255, 0.85)', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-main)', boxSizing: 'border-box' }}
                 />
               </>
             )}
@@ -190,8 +232,8 @@ export default function Login() {
                 width: '100%', 
                 padding: '0.7rem 0.85rem', 
                 borderRadius: '8px', 
-                border: '1px solid var(--border-color)', 
-                background: 'rgba(255, 255, 255, 0.85)', 
+                border: '1px solid var(--border-default)', 
+                background: 'var(--surface-sunken)', 
                 color: 'var(--text-main)', 
                 boxSizing: 'border-box' 
               }}

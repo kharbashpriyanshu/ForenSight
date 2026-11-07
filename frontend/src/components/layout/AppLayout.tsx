@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { Activity, FolderOpen, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
+import ThemeToggle from './ThemeToggle';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -64,7 +65,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
               STATION WORKSPACE
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+            <ThemeToggle />
             <AccountSecurityPanel />
             <span className="status-badge">
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />

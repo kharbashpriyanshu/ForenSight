@@ -11,23 +11,24 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
   const { theme, resolvedTheme, setTheme } = useTheme();
 
   // Cycle through themes: light -> dark -> system -> light
+  const cycleMap: Record<ThemePreference, ThemePreference> = {
+    light: 'dark',
+    dark: 'system',
+    system: 'light',
+  };
+
   const cycleTheme = () => {
-    const cycleMap: Record<ThemePreference, ThemePreference> = {
-      light: 'dark',
-      dark: 'system',
-      system: 'light',
-    };
     setTheme(cycleMap[theme]);
   };
 
   const getThemeLabel = (pref: ThemePreference): string => {
     switch (pref) {
       case 'light':
-        return 'Light appearance';
+        return 'Light';
       case 'dark':
-        return 'Dark appearance';
+        return 'Dark';
       case 'system':
-        return 'System appearance';
+        return 'System';
     }
   };
 
@@ -43,15 +44,6 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
         className={`theme-segmented-control ${className}`}
         role="radiogroup"
         aria-label="Appearance selection"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          background: 'var(--surface-sunken)',
-          border: '1px solid var(--border-default)',
-          borderRadius: 'var(--radius-md)',
-          padding: '2px',
-          gap: '2px',
-        }}
       >
         {options.map((option) => {
           const isSelected = theme === option.value;
@@ -63,25 +55,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
               aria-checked={isSelected}
               onClick={() => setTheme(option.value)}
               className={`theme-segment-btn ${isSelected ? 'active' : ''}`}
-              title={option.label}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                fontSize: 'var(--text-xs)',
-                fontWeight: isSelected ? 600 : 500,
-                color: isSelected ? 'var(--text-main)' : 'var(--text-muted)',
-                background: isSelected ? 'var(--surface-base)' : 'transparent',
-                border: 'none',
-                borderRadius: 'calc(var(--radius-md) - 2px)',
-                cursor: 'pointer',
-                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
-                transition: 'all var(--duration-fast) var(--ease-snappy)',
-              }}
+              title={`Switch to ${option.label} theme`}
             >
               {option.icon}
-              <span>{option.label}</span>
+              <span className="theme-segment-label">{option.label}</span>
             </button>
           );
         })}
@@ -97,27 +74,16 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
     return resolvedTheme === 'dark' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />;
   };
 
+  const nextTheme = cycleMap[theme];
+  const activeDescription = theme === 'system' ? `System (${resolvedTheme})` : getThemeLabel(theme);
+
   return (
     <button
       type="button"
       className={`btn-theme-toggle ${className}`}
       onClick={cycleTheme}
-      aria-label={`Appearance: ${getThemeLabel(theme)}. Click to switch.`}
-      title={`Appearance: ${getThemeLabel(theme)} (Click to switch)`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '32px',
-        height: '32px',
-        padding: '0',
-        borderRadius: 'var(--radius-md)',
-        background: 'var(--surface-sunken)',
-        border: '1px solid var(--border-default)',
-        color: 'var(--text-main)',
-        cursor: 'pointer',
-        transition: 'all var(--duration-fast) var(--ease-snappy)',
-      }}
+      aria-label={`Appearance: ${activeDescription}. Click to switch to ${getThemeLabel(nextTheme)}.`}
+      title={`Appearance: ${activeDescription}. Click to switch to ${getThemeLabel(nextTheme)}.`}
     >
       {currentIcon()}
     </button>
