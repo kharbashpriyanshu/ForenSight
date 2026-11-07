@@ -54,7 +54,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
     const options: { value: ThemePreference; label: string; icon: React.ReactNode }[] = [
       { value: 'light', label: 'Light', icon: <Sun size={14} aria-hidden="true" /> },
       { value: 'dark', label: 'Dark', icon: <Moon size={14} aria-hidden="true" /> },
-      { value: 'system', label: 'Auto', icon: <Monitor size={14} aria-hidden="true" /> },
+      { value: 'system', label: 'System', icon: <Monitor size={14} aria-hidden="true" /> },
     ];
 
     return (

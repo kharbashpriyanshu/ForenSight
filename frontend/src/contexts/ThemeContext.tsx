@@ -47,12 +47,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [theme, setThemeState] = useState<ThemePreference>(getStoredPreference);
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme);
 
-  // Compute resolved theme
+  // Compute resolved theme: when system is selected, follow systemTheme; otherwise use explicit theme
   const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme;
 
   const setTheme = useCallback((newTheme: ThemePreference) => {
+    const currentSys = getSystemTheme();
+    setSystemTheme(currentSys);
     setThemeState(newTheme);
-    const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
+    const resolved = newTheme === 'system' ? currentSys : newTheme;
     applyThemeAttribute(resolved);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
@@ -72,8 +74,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (typeof window === 'undefined' || !window.matchMedia) return;
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
+
+    // Ensure systemTheme matches live media query on mount
+    const updateFromMediaQuery = (matches: boolean) => {
+      setSystemTheme(matches ? 'dark' : 'light');
+    };
+
+    updateFromMediaQuery(mediaQuery.matches);
+
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      updateFromMediaQuery(e.matches);
     };
 
     // Modern API with fallback
