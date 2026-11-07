@@ -8,7 +8,7 @@ interface ThemeToggleProps {
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', className = '' }) => {
-  const { theme, resolvedTheme, systemTheme, setTheme, toggleTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -89,7 +89,6 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
   // - Secondary chevron trigger opens popover menu for explicit System / Light / Dark selection
   const isDark = resolvedTheme === 'dark';
   const toggleActionLabel = isDark ? 'Switch to light theme' : 'Switch to dark theme';
-  const systemStatus = theme === 'system' ? ` (System: ${systemTheme})` : '';
 
   return (
     <div className={`theme-toggle-group ${className}`} ref={menuRef}>
@@ -98,8 +97,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
         type="button"
         className="btn-theme-toggle"
         onClick={toggleTheme}
-        aria-label={`${toggleActionLabel}${systemStatus}`}
-        title={`${toggleActionLabel}${systemStatus}`}
+        aria-label={toggleActionLabel}
+        title={toggleActionLabel}
       >
         {isDark ? (
           <Moon size={16} aria-hidden="true" />
@@ -164,7 +163,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
             className={`theme-menu-item ${theme === 'system' ? 'active' : ''}`}
           >
             <Monitor size={14} aria-hidden="true" />
-            <span>System ({systemTheme === 'dark' ? 'Dark' : 'Light'})</span>
+            <span>System</span>
             {theme === 'system' && <Check size={14} className="theme-check-icon" aria-hidden="true" />}
           </button>
         </div>
