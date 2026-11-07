@@ -6,7 +6,9 @@ export type ResolvedTheme = 'light' | 'dark';
 interface ThemeContextValue {
   theme: ThemePreference;
   resolvedTheme: ResolvedTheme;
+  systemTheme: ResolvedTheme;
   setTheme: (theme: ThemePreference) => void;
+  toggleTheme: () => void;
   isDark: boolean;
 }
 
@@ -50,12 +52,20 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const setTheme = useCallback((newTheme: ThemePreference) => {
     setThemeState(newTheme);
+    const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
+    applyThemeAttribute(resolved);
     try {
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch {
       // Local storage unavailable
     }
   }, []);
+
+  // Direct toggle between light and dark appearances (1-click immediate action)
+  const toggleTheme = useCallback(() => {
+    const nextTheme: ThemePreference = resolvedTheme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+  }, [resolvedTheme, setTheme]);
 
   // Listen for operating system theme changes
   useEffect(() => {
@@ -86,7 +96,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         theme,
         resolvedTheme,
+        systemTheme,
         setTheme,
+        toggleTheme,
         isDark: resolvedTheme === 'dark',
       }}
     >

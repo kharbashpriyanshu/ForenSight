@@ -1,5 +1,5 @@
-import React from 'react';
-import { Sun, Moon, Monitor } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Sun, Moon, Monitor, ChevronDown, Check } from 'lucide-react';
 import { useTheme, type ThemePreference } from '../../contexts/ThemeContext';
 
 interface ThemeToggleProps {
@@ -8,30 +8,48 @@ interface ThemeToggleProps {
 }
 
 export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', className = '' }) => {
-  const { theme, resolvedTheme, setTheme } = useTheme();
+  const { theme, resolvedTheme, systemTheme, setTheme, toggleTheme } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Cycle through themes: light -> dark -> system -> light
-  const cycleMap: Record<ThemePreference, ThemePreference> = {
-    light: 'dark',
-    dark: 'system',
-    system: 'light',
+  // Close menu on click outside or Escape key
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  const selectTheme = (newTheme: ThemePreference) => {
+    setTheme(newTheme);
+    setMenuOpen(false);
+    triggerRef.current?.focus();
   };
 
-  const cycleTheme = () => {
-    setTheme(cycleMap[theme]);
-  };
-
-  const getThemeLabel = (pref: ThemePreference): string => {
-    switch (pref) {
-      case 'light':
-        return 'Light';
-      case 'dark':
-        return 'Dark';
-      case 'system':
-        return 'System';
-    }
-  };
-
+  // Segmented control variant (e.g., explicit 3-option bar)
   if (variant === 'segmented') {
     const options: { value: ThemePreference; label: string; icon: React.ReactNode }[] = [
       { value: 'light', label: 'Light', icon: <Sun size={14} aria-hidden="true" /> },
@@ -66,27 +84,92 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ variant = 'compact', c
     );
   }
 
-  // Compact single-button toggle
-  const currentIcon = () => {
-    if (theme === 'system') {
-      return <Monitor size={16} aria-hidden="true" />;
-    }
-    return resolvedTheme === 'dark' ? <Moon size={16} aria-hidden="true" /> : <Sun size={16} aria-hidden="true" />;
-  };
-
-  const nextTheme = cycleMap[theme];
-  const activeDescription = theme === 'system' ? `System (${resolvedTheme})` : getThemeLabel(theme);
+  // Default compact variant:
+  // - Direct 1-click toggle on the primary icon button (Sun/Moon flips immediately)
+  // - Secondary chevron trigger opens popover menu for explicit System / Light / Dark selection
+  const isDark = resolvedTheme === 'dark';
+  const toggleActionLabel = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+  const systemStatus = theme === 'system' ? ` (System: ${systemTheme})` : '';
 
   return (
-    <button
-      type="button"
-      className={`btn-theme-toggle ${className}`}
-      onClick={cycleTheme}
-      aria-label={`Appearance: ${activeDescription}. Click to switch to ${getThemeLabel(nextTheme)}.`}
-      title={`Appearance: ${activeDescription}. Click to switch to ${getThemeLabel(nextTheme)}.`}
-    >
-      {currentIcon()}
-    </button>
+    <div className={`theme-toggle-group ${className}`} ref={menuRef}>
+      {/* Direct Light/Dark Toggle Button */}
+      <button
+        type="button"
+        className="btn-theme-toggle"
+        onClick={toggleTheme}
+        aria-label={`${toggleActionLabel}${systemStatus}`}
+        title={`${toggleActionLabel}${systemStatus}`}
+      >
+        {isDark ? (
+          <Moon size={16} aria-hidden="true" />
+        ) : (
+          <Sun size={16} aria-hidden="true" />
+        )}
+        {theme === 'system' && (
+          <span
+            className="theme-system-dot"
+            title="System preference active"
+            aria-hidden="true"
+          />
+        )}
+      </button>
+
+      {/* Explicit Menu Trigger */}
+      <button
+        ref={triggerRef}
+        type="button"
+        className={`btn-theme-menu-trigger ${menuOpen ? 'active' : ''}`}
+        onClick={() => setMenuOpen(!menuOpen)}
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
+        aria-label="Theme options: Light, Dark, System"
+        title="Theme options"
+      >
+        <ChevronDown size={12} aria-hidden="true" />
+      </button>
+
+      {/* Accessible Theme Selection Popover Menu */}
+      {menuOpen && (
+        <div className="theme-dropdown-menu" role="menu" aria-label="Theme selection">
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={theme === 'light'}
+            onClick={() => selectTheme('light')}
+            className={`theme-menu-item ${theme === 'light' ? 'active' : ''}`}
+          >
+            <Sun size={14} aria-hidden="true" />
+            <span>Light</span>
+            {theme === 'light' && <Check size={14} className="theme-check-icon" aria-hidden="true" />}
+          </button>
+
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={theme === 'dark'}
+            onClick={() => selectTheme('dark')}
+            className={`theme-menu-item ${theme === 'dark' ? 'active' : ''}`}
+          >
+            <Moon size={14} aria-hidden="true" />
+            <span>Dark</span>
+            {theme === 'dark' && <Check size={14} className="theme-check-icon" aria-hidden="true" />}
+          </button>
+
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={theme === 'system'}
+            onClick={() => selectTheme('system')}
+            className={`theme-menu-item ${theme === 'system' ? 'active' : ''}`}
+          >
+            <Monitor size={14} aria-hidden="true" />
+            <span>System ({systemTheme === 'dark' ? 'Dark' : 'Light'})</span>
+            {theme === 'system' && <Check size={14} className="theme-check-icon" aria-hidden="true" />}
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
