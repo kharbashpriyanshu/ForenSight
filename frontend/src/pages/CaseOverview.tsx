@@ -290,8 +290,8 @@ const CaseOverview: React.FC = () => {
                 gap: '0.35rem',
                 fontFamily: 'var(--font-tech)'
               }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: stats.status === 'Open' ? '#16a34a' : '#d97706' }} />
-                {stats.status.toUpperCase()}
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: stats?.status === 'Open' ? '#16a34a' : '#d97706' }} />
+                {stats?.status ? stats.status.toUpperCase() : 'ACTIVE'}
               </span>
 
               <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>

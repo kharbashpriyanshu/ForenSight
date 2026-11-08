@@ -110,6 +110,9 @@ async function mockApiRequest(request) {
   if (url.pathname === '/api/auth/login' && request.method() === 'POST') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR', mfa_enabled: false });
   }
+  if (url.pathname === '/api/auth/session' && request.method() === 'GET') {
+    return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR' });
+  }
   if (url.pathname === '/api/cases' && request.method() === 'GET') {
     return jsonResponse(state.caseCreated ? [caseData] : []);
   }

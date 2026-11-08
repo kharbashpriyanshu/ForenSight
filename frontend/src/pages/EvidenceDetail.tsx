@@ -329,7 +329,7 @@ export default function EvidenceDetail() {
   };
 
   useEffect(() => {
-    if (evidenceId && evidenceId !== 'new') {
+    if (evidenceId && evidenceId !== 'new' && evidenceId !== 'upload') {
       fetchEvidenceAndJobs(evidenceId);
     }
   }, [evidenceId]);
@@ -415,6 +415,7 @@ export default function EvidenceDetail() {
         setUploading(false);
         setFile(null);
         fetchEvidenceAndJobs(String(data.id));
+        navigate(`/cases/${caseId}/evidence/${data.id}`, { replace: true });
       })
       .catch((_err: any) => {
         setError(_err.message);
@@ -820,7 +821,7 @@ export default function EvidenceDetail() {
                 <div style={{ background: 'var(--surface-color-light)', borderLeft: '3px solid #f59e0b', borderRadius: '4px', padding: '0.75rem' }}>
                   <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>WHAT SHOULD YOU DO NEXT?</div>
                   <ul style={{ margin: '0.25rem 0 0 1rem', padding: 0, fontSize: '0.75rem' }}>
-                    {heatmap.recommended_next_steps.slice(0, 3).map((s, i) => (
+                    {heatmap.recommended_next_steps?.slice(0, 3).map((s, i) => (
                       <li key={i}>{s}</li>
                     ))}
                   </ul>

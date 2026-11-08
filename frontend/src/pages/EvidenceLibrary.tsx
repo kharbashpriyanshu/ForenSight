@@ -220,7 +220,7 @@ const EvidenceLibrary: React.FC = () => {
 
             <button 
               className="primary-button" 
-              onClick={() => navigate(`/cases/${caseId}/evidence/new`)}
+              onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
             >
               + Single Upload

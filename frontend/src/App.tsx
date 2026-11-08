@@ -1,11 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
+
 const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Workspace = lazy(() => import('./pages/Workspace'));
 const CaseOverview = lazy(() => import('./pages/CaseOverview'));
 const EvidenceLibrary = lazy(() => import('./pages/EvidenceLibrary'));
@@ -24,41 +24,64 @@ const BenchmarkDashboard = lazy(() => import('./components/benchmark/BenchmarkDa
 const ImageLineagePage = lazy(() => import('./pages/ImageLineagePage'));
 const ProcessingHistoryPage = lazy(() => import('./pages/ProcessingHistoryPage'));
 
+// Backward-compatibility redirect helpers
+function EvidenceNewRedirect() {
+  const { caseId } = useParams<{ caseId: string }>();
+  return <Navigate to={`/cases/${caseId}/evidence/upload`} replace />;
+}
+
+function FindingsRedirect() {
+  const { caseId } = useParams<{ caseId: string }>();
+  return <Navigate to={`/cases/${caseId}/reports`} replace />;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-        <Suspense fallback={<div className="route-loading" role="status">Loading investigation view…</div>}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/cases" replace />} />
-          
-          <Route path="/legacy" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
+          <Suspense fallback={<div className="route-loading" role="status">Loading investigation view…</div>}>
+            <Routes>
+              {/* Public Authentication Route */}
+              <Route path="/login" element={<Login />} />
 
-          <Route path="/cases" element={<ProtectedRoute><AppLayout><CasesList /></AppLayout></ProtectedRoute>} />
-          <Route path="/benchmark" element={<ProtectedRoute><AppLayout><BenchmarkDashboard /></AppLayout></ProtectedRoute>} />
+              {/* Backward-Compatible Route Redirects */}
+              <Route path="/" element={<Navigate to="/cases" replace />} />
+              <Route path="/legacy" element={<Navigate to="/cases" replace />} />
 
-          <Route path="/cases/:caseId" element={<ProtectedRoute><Workspace /></ProtectedRoute>}>
-            <Route index element={<CaseOverview />} />
-            <Route path="evidence" element={<EvidenceLibrary />} />
-            <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
-            <Route path="compare" element={<EvidenceComparison />} />
-            <Route path="lineage" element={<ImageLineagePage />} />
-            <Route path="evidence/:evidenceId/history" element={<ProcessingHistoryPage />} />
-            <Route path="cross-correlation" element={<CrossImageCorrelation />} />
-            <Route path="graph" element={<InvestigationGraphPage />} />
-            <Route path="assistant" element={<InvestigationAssistant />} />
-            <Route path="analyst" element={<AnalystWorkspace />} />
-            <Route path="custody" element={<ChainOfCustody />} />
-            <Route path="audit" element={<AuditTimeline />} />
-            <Route path="findings" element={<ReportsInterface />} />
-            <Route path="reports" element={<ReportsInterface />} />
-          </Route>
-          <Route path="/system" element={<ProtectedRoute><AppLayout><SystemHealth /></AppLayout></ProtectedRoute>} />
-        </Routes>
-        </Suspense>
-      </BrowserRouter>
+              {/* Unified Authenticated Application Shell */}
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                {/* Global Station Routes */}
+                <Route path="/cases" element={<CasesList />} />
+                <Route path="/benchmark" element={<BenchmarkDashboard />} />
+                <Route path="/system" element={<SystemHealth />} />
+
+                {/* Case Workspace Sub-Shell with Three-Phase Navigation */}
+                <Route path="/cases/:caseId" element={<Workspace />}>
+                  <Route index element={<CaseOverview />} />
+                  <Route path="evidence" element={<EvidenceLibrary />} />
+                  <Route path="evidence/upload" element={<EvidenceDetail />} />
+                  <Route path="evidence/new" element={<EvidenceNewRedirect />} />
+                  <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
+                  <Route path="evidence/:evidenceId/history" element={<ProcessingHistoryPage />} />
+                  <Route path="compare" element={<EvidenceComparison />} />
+                  <Route path="lineage" element={<ImageLineagePage />} />
+                  <Route path="cross-correlation" element={<CrossImageCorrelation />} />
+                  <Route path="graph" element={<InvestigationGraphPage />} />
+                  <Route path="assistant" element={<InvestigationAssistant />} />
+                  <Route path="analyst" element={<AnalystWorkspace />} />
+                  <Route path="custody" element={<ChainOfCustody />} />
+                  <Route path="audit" element={<AuditTimeline />} />
+                  <Route path="findings" element={<FindingsRedirect />} />
+                  <Route path="reports" element={<ReportsInterface />} />
+                </Route>
+              </Route>
+
+              {/* Catch-all fallback */}
+              <Route path="*" element={<Navigate to="/cases" replace />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
   );

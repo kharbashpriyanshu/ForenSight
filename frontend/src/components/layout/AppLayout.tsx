@@ -1,95 +1,162 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Activity, FolderOpen, FlaskConical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
+import { Activity, FolderOpen, FlaskConical, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 import ThemeToggle from './ThemeToggle';
+import Breadcrumbs from './Breadcrumbs';
 
 interface AppLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export interface AppLayoutContext {
+  mobileNavOpen: boolean;
+  setMobileNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
+  const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Close mobile drawer on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Determine if currently in a case workspace route
+  const isCaseWorkspace = Boolean(location.pathname.match(/^\/cases\/[^/]+/));
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <img 
-            src="/forensight-icon.png" 
-            alt="ForenSight Emblem" 
-            style={{ 
-              height: '38px', 
-              width: 'auto', 
-              objectFit: 'contain',
-              flexShrink: 0,
-              filter: 'drop-shadow(0 2px 6px rgba(28, 43, 58, 0.22))'
-            }} 
-          />
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.12rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>ForenSight</div>
-            <div style={{ fontSize: '0.66rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', marginTop: '0.15rem' }}>Evidence OS</div>
-          </div>
-        </div>
-        <nav className="sidebar-nav">
-          <div className="nav-section-label">Station</div>
-          <NavLink to="/cases" end title="Cases" aria-label="Cases" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <FolderOpen size={17} aria-hidden="true" /> Cases
-          </NavLink>
-          <div className="nav-section-label">Operations</div>
-          <NavLink to="/benchmark" title="Benchmark Suite" aria-label="Benchmark Suite" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <FlaskConical size={17} aria-hidden="true" /> Benchmark Suite
-          </NavLink>
-          <NavLink to="/system" title="System Health" aria-label="System Health" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-            <Activity size={17} aria-hidden="true" /> System Health
-          </NavLink>
-        </nav>
-      </aside>
-      <main className="main-content">
-        <header className="topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>
-              Station Hub
+      {/* UNIFIED GLOBAL TOPBAR */}
+      <header className="topbar">
+        <div className="topbar-left">
+          <Link to="/cases" className="topbar-brand" title="ForenSight Station Directory">
+            <img 
+              src="/forensight-icon.png" 
+              alt="ForenSight Emblem" 
+              className="topbar-logo"
+            />
+            <div className="topbar-brand-text">
+              <span className="topbar-brand-title">ForenSight</span>
+              <span className="topbar-brand-subtitle">Evidence OS</span>
             </div>
-            <span style={{ 
-              fontSize: '0.65rem', 
-              fontWeight: 700, 
-              background: 'rgba(184, 135, 42, 0.10)', 
-              color: '#92560a', 
-              border: '1px solid rgba(184, 135, 42, 0.25)', 
-              padding: '0.15rem 0.5rem', 
-              borderRadius: '9999px',
-              letterSpacing: '0.05em'
-            }}>
-              STATION WORKSPACE
-            </span>
-          </div>
-          <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-            <ThemeToggle />
-            <AccountSecurityPanel />
-            <span className="status-badge">
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--status-nominal)', display: 'inline-block' }} />
-              Multi-User RBAC Active
-            </span>
-            <button 
-              id="logout-button"
-              className="btn btn-secondary"
-              onClick={logout} 
-              style={{ 
-                padding: '0.35rem 0.85rem', 
-                fontSize: '0.8rem',
-                fontWeight: 600
-              }}
-            >
-              Sign Out
-            </button>
-          </div>
-        </header>
-        <div className="page-container">
-          {children}
+          </Link>
+
+          <div className="topbar-divider" aria-hidden="true" />
+
+          {/* Contextual dynamic breadcrumb trail */}
+          <Breadcrumbs />
         </div>
-      </main>
+
+        <div className="topbar-right">
+          {/* Workspace Context Badge */}
+          <span className={`context-pill ${isCaseWorkspace ? 'context-pill-case' : 'context-pill-station'}`}>
+            {isCaseWorkspace ? 'CASE WORKSPACE' : 'STATION DIRECTORY'}
+          </span>
+
+          {/* Theme Toggle (Light / Dark) */}
+          <ThemeToggle />
+
+          {/* Multi-User RBAC & Security */}
+          <AccountSecurityPanel />
+
+          <span className="status-badge" title="Role-Based Access Control Active">
+            <span className="status-dot-nominal" aria-hidden="true" />
+            <span className="status-badge-text">RBAC Active</span>
+          </span>
+
+          {/* Explicit Sign Out Action */}
+          <button 
+            id="logout-button"
+            className="btn btn-secondary topbar-logout-btn"
+            onClick={logout} 
+            title="Sign out of ForenSight session"
+          >
+            Sign Out
+          </button>
+
+          {/* Responsive Mobile Drawer Toggle */}
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            onClick={() => setMobileNavOpen(prev => !prev)}
+            aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={mobileNavOpen}
+          >
+            {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </header>
+
+      {/* WORKSPACE VIEWPORT BODY */}
+      <div className="app-shell-body">
+        {/* If on Station routes (/cases, /benchmark, /system), render Station Sidebar */}
+        {!isCaseWorkspace && (
+          <>
+            {mobileNavOpen && (
+              <div 
+                className="sidebar-backdrop" 
+                onClick={() => setMobileNavOpen(false)} 
+                aria-hidden="true"
+              />
+            )}
+            <aside className={`sidebar station-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
+              <nav className="sidebar-nav" aria-label="Station Navigation">
+                <div className="nav-section-label">Station</div>
+                <NavLink 
+                  to="/cases" 
+                  end 
+                  title="Cases Directory" 
+                  aria-label="Cases Directory" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <FolderOpen size={16} aria-hidden="true" />
+                  <span className="nav-item-text">Cases</span>
+                </NavLink>
+
+                <div className="nav-section-label">Operations</div>
+                <NavLink 
+                  to="/benchmark" 
+                  title="Benchmark Suite" 
+                  aria-label="Benchmark Suite" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <FlaskConical size={16} aria-hidden="true" />
+                  <span className="nav-item-text">Benchmark Suite</span>
+                </NavLink>
+                <NavLink 
+                  to="/system" 
+                  title="System Health" 
+                  aria-label="System Health" 
+                  className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                >
+                  <Activity size={16} aria-hidden="true" />
+                  <span className="nav-item-text">System Health</span>
+                </NavLink>
+              </nav>
+
+              <div className="sidebar-footer">
+                <div className="sidebar-footer-title">
+                  Scientific Freeze: <strong className="sidebar-footer-state">Enforced</strong>
+                </div>
+                <div className="sidebar-footer-axiom">Observation != Proof</div>
+              </div>
+            </aside>
+          </>
+        )}
+
+        {/* Content Region: If station route, wrapped in page-container; if case route, Workspace manages it */}
+        {!isCaseWorkspace ? (
+          <main className="page-container" id="main-content">
+            {children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />}
+          </main>
+        ) : (
+          children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />
+        )}
+      </div>
     </div>
   );
 };
