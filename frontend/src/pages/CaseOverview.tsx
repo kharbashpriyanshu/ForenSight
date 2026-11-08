@@ -480,10 +480,10 @@ const CaseOverview: React.FC = () => {
             <CheckCircle2 size={14} style={{ color: '#15803d', opacity: 0.8 }} />
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#15803d', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
-            {stats.completed_analysis_count}
+            {stats.completed_analysis_count ?? 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Out of {stats.analysis_count || stats.completed_analysis_count} scheduled jobs
+            Out of {stats.analysis_count || stats.completed_analysis_count || 0} scheduled jobs
           </div>
         </div>
 
@@ -492,13 +492,13 @@ const CaseOverview: React.FC = () => {
             <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', letterSpacing: '0.06em' }}>
               Active Queue
             </span>
-            <Activity size={14} style={{ color: stats.running_job_count > 0 ? 'var(--accent-color)' : 'var(--text-muted)' }} />
+            <Activity size={14} style={{ color: (stats.running_job_count || 0) > 0 ? 'var(--accent-color)' : 'var(--text-muted)' }} />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: stats.running_job_count > 0 ? 'var(--accent-color)' : 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
-            {stats.running_job_count + stats.pending_job_count}
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: (stats.running_job_count || 0) > 0 ? 'var(--accent-color)' : 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
+            {(stats.running_job_count || 0) + (stats.pending_job_count || 0)}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            {stats.running_job_count > 0 ? `${stats.running_job_count} running in background` : 'Analysis queue idle'}
+            {(stats.running_job_count || 0) > 0 ? `${stats.running_job_count} running in background` : 'Analysis queue idle'}
           </div>
         </div>
 
@@ -507,10 +507,10 @@ const CaseOverview: React.FC = () => {
             <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', letterSpacing: '0.06em' }}>
               Formal Findings
             </span>
-            <AlertTriangle size={14} style={{ color: stats.findings_count > 0 ? '#b45309' : 'var(--text-muted)' }} />
+            <AlertTriangle size={14} style={{ color: (stats.findings_count || 0) > 0 ? '#b45309' : 'var(--text-muted)' }} />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: stats.findings_count > 0 ? '#b45309' : 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
-            {stats.findings_count}
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: (stats.findings_count || 0) > 0 ? '#b45309' : 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
+            {stats.findings_count || 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Recorded observations
@@ -525,7 +525,7 @@ const CaseOverview: React.FC = () => {
             <ShieldCheck size={14} style={{ color: 'var(--accent-color)', opacity: 0.9 }} />
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
-            {stats.audit_event_count}
+            {stats.audit_event_count ?? 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
             Immutable ledger records
