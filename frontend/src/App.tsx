@@ -23,6 +23,7 @@ const InvestigationGraphPage = lazy(() => import('./pages/InvestigationGraphPage
 const BenchmarkDashboard = lazy(() => import('./components/benchmark/BenchmarkDashboard'));
 const ImageLineagePage = lazy(() => import('./pages/ImageLineagePage'));
 const ProcessingHistoryPage = lazy(() => import('./pages/ProcessingHistoryPage'));
+const EvidenceIntake = lazy(() => import('./pages/EvidenceIntake'));
 
 // Backward-compatibility redirect helpers
 function EvidenceNewRedirect() {
@@ -53,6 +54,9 @@ function App() {
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 {/* Global Station Routes */}
                 <Route path="/cases" element={<CasesList />} />
+                <Route path="/cases/intake" element={<EvidenceIntake />} />
+                <Route path="/intake" element={<Navigate to="/cases/intake" replace />} />
+                <Route path="/investigate" element={<Navigate to="/cases/intake" replace />} />
                 <Route path="/benchmark" element={<BenchmarkDashboard />} />
                 <Route path="/system" element={<SystemHealth />} />
 
@@ -60,7 +64,7 @@ function App() {
                 <Route path="/cases/:caseId" element={<Workspace />}>
                   <Route index element={<CaseOverview />} />
                   <Route path="evidence" element={<EvidenceLibrary />} />
-                  <Route path="evidence/upload" element={<EvidenceDetail />} />
+                  <Route path="evidence/upload" element={<EvidenceIntake />} />
                   <Route path="evidence/new" element={<EvidenceNewRedirect />} />
                   <Route path="evidence/:evidenceId" element={<EvidenceDetail />} />
                   <Route path="evidence/:evidenceId/history" element={<ProcessingHistoryPage />} />

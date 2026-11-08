@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef, lazy } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
@@ -56,17 +56,7 @@ interface HeatmapData {
 export default function EvidenceDetail() {
   const { caseId, evidenceId } = useParams<{ caseId: string, evidenceId: string }>();
   const navigate = useNavigate();
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any | null>(null);
-  const [sourcePlatform, setSourcePlatform] = useState('');
-  const [acquisitionMethod, setAcquisitionMethod] = useState('');
-  const [receivedFrom, setReceivedFrom] = useState('');
-  const [receivedAt, setReceivedAt] = useState('');
-  const [reportedCaptureTime, setReportedCaptureTime] = useState('');
-  const [sourceReferenceUrl, setSourceReferenceUrl] = useState('');
-  const [intakeNotes, setIntakeNotes] = useState('');
-  const [error, setError] = useState('');
   
   const [jobs, setJobs] = useState<any>({});
   const [results, setResults] = useState<any>({});
@@ -388,41 +378,6 @@ export default function EvidenceDetail() {
     }
   };
 
-  const handleUpload = () => {
-    if (!file || !caseId) return;
-    setUploading(true);
-    setError('');
-    
-    const formData = new FormData();
-    formData.append('case_id', caseId || '');
-    formData.append('file', file);
-    formData.append('source_platform', sourcePlatform);
-    formData.append('acquisition_method', acquisitionMethod);
-    formData.append('received_from', receivedFrom);
-    formData.append('received_at', receivedAt);
-    formData.append('reported_capture_time', reportedCaptureTime);
-    formData.append('source_reference_url', sourceReferenceUrl);
-    formData.append('intake_notes', intakeNotes);
-
-    fetchApi(`/cases/${caseId}/evidence`, {
-      method: 'POST',
-      body: formData
-    }, 120000)
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
-        setUploadResult(data);
-        setUploading(false);
-        setFile(null);
-        fetchEvidenceAndJobs(String(data.id));
-        navigate(`/cases/${caseId}/evidence/${data.id}`, { replace: true });
-      })
-      .catch((_err: any) => {
-        setError(_err.message);
-        setUploading(false);
-      });
-  };
-
   const handleCheckC2pa = async () => {
     if (!uploadResult) return;
     setCheckingC2pa(true);
@@ -484,45 +439,19 @@ export default function EvidenceDetail() {
 
   const effectiveFormat = (uploadResult?.image_format || uploadResult?.mime_type?.split('/')?.[1] || '').toUpperCase();
 
+  if (evidenceId === 'upload' || evidenceId === 'new') {
+    return <Navigate to={`/cases/${caseId}/evidence/upload`} replace />;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-      {/* Evidence Acquisition Form (if new) */}
       {!uploadResult && (
-        <div className="card">
-          <h2 className="card-title">Evidence Acquisition & Cryptographic Ingestion</h2>
-          {!caseId ? (
-            <p style={{ color: 'var(--text-muted)' }}>No Case ID found.</p>
-          ) : (
-            <div>
-              <p style={{ marginBottom: '1rem', color: 'var(--primary-color)' }}>Active Case: {caseId}</p>
-              <input 
-                type="file" 
-                accept="image/png, image/jpeg, image/webp"
-                onChange={e => setFile(e.target.files?.[0] || null)}
-                style={{ marginBottom: '1rem', display: 'block', width: '100%', padding: '0.5rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '0.25rem', color: 'var(--text-main)' }}
-              />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem', marginBottom: '0.8rem' }}>
-                <input type="text" placeholder="Where received (for example, WhatsApp)" value={sourcePlatform} onChange={e => setSourcePlatform(e.target.value)} aria-label="Source platform" />
-                <select value={acquisitionMethod} onChange={e => setAcquisitionMethod(e.target.value)} aria-label="How the file was acquired">
-                  <option value="">Acquisition method (optional)</option>
-                  <option value="ORIGINAL_FILE">Original file</option>
-                  <option value="FORWARDED_FILE">Forwarded file</option>
-                  <option value="SCREENSHOT">Screenshot</option>
-                  <option value="WEB_DOWNLOAD">Web download</option>
-                  <option value="OTHER">Other</option>
-                </select>
-                <input type="text" placeholder="Received from (optional)" value={receivedFrom} onChange={e => setReceivedFrom(e.target.value)} aria-label="Received from" />
-                <input type="datetime-local" value={receivedAt} onChange={e => setReceivedAt(e.target.value)} aria-label="Received at" />
-                <input type="text" placeholder="Reported capture time (keep as reported)" value={reportedCaptureTime} onChange={e => setReportedCaptureTime(e.target.value)} aria-label="Reported capture time" />
-                <input type="url" placeholder="Source URL (optional)" value={sourceReferenceUrl} onChange={e => setSourceReferenceUrl(e.target.value)} aria-label="Source URL" />
-                <textarea placeholder="Acquisition notes (optional)" value={intakeNotes} onChange={e => setIntakeNotes(e.target.value)} rows={2} aria-label="Acquisition notes" style={{ gridColumn: '1 / -1', resize: 'vertical' }} />
-              </div>
-              <button className="btn btn-primary" onClick={handleUpload} disabled={!file || uploading} style={{ width: '100%' }}>
-                {uploading ? 'Preserving received file and computing SHA-256…' : 'Preserve file & start intake record'}
-              </button>
-              {error && <div style={{ marginTop: '1rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '0.25rem' }}>{error}</div>}
-            </div>
-          )}
+        <div className="card" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
+          <RefreshCw size={24} className="spin" style={{ margin: '0 auto 1rem auto', color: 'var(--accent-color)' }} />
+          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>Loading Evidence Record…</div>
+          <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '420px', marginInline: 'auto' }}>
+            Retrieving SHA-256 integrity digest, container metadata, and analytical hypotheses for evidence #{evidenceId}.
+          </p>
         </div>
       )}
 

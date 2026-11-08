@@ -38,6 +38,9 @@ export const Breadcrumbs: React.FC = () => {
 
   if (segments.length === 0 || (segments.length === 1 && segments[0] === 'cases')) {
     crumbs.push({ label: 'Cases', isCurrent: true });
+  } else if (segments[0] === 'cases' && segments.length === 2 && segments[1] === 'intake') {
+    crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
+    crumbs.push({ label: 'Evidence Intake', isCurrent: true });
   } else if (segments[0] === 'benchmark') {
     crumbs.push({ label: 'Station', to: '/cases', isCurrent: false });
     crumbs.push({ label: 'Benchmark Suite', isCurrent: true });

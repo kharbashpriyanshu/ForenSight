@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { FileUp, FolderArchive, ArrowRight, ChevronDown } from 'lucide-react';
 import { fetchApi, prefetchApi } from '../api';
 
 const PAGE_SIZE = 100;
@@ -158,6 +159,134 @@ export default function CasesList() {
         </div>
       )}
       
+      {/* 1. Investigation Entry Hub: Dual Pathways A & B */}
+      <div className="card" style={{ 
+        marginBottom: '1.75rem', 
+        padding: '1.5rem', 
+        background: 'var(--surface-color)', 
+        borderTop: '3px solid var(--accent-color)' 
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
+              <span className="context-pill context-pill-station" style={{ height: '20px' }}>
+                INVESTIGATION ENTRY
+              </span>
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>
+              Start an Investigation
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, maxWidth: '640px' }}>
+              Select an investigation pathway to begin image tamper examination, compression analysis, and cryptographic evidence registration.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+          {/* Pathway A: Examine an Image */}
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderRadius: '8px', 
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.65rem' }}>
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '6px', 
+                  background: 'var(--accent-glow)', 
+                  color: 'var(--accent-color)', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <FileUp size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Path A — Quick Entry
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                    Examine an Image
+                  </h3>
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.45, marginBottom: '1rem' }}>
+                Begin with an image. ForenSight verifies the file structure, calculates an immutable SHA-256 fingerprint, automatically associates a case dossier, and opens the forensic workbench immediately.
+              </p>
+            </div>
+
+            <button 
+              type="button" 
+              className="btn btn-primary"
+              onClick={() => navigate('/cases/intake')}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%' }}
+            >
+              <span>Start with an Image</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
+
+          {/* Pathway B: Open Existing Investigation */}
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderRadius: '8px', 
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.65rem' }}>
+                <div style={{ 
+                  width: '36px', 
+                  height: '36px', 
+                  borderRadius: '6px', 
+                  background: 'rgba(59, 130, 246, 0.1)', 
+                  color: '#2563eb', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <FolderArchive size={20} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Path B — Directory
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                    Open Existing Investigation
+                  </h3>
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.45, marginBottom: '1rem' }}>
+                Continue work on an existing investigation ({cases.length} active dossiers on record). Inspect previous evidence acquisitions, explore cross-correlation graphs, and export formal reports.
+              </p>
+            </div>
+
+            <button 
+              type="button" 
+              className="secondary-button"
+              onClick={() => {
+                const dirEl = document.getElementById('investigations-directory-heading');
+                dirEl?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%' }}
+            >
+              <span>Browse Case Directory ({cases.length})</span>
+              <ChevronDown size={15} />
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {/* 2. Advanced: Initialize Case Dossier Form */}
       <div className="card" style={{ marginBottom: '2rem', borderTop: '3px solid #2563eb' }}>
         <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span>📂</span> Open New Forensic Dossier
@@ -189,6 +318,15 @@ export default function CasesList() {
             {creating ? 'Initializing...' : '+ Initialize Workspace'}
           </button>
         </form>
+      </div>
+
+      <div id="investigations-directory-heading" style={{ marginBottom: '0.75rem' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.2rem 0' }}>
+          Active Investigations ({filteredCases.length})
+        </h3>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+          Select an investigation to enter its multi-phase workspace and forensic tooling.
+        </p>
       </div>
 
       {loading ? (

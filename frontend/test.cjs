@@ -254,6 +254,12 @@ async function main() {
     return Boolean(button && !button.disabled);
   });
   await clickButton(page, 'Preserve file & start intake record');
+  try {
+    await page.waitForFunction(() => document.body.innerText.includes('Proceed to Forensic Examination'), { timeout: 4000 });
+    await clickButton(page, 'Proceed to Forensic Examination');
+  } catch (_e) {
+    // Proceed directly if already transitioned
+  }
   await page.waitForFunction(() => document.body.innerText.includes('Chain of Custody & Storage Verification'));
   assert.equal(state.evidenceUploaded, true, 'evidence upload endpoint was called');
 

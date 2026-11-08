@@ -313,12 +313,17 @@ const EvidenceLibrary: React.FC = () => {
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗄️</div>
           <h3 style={{ margin: '0 0 0.5rem 0' }}>No Evidence Ingested</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>
-            Start by acquiring evidence files via single or batch ingestion.
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 1.25rem 0' }}>
+            No evidence records are associated with this investigation yet. Start by acquiring an image file.
           </p>
-          <button className="primary-button" onClick={() => setShowBatchUpload(true)}>
-            Batch Ingest Evidence Files
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="primary-button" onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}>
+              + Ingest Evidence File
+            </button>
+            <button className="secondary-button" onClick={() => setShowBatchUpload(true)}>
+              📁 Batch Ingest Files
+            </button>
+          </div>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
