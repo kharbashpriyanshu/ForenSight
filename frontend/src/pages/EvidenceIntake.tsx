@@ -58,6 +58,9 @@ export default function EvidenceIntake() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [imageMeta, setImageMeta] = useState<{ width: number; height: number; megapixels: string } | null>(null);
   const [validationError, setValidationError] = useState<ValidationResult | null>(null);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>(() => 
+    typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'idemp-' + Math.random().toString(36).substring(2) + Date.now().toString(36)
+  );
 
   // Case association state
   const [activeCaseIdentifier, setActiveCaseIdentifier] = useState<string>(paramCaseId || '');
@@ -107,7 +110,7 @@ export default function EvidenceIntake() {
         })
         .catch(err => console.error("Error loading case info:", err));
     } else {
-      fetchApi('/cases?limit=50')
+      fetchApi('/cases?limit=100&exclude_closed=true')
         .then(res => res.ok ? res.json() : [])
         .then(data => {
           const caseList = Array.isArray(data) ? data : [];
@@ -236,35 +239,22 @@ export default function EvidenceIntake() {
     setServerError('');
 
     try {
-      let targetCaseIdentifier = activeCaseIdentifier;
-
-      // 1. If user chose to create a new case, initialize it first
-      if (caseMode === 'new' && !paramCaseId) {
-        const titleToUse = newCaseTitle.trim() || `Investigation: ${file.name.replace(/\.[^/.]+$/, '')}`;
-        const caseRes = await fetchApi('/cases', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: titleToUse,
-            intake_notes: intakeNotes.trim() || 'Initialized via guided image intake.',
-          }),
-        });
-
-        const caseData = await caseRes.json();
-        if (!caseRes.ok) {
-          throw new Error(caseData.detail || 'Failed to initialize investigation dossier');
-        }
-        targetCaseIdentifier = caseData.case_identifier;
-      }
-
-      if (!targetCaseIdentifier) {
-        throw new Error('An active investigation case is required to associate evidence.');
-      }
-
-      // 2. Upload file to case evidence intake endpoint
+      // Coordinated atomic server-side intake:
+      // Validates image binary, creates case (if new) and registers evidence in a single operation.
+      // Guarantees zero orphaned cases on validation failure and enforces idempotency.
       const formData = new FormData();
-      formData.append('case_id', targetCaseIdentifier);
       formData.append('file', file);
+      formData.append('idempotency_key', idempotencyKey);
+
+      if (paramCaseId) {
+        formData.append('case_id', paramCaseId);
+      } else if (caseMode === 'existing' && activeCaseIdentifier) {
+        formData.append('case_id', activeCaseIdentifier);
+      } else {
+        const titleToUse = newCaseTitle.trim() || `Investigation: ${file.name.replace(/\.[^/.]+$/, '')}`;
+        formData.append('case_title', titleToUse);
+      }
+
       formData.append('source_platform', sourcePlatform.trim());
       formData.append('acquisition_method', acquisitionMethod.trim());
       formData.append('received_from', receivedFrom.trim());
@@ -273,7 +263,7 @@ export default function EvidenceIntake() {
       formData.append('source_reference_url', sourceReferenceUrl.trim());
       formData.append('intake_notes', intakeNotes.trim());
 
-      const res = await fetchApi(`/cases/${targetCaseIdentifier}/evidence`, {
+      const res = await fetchApi('/cases/intake', {
         method: 'POST',
         body: formData,
       }, 120000);
@@ -284,9 +274,10 @@ export default function EvidenceIntake() {
       }
 
       // Ingestion succeeded!
+      const resolvedCaseId = data.case_identifier || (caseMode === 'existing' ? activeCaseIdentifier : paramCaseId || '');
       setSuccessResult({
         ...data,
-        case_identifier: targetCaseIdentifier,
+        case_identifier: resolvedCaseId,
       });
     } catch (err: any) {
       console.error('Intake submission error:', err);
@@ -327,13 +318,13 @@ export default function EvidenceIntake() {
                 Evidence Registered & Cryptographically Fingerprinted
               </div>
               <h2 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0.1rem 0 0 0' }}>
-                Intake Complete: Evidence #{successResult.id}
+                Evidence Successfully Ingested
               </h2>
             </div>
           </div>
 
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            The evidence binary was stored bit-for-bit in secure storage. An immutable cryptographic SHA-256 digest was computed, and the intake transaction has been logged to the case audit ledger.
+            The evidence binary was stored bit-for-bit in secure storage. A cryptographic SHA-256 fingerprint was generated, file structure was validated, and the intake transaction has been logged to the case audit ledger.
           </p>
 
           <div style={{ 
@@ -443,6 +434,7 @@ export default function EvidenceIntake() {
                 if (previewUrl) URL.revokeObjectURL(previewUrl);
                 setPreviewUrl(null);
                 setNewCaseTitle('');
+                setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'idemp-' + Math.random().toString(36).substring(2) + Date.now().toString(36));
               }}
               style={{ marginLeft: 'auto', fontSize: '0.8rem' }}
             >
@@ -683,7 +675,7 @@ export default function EvidenceIntake() {
                         borderRadius: '9999px',
                         textTransform: 'uppercase'
                       }}>
-                        Verified for Ingest
+                        File Structure Validated
                       </span>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                         {file.type || 'image/raw'}
@@ -960,7 +952,7 @@ export default function EvidenceIntake() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
               <ShieldCheck size={16} style={{ color: '#16a34a' }} />
-              <span>Evidence integrity verified via bitwise streaming SHA-256</span>
+              <span>File structure validated • Bitwise streaming SHA-256 generated on ingest</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

@@ -38,6 +38,7 @@ class EvidenceResponse(EvidenceBase):
     evidence_identifier: str
     created_at: datetime
     case_id: Optional[int] = None
+    case_identifier: Optional[str] = None
     intake_context: Optional[EvidenceIntakeContextResponse] = None
     
     model_config = ConfigDict(from_attributes=True)

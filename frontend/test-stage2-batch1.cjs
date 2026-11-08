@@ -98,6 +98,13 @@ async function mockApiRequest(request) {
     return jsonResponse([caseData]);
   }
 
+  if (url.pathname === '/api/cases/intake' && method === 'POST') {
+    return jsonResponse({
+      ...evidenceData,
+      case_identifier: 'FS-CASE-AUTO-002',
+    });
+  }
+
   if (url.pathname === '/api/cases' && method === 'POST') {
     return jsonResponse({
       id: 502,
@@ -202,12 +209,12 @@ async function main() {
   console.log('3. Testing Valid Image Selection & Preview Generation...');
   const fileInput = await page.waitForSelector('input[type="file"]');
   await fileInput.uploadFile(validFixturePath);
-  await page.waitForFunction(() => document.body.textContent.includes('Verified for Ingest'));
+  await page.waitForFunction(() => document.body.textContent.includes('File Structure Validated'));
   const previewImg = await page.$('img[alt="Evidence Preview"]');
   assert.ok(previewImg, 'Image preview generated');
   
-  const verifiedBadge = await page.$eval('body', b => b.textContent.includes('Verified for Ingest'));
-  assert.ok(verifiedBadge, 'Verified for Ingest badge rendered');
+  const validatedBadge = await page.$eval('body', b => b.textContent.includes('File Structure Validated'));
+  assert.ok(validatedBadge, 'File Structure Validated badge rendered');
   console.log('   ✓ Non-destructive image preview & metadata verified');
 
   // 4. Test Invalid File Format Rejection
@@ -221,7 +228,7 @@ async function main() {
   // Re-select valid image for ingestion
   console.log('5. Re-selecting Valid Evidence Image for Ingestion...');
   await fileInput.uploadFile(validFixturePath);
-  await page.waitForFunction(() => document.body.textContent.includes('Verified for Ingest'));
+  await page.waitForFunction(() => document.body.textContent.includes('File Structure Validated'));
   console.log('   ✓ Valid evidence re-selected and verified');
 
   // 6. Test Evidence Registration & Ingestion
@@ -284,4 +291,5 @@ main()
     if (viteProcess) viteProcess.kill();
     if (validFixturePath && fs.existsSync(validFixturePath)) fs.unlinkSync(validFixturePath);
     if (invalidFixturePath && fs.existsSync(invalidFixturePath)) fs.unlinkSync(invalidFixturePath);
+    process.exit(process.exitCode || 0);
   });

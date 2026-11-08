@@ -129,7 +129,7 @@ async function mockApiRequest(request) {
   if (url.pathname === `/api/cases/${caseData.case_identifier}/evidence` && request.method() === 'GET') {
     return jsonResponse(state.evidenceUploaded ? [evidenceData] : []);
   }
-  if (url.pathname === `/api/cases/${caseData.case_identifier}/evidence` && request.method() === 'POST') {
+  if ((url.pathname === '/api/cases/intake' || url.pathname === `/api/cases/${caseData.case_identifier}/evidence`) && request.method() === 'POST') {
     state.evidenceUploaded = true;
     return jsonResponse(evidenceData);
   }
@@ -286,4 +286,5 @@ main()
     if (browser) await browser.close();
     if (viteProcess && ownsServer) viteProcess.kill();
     if (fixturePath && fs.existsSync(fixturePath)) fs.unlinkSync(fixturePath);
+    process.exit(process.exitCode || 0);
   });

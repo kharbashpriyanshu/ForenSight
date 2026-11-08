@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Query, Request
 from sqlalchemy import or_
 from fastapi.responses import FileResponse
 import pathlib
@@ -54,12 +54,18 @@ def read_cases(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=500),
     search: Optional[str] = Query(default=None, max_length=200),
+    status: Optional[str] = Query(default=None),
+    exclude_closed: Optional[bool] = Query(default=False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     query = db.query(InvestigationCase)
     if current_user.role != "ADMIN":
         query = query.filter(InvestigationCase.user_id == current_user.id)
+    if exclude_closed:
+        query = query.filter(InvestigationCase.status != "Closed")
+    elif status and status.strip():
+        query = query.filter(InvestigationCase.status.ilike(status.strip()))
     if search and search.strip():
         pattern = f"%{search.strip()}%"
         query = query.filter(or_(InvestigationCase.title.ilike(pattern), InvestigationCase.case_identifier.ilike(pattern)))
@@ -74,6 +80,49 @@ def read_case(case_id: str, db: Session = Depends(get_db), current_user: User = 
         raise HTTPException(status_code=403, detail="Not authorized to access this case")
     AuditService.log_event(db, case.case_identifier, "CASE_SELECTED", actor=current_user.username)
     return case
+
+@router.post("/cases/intake", response_model=EvidenceResponse)
+def coordinated_evidence_intake(
+    request: Request,
+    file: UploadFile = File(...),
+    case_id: Optional[str] = Form(default=None),
+    case_title: Optional[str] = Form(default=None),
+    idempotency_key: Optional[str] = Form(default=None),
+    source_platform: str = Form(default=""),
+    acquisition_method: str = Form(default=""),
+    received_from: str = Form(default=""),
+    received_at: str = Form(default=""),
+    reported_capture_time: str = Form(default=""),
+    source_reference_url: str = Form(default=""),
+    intake_notes: str = Form(default=""),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Coordinated intake lifecycle endpoint.
+    Atomically creates case and evidence or attaches evidence to an open existing case.
+    Guarantees no orphaned cases are created if file validation fails.
+    Enforces idempotency and prevents duplicate submissions.
+    """
+    idemp_key = idempotency_key or request.headers.get("Idempotency-Key") or request.headers.get("X-Idempotency-Key")
+    intake_context = {
+        "source_platform": source_platform.strip() or None,
+        "acquisition_method": acquisition_method.strip() or None,
+        "received_from": received_from.strip() or None,
+        "received_at": received_at.strip() or None,
+        "reported_capture_time": reported_capture_time.strip() or None,
+        "source_reference_url": source_reference_url.strip() or None,
+        "intake_notes": intake_notes.strip() or None,
+    }
+    return EvidenceService.intake_evidence(
+        db=db,
+        file=file,
+        current_user=current_user,
+        case_id=case_id,
+        case_title=case_title,
+        intake_context=intake_context,
+        idempotency_key=idemp_key,
+    )
 
 @router.post("/cases/{case_id}/evidence", response_model=EvidenceResponse)
 def upload_evidence(
@@ -94,6 +143,8 @@ def upload_evidence(
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this case")
+    if case.status and case.status.strip().lower() == "closed":
+        raise HTTPException(status_code=400, detail="Cannot attach evidence to a closed investigation. Reopen the investigation dossier first.")
         
     intake_context = {
         "source_platform": source_platform.strip() or None,

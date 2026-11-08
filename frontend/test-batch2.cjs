@@ -436,4 +436,5 @@ main()
   .finally(async () => {
     if (browser) await browser.close();
     if (viteProcess && ownsServer) viteProcess.kill();
+    process.exit(process.exitCode || 0);
   });

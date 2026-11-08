@@ -64,6 +64,10 @@ class Evidence(Base):
     analyses = relationship("Analysis", back_populates="evidence")
     intake_context = relationship("EvidenceIntakeContext", back_populates="evidence", uselist=False, cascade="all, delete-orphan")
 
+    @property
+    def case_identifier(self):
+        return self.case.case_identifier if self.case else None
+
 
 class EvidenceIntakeContext(Base):
     __tablename__ = "evidence_intake_contexts"
@@ -328,4 +332,18 @@ class AnalystNote(Base):
     
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class IntakeIdempotencyRecord(Base):
+    __tablename__ = "intake_idempotency_records"
+    __table_args__ = (UniqueConstraint("idempotency_key", "user_id", name="uq_intake_idempotency_user_key"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    idempotency_key = Column(String(128), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    case_id = Column(Integer, ForeignKey("investigation_cases.id"), nullable=False, index=True)
+    case_identifier = Column(String, nullable=False)
+    evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=False, index=True)
+    response_payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
