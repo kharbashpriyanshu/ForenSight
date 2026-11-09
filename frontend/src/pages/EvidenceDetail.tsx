@@ -5,6 +5,7 @@ import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
+import GuidedExaminationWorkflow from '../components/evidence/GuidedExaminationWorkflow';
 const AdvancedJpegViewer = lazy(() => import('../components/evidence/AdvancedJpegViewer'));
 const CompressionHistoryViewer = lazy(() => import('../components/evidence/CompressionHistoryViewer'));
 const BlockingArtifactViewer = lazy(() => import('../components/evidence/BlockingArtifactViewer'));
@@ -378,6 +379,11 @@ export default function EvidenceDetail() {
     }
   };
 
+  const handleBatchQueueJobs = async (analysisTypes: string[]) => {
+    if (!uploadResult?.id || analysisTypes.length === 0) return;
+    await Promise.allSettled(analysisTypes.map(t => runAsyncJob(t)));
+  };
+
   const handleCheckC2pa = async () => {
     if (!uploadResult) return;
     setCheckingC2pa(true);
@@ -539,8 +545,22 @@ export default function EvidenceDetail() {
             </div>
           </div>
 
+          {/* Guided Forensic Analysis & Transparent Engine Selection Workflow */}
+          <GuidedExaminationWorkflow
+            evidence={uploadResult}
+            jobs={jobs}
+            results={results}
+            jobErrors={jobErrors}
+            onQueueJob={runAsyncJob}
+            onBatchQueue={handleBatchQueueJobs}
+            onViewResults={() => {
+              const el = document.getElementById('workbench-nav');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+
           {/* Categorized Forensic Workbench Navigation */}
-          <div style={{
+          <div id="workbench-nav" style={{
             position: 'sticky',
             top: 0,
             zIndex: 90,
