@@ -341,9 +341,24 @@ class IntakeIdempotencyRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     idempotency_key = Column(String(128), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    request_fingerprint = Column(String(64), nullable=False, index=True)
     case_id = Column(Integer, ForeignKey("investigation_cases.id"), nullable=False, index=True)
     case_identifier = Column(String, nullable=False)
     evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=False, index=True)
     response_payload = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class FailedCleanupRecord(Base):
+    __tablename__ = "failed_cleanup_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    file_path = Column(String, nullable=False, index=True)
+    cleanup_stage = Column(String(64), nullable=False)
+    error_message = Column(String, nullable=False)
+    error_type = Column(String(128), nullable=False)
+    resolved = Column(Boolean, default=False, nullable=False, index=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    resolved_at = Column(DateTime, nullable=True)
 

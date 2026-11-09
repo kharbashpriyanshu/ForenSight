@@ -36,7 +36,7 @@ def audit_event_hash(event: AuditEvent) -> str:
 
 class AuditService:
     @staticmethod
-    def log_event(db: Session, case_id: str, event_type: str, evidence_id: int = None, actor: str = "system", metadata: dict = None):
+    def log_event(db: Session, case_id: str, event_type: str, evidence_id: int = None, actor: str = "system", metadata: dict = None, auto_commit: bool = True):
         dialect = db.get_bind().dialect.name
         if dialect == "postgresql":
             db.execute(
@@ -70,11 +70,15 @@ class AuditService:
             )
             event.event_hash = audit_event_hash(event)
             db.add(event)
-            db.commit()
-            db.refresh(event)
+            if auto_commit:
+                db.commit()
+                db.refresh(event)
+            else:
+                db.flush()
             return event
         except Exception:
-            db.rollback()
+            if auto_commit:
+                db.rollback()
             raise
         finally:
             if dialect != "postgresql":

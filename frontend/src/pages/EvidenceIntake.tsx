@@ -567,7 +567,29 @@ export default function EvidenceIntake() {
               color: '#ef4444',
               fontSize: '0.85rem'
             }}>
-              <strong>Server Intake Error:</strong> {serverError}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <strong>Server Intake Error:</strong> {serverError}
+                  {serverError.toLowerCase().includes('idempotency') && (
+                    <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      This submission token was already used for a previous, different request. To prevent unintended duplicates or conflicts, please initiate a fresh submission with a new token.
+                    </div>
+                  )}
+                </div>
+                {serverError.toLowerCase().includes('idempotency') && (
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      setIdempotencyKey(typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'idemp-' + Math.random().toString(36).substring(2) + Date.now().toString(36));
+                      setServerError('');
+                    }}
+                    style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', alignSelf: 'center' }}
+                  >
+                    Generate Fresh Submission Token
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

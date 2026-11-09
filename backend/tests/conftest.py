@@ -1,21 +1,43 @@
+import tempfile
+import os
+import atexit
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 from app.db.database import Base, get_db
 from app.models.domain import InvestigationCase, Evidence
 from app.main import app
 
-from sqlalchemy.pool import StaticPool
-
-# Use an in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+TEST_DB_PATH = os.path.join(tempfile.gettempdir(), f"forensight_test_{os.getpid()}.db")
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH.replace(os.sep, '/')}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
+    connect_args={"check_same_thread": False, "timeout": 30},
+    poolclass=QueuePool,
 )
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA busy_timeout=15000")
+    cursor.close()
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def cleanup_test_db():
+    engine.dispose()
+    for ext in ("", "-wal", "-shm"):
+        f = f"{TEST_DB_PATH}{ext}"
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+
+atexit.register(cleanup_test_db)
 
 Base.metadata.create_all(bind=engine)
 

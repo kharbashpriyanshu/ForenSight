@@ -204,6 +204,48 @@ def read_evidence_raw(evidence_id: int, db: Session = Depends(get_db), current_u
         filename=evidence.original_filename
     )
 
+
+@router.post("/evidence/cleanups/recover")
+def trigger_failed_cleanup_recovery(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Triggers recovery of failed filesystem cleanups.
+    Verifies that no active committed evidence file is unlinked.
+    Requires ADMIN privilege.
+    """
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Not authorized to trigger cleanup recovery")
+    return EvidenceService.recover_failed_cleanups(db)
+
+
+@router.get("/evidence/cleanups/pending")
+def list_pending_cleanups(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Lists unresolved failed filesystem cleanups.
+    Requires ADMIN privilege.
+    """
+    if current_user.role != "ADMIN":
+        raise HTTPException(status_code=403, detail="Not authorized to inspect cleanup records")
+    from app.models.domain import FailedCleanupRecord
+    records = db.query(FailedCleanupRecord).filter(FailedCleanupRecord.resolved == False).all()
+    return [
+        {
+            "id": r.id,
+            "file_path": r.file_path,
+            "cleanup_stage": r.cleanup_stage,
+            "error_type": r.error_type,
+            "error_message": r.error_message,
+            "retry_count": r.retry_count,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in records
+    ]
+
 from app.schemas.domain import CaseOverviewStats
 
 @router.get("/cases/{case_id}/overview", response_model=CaseOverviewStats)
