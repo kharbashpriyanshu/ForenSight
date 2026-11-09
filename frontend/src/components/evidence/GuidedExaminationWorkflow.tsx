@@ -85,35 +85,35 @@ export const FORENSIC_EXAMINATION_CATALOGUE: ForensicExaminationDefinition[] = [
   {
     id: 'jpeg-dct',
     technicalId: 'JPEG_DCT',
-    name: 'JPEG Frequency & Quantization Analysis',
+    name: 'JPEG Block-Frequency Characteristics',
     shortName: 'JPEG / DCT',
     category: 'GLOBAL_ANALYSIS',
     categoryLabel: 'Global Frequency Analysis',
-    whatItExamines: '8×8 block Discrete Cosine Transform (DCT) frequency coefficient distributions and quantization matrix consistency.',
-    whyItMatters: 'Multiple lossy JPEG compressions leave periodic histogram artifacts (double-compression traces) in the DCT frequency domain.',
-    outputRepresents: 'DCT coefficient histogram, quantization table assessment, and periodicity signal plots.',
-    limitations: 'JPEG only: lossless formats (PNG, WebP) do not have DCT block structures. Legitimate re-saving or auto-rotation triggers double-compression traces.',
+    whatItExamines: 'Examines 8×8 blocks of decoded grayscale image pixels using an orthonormal discrete cosine transform (DCT) to measure block-level frequency energy distribution, mean, and variance characteristics.',
+    whyItMatters: 'Helps identify localized frequency imbalances or block-level variations in compression energy across the image plane.',
+    outputRepresents: 'Block-level DC/AC coefficient summary statistics, high/low frequency band energy ratios, and zero-coefficient proportions.',
+    limitations: 'Operates on decoded spatial pixel blocks, not raw quantized bitstream coefficients. It does not perform Benford\'s Law or DCT histogram periodicity fitting. Block-level frequency variations occur naturally across detailed scene textures and do not independently establish image tampering.',
     supportedFormats: ['JPEG', 'JPG'],
     requiresLossy: true,
     version: '1.0.0',
-    scientificMethod: '8x8 block DCT coefficient extraction and Benford / histogram periodicity fitting.',
+    scientificMethod: 'Spatial 8×8 block orthonormal DCT matrix transformation on decoded grayscale pixel arrays.',
     isRecommendedBaseline: (fmt) => fmt.includes('JPEG') || fmt.includes('JPG')
   },
   {
     id: 'copy-move',
     technicalId: 'COPY_MOVE',
-    name: 'Cloned Pattern & Keypoint Examination',
-    shortName: 'Copy-Move',
+    name: 'Keypoint Clone Detection (SIFT)',
+    shortName: 'Copy-Move (SIFT)',
     category: 'GEOMETRIC_ANALYSIS',
     categoryLabel: 'Geometric & Keypoint Analysis',
-    whatItExamines: 'Identical or near-identical image patches replicated across the same image using Scale-Invariant Feature Transform (SIFT) keypoints.',
+    whatItExamines: 'Spatially duplicated image patches identified through Scale-Invariant Feature Transform (SIFT) interest points and L2 Euclidean descriptor matching.',
     whyItMatters: 'Detects cloned objects or region-duplication tampering intended to cover or duplicate image content.',
     outputRepresents: 'Spatial vector correspondence map connecting matched source and clone keypoint clusters.',
-    limitations: 'Repetitive natural textures (e.g. foliage, brick walls, water ripples, window grids) naturally produce pseudo-matches. Requires geometric consistency verification.',
+    limitations: 'Uses SIFT keypoints exclusively. Naturally repetitive scene textures (brickwork, foliage, window grids) generate false-positive matches. Ineffective on featureless, smooth, or heavily blurred cloned patches.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'SIFT/ORB feature descriptor extraction with agglomerative spatial clustering.',
+    scientificMethod: 'OpenCV SIFT descriptor extraction with L2 nearest-neighbor matching and spatial agglomerative clustering.',
     isRecommendedBaseline: () => true
   },
   {
@@ -125,29 +125,29 @@ export const FORENSIC_EXAMINATION_CATALOGUE: ForensicExaminationDefinition[] = [
     categoryLabel: 'Local Pixel Analysis',
     whatItExamines: 'Periodic pixel correlation and interpolation artifacts introduced by geometric transformations (scaling, rotation, affine warping).',
     whyItMatters: 'Spliced elements must almost always be scaled or rotated to fit their destination scene, introducing periodic derivative artifacts.',
-    outputRepresents: 'Spectral Radon/Radix transformation maps revealing periodic interpolation peaks.',
+    outputRepresents: 'Directional second-derivative spectra and candidate resampling-consistent regions.',
     limitations: 'Whole-image resizing (e.g. creating thumbnails or web displays) introduces global resampling traces that are not malicious.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Periodic p-map derivative autocorrelation analysis.',
+    scientificMethod: 'Directional second-derivative filtering and 1D spectral projection periodicity analysis.',
     isRecommendedBaseline: (fmt) => !fmt.includes('JPEG') && !fmt.includes('JPG')
   },
   {
     id: 'advanced-noise',
     technicalId: 'ADVANCED-NOISE',
-    name: 'Multi-Scale Wavelet Noise Analysis',
+    name: 'Multi-Band Spatial Noise Analysis',
     shortName: 'Advanced Noise',
     category: 'LOCAL_ANALYSIS',
     categoryLabel: 'Local Pixel Analysis',
-    whatItExamines: 'Multi-scale wavelet decomposition residuals to measure localized sensor noise inconsistency across frequency sub-bands.',
-    whyItMatters: 'Identifies localized retouching or AI-inpainting where noise characteristics deviate from the camera sensor profile.',
-    outputRepresents: 'Wavelet sub-band noise residual maps and localized variance contours.',
-    limitations: 'Strongly textured regions (fabrics, sand) naturally modulate high-frequency wavelet sub-bands.',
+    whatItExamines: 'High-frequency spatial noise residuals, statistical moments, robust median absolute deviation (MAD) scale, and radial 2D Fourier-domain frequency band distributions.',
+    whyItMatters: 'Detects localized variations in noise variance or high-frequency energy across spatial blocks relative to the overall image baseline.',
+    outputRepresents: 'Noise residual statistics, radial Fourier band energy ratios (low, mid, high), and candidate noise-inconsistent block clusters.',
+    limitations: 'Uses spatial Gaussian filtering and 2D Fourier transform (FFT) radial decomposition, not Discrete Wavelet Transform (DWT). Natural texture variations (grass, sand, fabric) inherently modulate high-frequency energy and can trigger statistical alerts on authentic images.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Discrete Wavelet Transform (DWT) sub-band noise variance estimation.',
+    scientificMethod: 'Gaussian spatial residual extraction, robust MAD scale estimation, and radial 2D Fast Fourier Transform (FFT) frequency bandpass decomposition.',
     isRecommendedBaseline: () => false
   },
   {
@@ -157,82 +157,82 @@ export const FORENSIC_EXAMINATION_CATALOGUE: ForensicExaminationDefinition[] = [
     shortName: 'Clone Block',
     category: 'LOCAL_ANALYSIS',
     categoryLabel: 'Local Pixel Analysis',
-    whatItExamines: 'Exhaustive lexicographical sorting of small overlapping pixel blocks (e.g. 8×8 or 16×16) to find identical duplicated blocks.',
-    whyItMatters: 'Detects smooth or featureless cloned regions where keypoint detectors (SIFT/ORB) fail to locate distinct interest points.',
+    whatItExamines: 'Exhaustive sliding-window spatial block decomposition with compact 2D DCT feature descriptors to find duplicated pixel blocks.',
+    whyItMatters: 'Detects smooth or featureless cloned regions where keypoint detectors fail to locate distinct corner interest points.',
     outputRepresents: 'Block correspondence map and duplicated block cluster bounds.',
     limitations: 'Computationally intensive on high-resolution images; solid colors (clear sky, uniform backdrop) produce high background matches.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Lexicographical block sort with spatial threshold verification.',
+    scientificMethod: 'Lexicographical sorting of compact 2D DCT block descriptors with translation displacement clustering.',
     isRecommendedBaseline: () => false
   },
   {
     id: 'clone-keypoint',
     technicalId: 'CLONE-KEYPOINT',
-    name: 'Geometric Keypoint Transformation Matching',
-    shortName: 'Clone Keypoint',
+    name: 'Keypoint Clone & Affine Transformation Matching (ORB)',
+    shortName: 'Clone Keypoint (ORB)',
     category: 'LOCAL_ANALYSIS',
     categoryLabel: 'Local Pixel Analysis',
-    whatItExamines: 'Affine-invariant keypoint descriptors filtered with RANSAC geometric consistency checks.',
-    whyItMatters: 'Detects duplicated regions even when rotated, scaled, or partially skewed before pasting.',
-    outputRepresents: 'Matched keypoint link vectors and affine transformation matrix estimations.',
-    limitations: 'Requires sufficient local texture; smooth synthetic regions cannot be matched.',
+    whatItExamines: 'Duplicated image regions detected via Oriented FAST and Rotated BRIEF (ORB) binary descriptors, spatial-exclusion self-matching, and affine RANSAC geometric consensus modeling.',
+    whyItMatters: 'Identifies duplicated image elements even when rotated, scaled, or affine-transformed before insertion.',
+    outputRepresents: 'ORB keypoint correspondence links, RANSAC inlier vectors, and estimated affine transformation matrices.',
+    limitations: 'Uses ORB binary descriptors with Hamming distance, separate from the SIFT-based COPY_MOVE engine. Requires distinct corner texture; smooth synthetic regions cannot be matched.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'SIFT keypoints with RANSAC affine transformation homography estimation.',
+    scientificMethod: 'ORB binary feature detection, Hamming distance Lowe ratio test, and affine RANSAC homography estimation.',
     isRecommendedBaseline: () => false
   },
   {
     id: 'histogram',
     technicalId: 'HISTOGRAM',
-    name: 'Luminance & Color Histogram Discontinuity',
+    name: 'Color Histogram & Dynamic Range Analysis',
     shortName: 'Histogram',
     category: 'GLOBAL_ANALYSIS',
     categoryLabel: 'Global Frequency Analysis',
-    whatItExamines: 'Global and local distribution of tonal values across red, green, blue, and luminance channels for combing and clipping.',
-    whyItMatters: 'Identifies posterization, harsh tone curve adjustments, or localized contrast stretching indicative of localized edits.',
-    outputRepresents: 'RGB/Luminance channel histograms, cumulative distribution curves, and channel correlation scores.',
+    whatItExamines: 'Global and per-channel intensity distribution across red, green, blue, and luminance channels for comb gaps, clipping, and entropy anomalies.',
+    whyItMatters: 'Identifies posterization, harsh tone curve adjustments, or localized contrast stretching indicative of post-capture editing.',
+    outputRepresents: 'RGB/Luminance channel histograms, cumulative distribution curves, Shannon entropy, and comb gap metrics.',
     limitations: 'High-contrast scenes and authentic color grading can legitimately introduce histogram comb structures.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: '256-bin per-channel tonal histogram divergence analysis.',
+    scientificMethod: 'Multi-channel 256-bin histogram profiling, comb-artifact detection, and dynamic range entropy calculation.',
     isRecommendedBaseline: () => false
   },
   {
     id: 'color-channel',
     technicalId: 'COLOR-CHANNEL',
-    name: 'Color Channel Discrepancy & CFA Inconsistency',
+    name: 'Color Channel Consistency Analysis',
     shortName: 'Color Channel',
     category: 'LOCAL_ANALYSIS',
     categoryLabel: 'Local Pixel Analysis',
-    whatItExamines: 'Inter-channel correlation and Color Filter Array (CFA) demosaicing traces across RGB Bayer components.',
-    whyItMatters: 'Spliced or computer-generated elements lack authentic camera sensor Bayer demosaicing interpolation patterns.',
-    outputRepresents: 'CFA periodicity residual maps and cross-channel variance graphs.',
-    limitations: 'Compression, resizing, or format conversion (e.g. 4:2:0 chroma subsampling) degrades subtle demosaicing traces.',
+    whatItExamines: 'Statistical relationships between RGB color channels, localized chromaticity coordinates, and spatial block-level channel differences.',
+    whyItMatters: 'Identifies localized discrepancies in color channel correlation that may indicate spliced elements, localized hue/saturation adjustments, or inconsistent illumination.',
+    outputRepresents: 'Global Pearson inter-channel correlations (R-G, R-B, G-B), absolute channel difference maps, and candidate anomaly regions flagged by Z-score disparity.',
+    limitations: 'Measures statistical and spatial color channel relationships; it does not analyze Color Filter Array (CFA) or Bayer demosaicing interpolation patterns. Vivid natural subjects, optical vignetting, and chromatic aberration naturally produce localized channel differences without any manipulation.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Bayer pattern CFA interpolation residue estimation.',
+    scientificMethod: 'Inter-channel Pearson correlation, chromaticity mapping, and spatial block disparity Z-score analysis.',
     isRecommendedBaseline: () => false
   },
   {
     id: 'fourier',
     technicalId: 'FOURIER',
-    name: '2D Fourier Frequency Domain Analysis',
+    name: 'Fourier 2D Frequency Spectrum Analysis',
     shortName: 'Fourier (FFT)',
     category: 'GLOBAL_ANALYSIS',
     categoryLabel: 'Global Frequency Analysis',
     whatItExamines: '2D Fast Fourier Transform (FFT) magnitude spectrum for periodic spatial frequencies, spikes, and lattice patterns.',
     whyItMatters: 'Detects periodic filtering, artificial halftoning, grid resampling, and regular generative pattern signatures.',
-    outputRepresents: 'Centered logarithmic 2D FFT magnitude spectrum with radial frequency plots.',
+    outputRepresents: 'Centered logarithmic 2D FFT magnitude spectrum with radial frequency band energy distributions.',
     limitations: 'Synthetic elements and natural periodic structures (screen meshes, fabric knits) also generate frequency spikes.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: '2D Discrete Fourier Transform magnitude power spectrum computation.',
+    scientificMethod: '2D Discrete Fourier Transform magnitude power spectrum computation with radial frequency partitioning.',
     isRecommendedBaseline: () => false
   },
   {
@@ -242,31 +242,31 @@ export const FORENSIC_EXAMINATION_CATALOGUE: ForensicExaminationDefinition[] = [
     shortName: 'Sensor PRNU',
     category: 'CAMERA_IDENTIFICATION',
     categoryLabel: 'Camera & Sensor Forensics',
-    whatItExamines: 'Physical camera sensor hardware fingerprint arising from microscopic silicon manufacturing imperfections.',
-    whyItMatters: 'Links an image to a specific physical camera sensor and detects localized absence of the sensor fingerprint.',
-    outputRepresents: 'Normalized 2D PRNU cross-correlation score and Peak-to-Correlation Energy (PCE) metric.',
-    limitations: 'Requires high-quality reference sensor profiles or multiple flat-field images for definitive device matching.',
+    whatItExamines: 'Physical camera sensor hardware noise residuals arising from microscopic silicon manufacturing imperfections.',
+    whyItMatters: 'Measures sensor noise residual suitability and supports device correlation when reference fingerprints are provided.',
+    outputRepresents: 'Extracted sensor noise residual, suitability index, and normalized cross-correlation when a reference is supplied.',
+    limitations: 'Requires high-quality reference sensor profiles or multiple flat-field calibration images for definitive device matching. Standalone execution provides noise suitability analysis only.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Wavelet-based sensor pattern noise extraction and normalized cross-correlation.',
+    scientificMethod: 'Adaptive local noise extraction with filter residual and normalized cross-correlation.',
     isRecommendedBaseline: () => false
   },
   {
     id: 'camera-id',
     technicalId: 'CAMERA-ID',
-    name: 'Camera Hardware Profile & Model Matching',
+    name: 'Camera Sensor Pattern Comparison',
     shortName: 'Camera ID',
     category: 'CAMERA_IDENTIFICATION',
     categoryLabel: 'Camera & Sensor Forensics',
-    whatItExamines: 'Quantization table signatures, color matrices, and compression markers matched against known camera reference libraries.',
-    whyItMatters: 'Verifies whether the image\'s low-level format encoding matches the specific camera hardware declared in its metadata.',
-    outputRepresents: 'Confidence score and matched camera make/model profiles from the forensic reference library.',
-    limitations: 'Third-party mobile camera apps or custom firmware may utilize generic encoding tables.',
+    whatItExamines: 'Compares extracted Photo-Response Non-Uniformity (PRNU) sensor noise residuals against case-scoped camera reference fingerprints using 2D cross-correlation and Peak-to-Correlation Energy (PCE).',
+    whyItMatters: 'Assesses whether the noise pattern matches a known camera sensor reference profile registered in the case library.',
+    outputRepresents: '2D cross-correlation surface, PCE metric, and similarity match status against available case reference fingerprints.',
+    limitations: 'Requires pre-registered reference sensor fingerprints from suspect camera devices. If no reference fingerprints are available in the case library, the engine cannot perform attribution comparison. High correlation indicates sensor noise similarity but does not independently establish provenance, as resizing, cropping, or heavy recompression degrades correlation surfaces.',
     supportedFormats: ['JPEG', 'JPG', 'PNG', 'WEBP', 'TIFF'],
     requiresLossy: false,
     version: '1.0.0',
-    scientificMethod: 'Reference library signature matching across quantization matrices and color profiles.',
+    scientificMethod: 'Empirical 2D circular cross-correlation and Peak-to-Correlation Energy (PCE) testing against case sensor reference fingerprints.',
     isRecommendedBaseline: () => false
   },
   {
@@ -567,8 +567,10 @@ export default function GuidedExaminationWorkflow({
     setIsSubmitting(true);
 
     try {
-      // Find selected engines that have not completed yet
+      // Find selected engines that are compatible and have not completed yet
       const toRun = Array.from(selectedEngines).filter(id => {
+        const exam = FORENSIC_EXAMINATION_CATALOGUE.find(e => e.id === id);
+        if (!exam || !isCompatible(exam)) return false;
         const status = getEngineStatus(id);
         return status !== 'COMPLETED' && status !== 'RUNNING' && status !== 'QUEUED';
       });
@@ -632,7 +634,7 @@ export default function GuidedExaminationWorkflow({
             Guided Examination & Transparent Engine Selection
           </h2>
           <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-            Choose between beginner-friendly guided examination with scientific recommendations, or full analyst control over individual forensic engines.
+            Choose between beginner-friendly guided examination with suggested starting examinations, or full analyst control over individual forensic engines.
           </p>
         </div>
 
@@ -800,13 +802,13 @@ export default function GuidedExaminationWorkflow({
               <div>
                 <strong style={{ color: 'var(--primary-color)' }}>
                   {isJpeg 
-                    ? 'Recommended Multi-Modality Baseline for JPEG Evidence'
-                    : 'Recommended Baseline for Lossless Evidence'}
+                    ? 'Suggested Starting Examinations for JPEG Evidence'
+                    : 'Suggested Starting Examinations for Lossless Evidence'}
                 </strong>
                 <p style={{ margin: '0.25rem 0 0 0', lineHeight: 1.45, color: 'var(--text-muted)' }}>
                   {isJpeg 
-                    ? 'This baseline establishes five independent lines of forensic inquiry: compression error-level variance (ELA), high-frequency spatial noise residual consistency, 8×8 DCT block quantization distributions, SIFT duplicate keypoint clustering, and container hardware metadata. Incompatible lossless tests are filtered automatically.'
-                    : 'This baseline establishes multi-modality coverage for lossless evidence: container metadata integrity, high-frequency spatial noise consistency, duplicate keypoint clustering, and pixel resampling traces. JPEG-specific algorithms (such as ELA and DCT frequency block inspection) are mathematically inapplicable and excluded.'}
+                    ? 'These suggested examinations provide a preliminary multi-modality screening for JPEG evidence across five independent forensic dimensions: compression error-level variance (ELA), high-frequency spatial noise residual consistency, 8×8 block frequency characteristics, SIFT duplicate keypoint clustering, and container hardware metadata. Incompatible lossless tests are filtered automatically. These selections serve as a practical starting point and do not guarantee complete manipulation detection.'
+                    : 'These suggested examinations provide preliminary multi-modality screening for lossless evidence: container metadata integrity, high-frequency spatial noise consistency, duplicate keypoint clustering, and pixel resampling traces. JPEG-specific algorithms (such as ELA and DCT block inspection) require lossy compression structures and are excluded. These selections serve as a practical starting point and do not guarantee complete manipulation detection.'}
                 </p>
               </div>
             </div>
@@ -831,9 +833,9 @@ export default function GuidedExaminationWorkflow({
                 className="secondary-button" 
                 onClick={handleSelectRecommended}
                 style={{ fontSize: '0.75rem', padding: '0.25rem 0.55rem' }}
-                title="Select recommended multi-modality forensic baseline"
+                title="Restore suggested starting examinations for this format"
               >
-                Reset to Recommended Baseline
+                Reset to Suggested Examinations
               </button>
               <button 
                 type="button" 
@@ -931,7 +933,7 @@ export default function GuidedExaminationWorkflow({
                                 padding: '0.1rem 0.35rem', 
                                 borderRadius: '3px' 
                               }}>
-                                RECOMMENDED
+                                SUGGESTED
                               </span>
                             )}
                           </div>
