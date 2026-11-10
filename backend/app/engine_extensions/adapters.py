@@ -158,6 +158,21 @@ class LegacyELAAdapter(BaseForensicEngine):
             sha256_hash="",
             mime_type="image/png",
         )
+        artifacts = [art]
+        if getattr(res, "fixed_error_image_path", None):
+            artifacts.append(
+                EngineArtifactMetadata(
+                    artifact_id="ela_error_map_fixed20",
+                    evidence_id=context.evidence_id,
+                    analysis_id=context.analysis_id,
+                    engine_id=self.engine_id,
+                    engine_version=self.engine_version,
+                    artifact_type=ArtifactType.HEATMAP,
+                    storage_path=res.fixed_error_image_path,
+                    sha256_hash="",
+                    mime_type="image/png",
+                )
+            )
 
         return EngineExecutionResult(
             engine_id=self.engine_id,
@@ -165,7 +180,7 @@ class LegacyELAAdapter(BaseForensicEngine):
             status=EngineExecutionStatus.APPLIED,
             summary="ELA recompression error computed successfully.",
             observations=[obs],
-            artifacts=[art],
+            artifacts=artifacts,
             execution_time_ms=t_ms,
             limitations=self.limitations,
         )
@@ -215,12 +230,40 @@ class LegacyNoiseAdapter(BaseForensicEngine):
             result_data={"variance": res.global_statistics.variance, "snr_db": res.global_statistics.snr_db},
         )
 
+        art = EngineArtifactMetadata(
+            artifact_id="noise_residual_map",
+            evidence_id=context.evidence_id,
+            analysis_id=context.analysis_id,
+            engine_id=self.engine_id,
+            engine_version=self.engine_version,
+            artifact_type=ArtifactType.HEATMAP,
+            storage_path=res.residual_image_path,
+            sha256_hash="",
+            mime_type="image/png",
+        )
+        artifacts = [art]
+        if getattr(res, "comparison_residual_image_path", None) and res.comparison_residual_image_path:
+            artifacts.append(
+                EngineArtifactMetadata(
+                    artifact_id="noise_residual_median",
+                    evidence_id=context.evidence_id,
+                    analysis_id=context.analysis_id,
+                    engine_id=self.engine_id,
+                    engine_version=self.engine_version,
+                    artifact_type=ArtifactType.HEATMAP,
+                    storage_path=res.comparison_residual_image_path,
+                    sha256_hash="",
+                    mime_type="image/png",
+                )
+            )
+
         return EngineExecutionResult(
             engine_id=self.engine_id,
             engine_version=self.engine_version,
             status=EngineExecutionStatus.APPLIED,
             summary="Noise residual extraction completed successfully.",
             observations=[obs],
+            artifacts=artifacts,
             execution_time_ms=t_ms,
             limitations=self.limitations,
         )

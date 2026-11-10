@@ -1,7 +1,7 @@
 import os
 import pathlib
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
@@ -74,12 +74,14 @@ def trigger_ela_analysis(
 @router.post("/evidence/{evidence_id}/analysis/noise", response_model=AnalysisResponse)
 def trigger_noise_analysis(
     evidence_id: int,
+    filter_method: str = Query("Gaussian", description="Filter method: 'Gaussian' (baseline) or 'Median' (experimental)"),
+    kernel_size: int = Query(5, description="Filter kernel size (odd integer >= 3)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = NoiseAnalyzer.run_analysis(db, evidence_id)
+        analysis = NoiseAnalyzer.run_analysis(db, evidence_id, filter_method=filter_method, kernel_size=kernel_size)
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower() or "missing" in str(e).lower():

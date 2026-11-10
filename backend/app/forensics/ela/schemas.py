@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 class ELAStatistics(BaseModel):
     mean_error: float
@@ -16,6 +16,9 @@ class ELAResult(BaseModel):
     statistics: ELAStatistics
     error_image_path: str
     recompressed_image_path: str
+    dynamic_error_image_path: Optional[str] = None
+    fixed_error_image_path: Optional[str] = None
+    scale_modes: Optional[Dict[str, Any]] = None
 
     @property
     def error_map_path(self) -> str:

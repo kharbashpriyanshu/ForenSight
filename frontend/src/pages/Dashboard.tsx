@@ -641,17 +641,43 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>4. Visualization</h3>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>4. Comparative Visualization</h3>
                 {elaResult.structured_findings?.artifacts && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         <div>
-                            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Normalized ELA Map</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
+                                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Dynamic Normalization (Adaptive Range)</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                    Multiplier: {elaResult.structured_findings?.scale_modes?.dynamic?.multiplier?.toFixed(1) || (elaResult.structured_findings?.max_error ? (255 / elaResult.structured_findings.max_error).toFixed(1) : '1.0')}×
+                                </span>
+                            </div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                                Stretches observed errors across 0–255 to maximize intra-image contrast. Relative brightness varies across different evidence images.
+                            </div>
                             <img 
-                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${elaResult.structured_findings.artifacts.ela_map}`} 
-                                alt="ELA Map" 
+                                src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${elaResult.structured_findings.artifacts.ela_map_dynamic || elaResult.structured_findings.artifacts.ela_map}`} 
+                                alt="Dynamic Normalized ELA Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
                         </div>
+                        {elaResult.structured_findings.artifacts.ela_map_fixed20 && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Fixed 20× Scale (Uniform Multiplier)</span>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                        Saturation: {elaResult.structured_findings?.scale_modes?.fixed_20?.saturation_percentage !== undefined ? `${elaResult.structured_findings.scale_modes.fixed_20.saturation_percentage.toFixed(2)}%` : 'Fixed 20.0×'}
+                                    </span>
+                                </div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                                    Applies a fixed 20× display multiplier to allow cross-image intensity comparison. Uncalibrated display scale; high-contrast edges may saturate.
+                                </div>
+                                <img 
+                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${elaResult.structured_findings.artifacts.ela_map_fixed20}`} 
+                                    alt="Fixed 20x ELA Map" 
+                                    style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
+                                />
+                            </div>
+                        )}
                     </div>
                 )}
               </div>
@@ -729,17 +755,57 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>4. Visualization</h3>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>4. Visualization & Comparative Analysis</h3>
                 {noiseResult.structured_findings?.artifacts && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         <div>
-                            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Global Noise Residual Map</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
+                                <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                                    {noiseResult.structured_findings?.filter_config?.method === 'Median' ? 'Median Residual Map (Selected Method)' : 'Gaussian Residual Map (Baseline, k=5, σ=1.0)'}
+                                </span>
+                            </div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                                {noiseResult.structured_findings?.filter_config?.method === 'Median'
+                                    ? 'Non-linear order-statistic filter residual; preserves step edges while isolating non-correlated noise.'
+                                    : 'Isotropic linear low-pass filter residual; extracts high frequencies but may leak natural step edge textures.'}
+                            </div>
                             <img 
                                 src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${noiseResult.structured_findings.artifacts.noise_residual_map}`} 
-                                alt="Global Residual Map" 
+                                alt="Primary Residual Map" 
                                 style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
                             />
                         </div>
+                        {noiseResult.structured_findings.artifacts.noise_residual_median && noiseResult.structured_findings?.filter_config?.method !== 'Median' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Median Residual Map (Experimental Alternative, k=5)</span>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Order-Statistic 5×5</span>
+                                </div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                                    Evaluates noise after median filtering. Compares edge preservation and texture leakage against the Gaussian baseline.
+                                </div>
+                                <img 
+                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${noiseResult.structured_findings.artifacts.noise_residual_median}`} 
+                                    alt="Median Residual Map" 
+                                    style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
+                                />
+                            </div>
+                        )}
+                        {noiseResult.structured_findings.artifacts.noise_residual_gaussian && noiseResult.structured_findings?.filter_config?.method === 'Median' && (
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.25rem' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Gaussian Residual Map (Baseline Alternative, k=5, σ=1.0)</span>
+                                </div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                                    Gaussian baseline residual for direct comparison against the median filter output.
+                                </div>
+                                <img 
+                                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/artifacts/${noiseResult.structured_findings.artifacts.noise_residual_gaussian}`} 
+                                    alt="Gaussian Residual Map" 
+                                    style={{ maxWidth: '100%', borderRadius: '0.25rem', border: '1px solid var(--border-color)' }}
+                                />
+                            </div>
+                        )}
                         <div>
                             <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Local Residual Magnitude Map</div>
                             <img 

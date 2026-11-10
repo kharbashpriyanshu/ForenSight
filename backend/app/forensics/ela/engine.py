@@ -27,6 +27,8 @@ class ELAEngine:
             run_id = uuid.uuid4().hex[:8]
             recompressed_path = os.path.join(output_dir, f"ela_recompressed_{run_id}.jpg")
             error_map_path = os.path.join(output_dir, f"ela_map_{run_id}.png")
+            error_map_dynamic_path = os.path.join(output_dir, f"ela_map_dynamic_{run_id}.png")
+            error_map_fixed20_path = os.path.join(output_dir, f"ela_map_fixed20_{run_id}.png")
             
             # 1. Save recompressed image
             img.save(recompressed_path, 'JPEG', quality=quality)
@@ -57,18 +59,55 @@ class ELAEngine:
                 percentiles={"90th": float(p90), "95th": float(p95), "99th": float(p99)}
             )
             
-            # 4. Normalize for visualization
+            # 4. Normalization Modes
+            # Mode A: Dynamic Normalization (Existing Baseline)
             if max_err > 0:
-                multiplier = 255.0 / max_err
-                norm_arr = diff_arr * multiplier
+                dynamic_multiplier = 255.0 / max_err
+                norm_arr_dynamic = diff_arr * dynamic_multiplier
             else:
-                norm_arr = diff_arr
+                dynamic_multiplier = 1.0
+                norm_arr_dynamic = diff_arr
                 
-            norm_arr = np.clip(norm_arr, 0, 255).astype(np.uint8)
+            norm_arr_dynamic = np.clip(norm_arr_dynamic, 0, 255).astype(np.uint8)
             
-            # 5. Save Error Map (Lossless PNG)
-            error_img = Image.fromarray(norm_arr, mode='RGB')
-            error_img.save(error_map_path, 'PNG')
+            # Mode B: Fixed Linear Scaling (Multiplier = 20.0, Experimental)
+            fixed_multiplier = 20.0
+            norm_arr_fixed20 = np.clip(diff_arr * fixed_multiplier, 0, 255).astype(np.uint8)
+            
+            sat_dynamic = float(np.mean(norm_arr_dynamic == 255) * 100)
+            sat_fixed20 = float(np.mean(norm_arr_fixed20 == 255) * 100)
+            
+            # 5. Save Error Maps (Lossless PNG)
+            error_img_dynamic = Image.fromarray(norm_arr_dynamic, mode='RGB')
+            error_img_dynamic.save(error_map_path, 'PNG')
+            error_img_dynamic.save(error_map_dynamic_path, 'PNG')
+            
+            error_img_fixed20 = Image.fromarray(norm_arr_fixed20, mode='RGB')
+            error_img_fixed20.save(error_map_fixed20_path, 'PNG')
+            
+            scale_modes = {
+                "dynamic": {
+                    "mode": "dynamic",
+                    "multiplier": float(dynamic_multiplier),
+                    "saturation_percentage": sat_dynamic,
+                    "description": "Adaptive scaling stretched to observed maximum error range",
+                    "artifact_path": error_map_dynamic_path,
+                },
+                "fixed_20": {
+                    "mode": "fixed_20",
+                    "multiplier": fixed_multiplier,
+                    "saturation_percentage": sat_fixed20,
+                    "description": "Arbitrary display scaling with fixed 20x multiplier (uncalibrated display scale)",
+                    "artifact_path": error_map_fixed20_path,
+                },
+                "fixed_20x": {
+                    "mode": "fixed_20",
+                    "multiplier": fixed_multiplier,
+                    "saturation_percentage": sat_fixed20,
+                    "description": "Arbitrary display scaling with fixed 20x multiplier (uncalibrated display scale)",
+                    "artifact_path": error_map_fixed20_path,
+                }
+            }
             
             return ELAResult(
                 input_format=img_format,
@@ -77,7 +116,10 @@ class ELAEngine:
                 jpeg_quality=quality,
                 statistics=stats,
                 error_image_path=error_map_path,
-                recompressed_image_path=recompressed_path
+                recompressed_image_path=recompressed_path,
+                dynamic_error_image_path=error_map_dynamic_path,
+                fixed_error_image_path=error_map_fixed20_path,
+                scale_modes=scale_modes
             )
             
         except UnsupportedFormatError:

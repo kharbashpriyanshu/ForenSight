@@ -33,13 +33,19 @@ class ELAAnalyzer:
             analysis.summary = "Error Level Analysis completed successfully."
             
             # Generate relative paths for secure exposure
-            ela_map_relative = os.path.relpath(res.error_image_path, start=settings.STORAGE_DIR)
-            recomp_relative = os.path.relpath(res.recompressed_image_path, start=settings.STORAGE_DIR)
+            ela_map_relative = os.path.relpath(res.error_image_path, start=settings.STORAGE_DIR).replace("\\", "/")
+            recomp_relative = os.path.relpath(res.recompressed_image_path, start=settings.STORAGE_DIR).replace("\\", "/")
+            ela_map_dynamic_relative = os.path.relpath(res.dynamic_error_image_path, start=settings.STORAGE_DIR).replace("\\", "/") if res.dynamic_error_image_path else ela_map_relative
+            ela_map_fixed20_relative = os.path.relpath(res.fixed_error_image_path, start=settings.STORAGE_DIR).replace("\\", "/") if res.fixed_error_image_path else ela_map_relative
             
-            # Normalize path separators for URL safety
-            ela_map_relative = ela_map_relative.replace("\\", "/")
-            recomp_relative = recomp_relative.replace("\\", "/")
-            
+            scale_modes_dict = {}
+            if res.scale_modes:
+                for k, v in res.scale_modes.items():
+                    mode_copy = dict(v)
+                    if "artifact_path" in mode_copy:
+                        mode_copy["artifact_path"] = os.path.relpath(mode_copy["artifact_path"], start=settings.STORAGE_DIR).replace("\\", "/")
+                    scale_modes_dict[k] = mode_copy
+
             analysis.structured_findings = {
                 "jpeg_quality": res.jpeg_quality,
                 "width": res.width,
@@ -49,8 +55,11 @@ class ELAAnalyzer:
                 "std_error": res.statistics.std_error,
                 "max_error": res.statistics.max_error,
                 "percentiles": res.statistics.percentiles,
+                "scale_modes": scale_modes_dict,
                 "artifacts": {
                     "ela_map": ela_map_relative,
+                    "ela_map_dynamic": ela_map_dynamic_relative,
+                    "ela_map_fixed20": ela_map_fixed20_relative,
                     "recompressed": recomp_relative
                 }
             }
