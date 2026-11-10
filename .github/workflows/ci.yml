@@ -45,12 +45,12 @@ jobs:
       - name: Run Complete Backend Pytest Suite
         run: |
           cd backend
-          pytest tests/ -v
+          python -m pytest tests/ -v
 
       - name: Run Dedicated Security Regression Tests
         run: |
           cd backend
-          pytest tests/test_security_auth.py -v
+          python -m pytest tests/test_security_auth.py -v
 
   frontend-quality-and-build:
     name: Frontend TypeScript & Production Build
@@ -157,21 +157,21 @@ jobs:
 
       - name: Run Alembic Migrations against Live PostgreSQL
         env:
-          DATABASE_URL: postgresql://forensight:forensight_password@localhost:5432/forensight
+          DATABASE_URL: postgresql+psycopg2://forensight:forensight_password@localhost:5432/forensight
         run: |
           cd backend
           alembic upgrade head
 
       - name: Seed Demo Identities into PostgreSQL
         env:
-          DATABASE_URL: postgresql://forensight:forensight_password@localhost:5432/forensight
+          DATABASE_URL: postgresql+psycopg2://forensight:forensight_password@localhost:5432/forensight
         run: |
           cd backend
           python scripts/seed_demo.py
 
       - name: Run Integration Tests against PostgreSQL & Redis
         env:
-          DATABASE_URL: postgresql://forensight:forensight_password@localhost:5432/forensight
+          DATABASE_URL: postgresql+psycopg2://forensight:forensight_password@localhost:5432/forensight
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           REDIS_URL: redis://localhost:6379/0
@@ -184,7 +184,7 @@ jobs:
           sleep 3
 
           # Run backend tests
-          pytest tests/ -v
+          python -m pytest tests/ -v
 
           # Cleanup worker
           kill $WORKER_PID || true
