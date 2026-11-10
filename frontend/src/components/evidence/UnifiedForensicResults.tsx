@@ -202,9 +202,13 @@ export function extractSpatialRegions(
   imageWidth?: number,
   imageHeight?: number
 ): SpatialRegion[] {
+  // Authoritative image dimensions required for spatial mapping without distortion
+  if (!imageWidth || !imageHeight || imageWidth <= 0 || imageHeight <= 0) {
+    return [];
+  }
+  const imgW = imageWidth;
+  const imgH = imageHeight;
   const list: SpatialRegion[] = [];
-  const imgW = imageWidth && imageWidth > 0 ? imageWidth : 1920;
-  const imgH = imageHeight && imageHeight > 0 ? imageHeight : 1080;
 
   const getFindings = (engineId: string) => {
     const hyp = engineId.toLowerCase().replace(/_/g, '-');
@@ -568,10 +572,21 @@ export default function UnifiedForensicResults({
     return { job, result, error: err, status };
   };
 
-  // Reconciled spatial regions
+  // Authoritative image dimensions required for spatial mapping
+  const hasAuthoritativeDimensions = typeof evidence.width === 'number' && 
+    typeof evidence.height === 'number' && 
+    evidence.width > 0 && 
+    evidence.height > 0;
+  const imgW = hasAuthoritativeDimensions ? evidence.width : undefined;
+  const imgH = hasAuthoritativeDimensions ? evidence.height : undefined;
+
+  // Reconciled spatial regions - extracted only when authoritative image dimensions exist
   const spatialRegions = useMemo<SpatialRegion[]>(() => {
-    return extractSpatialRegions(results, evidence.width, evidence.height);
-  }, [results, evidence.width, evidence.height]);
+    if (!hasAuthoritativeDimensions || !imgW || !imgH) {
+      return [];
+    }
+    return extractSpatialRegions(results, imgW, imgH);
+  }, [results, hasAuthoritativeDimensions, imgW, imgH]);
 
   // Check availability of continuous raster artifacts (ELA, Classical Noise)
   const hasElaRaster = Boolean(
@@ -747,9 +762,6 @@ export default function UnifiedForensicResults({
     URL.revokeObjectURL(url);
   };
 
-  const imgW = evidence.width && evidence.width > 0 ? evidence.width : 1920;
-  const imgH = evidence.height && evidence.height > 0 ? evidence.height : 1080;
-
   return (
     <div id="unified-forensic-results" className="card" style={{ marginTop: '1.25rem', padding: '1.25rem' }}>
       {/* Header & Investigation Overview */}
@@ -861,15 +873,23 @@ export default function UnifiedForensicResults({
       </div>
 
       {/* Internal Navigation Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        gap: '0.4rem', 
-        borderBottom: '1px solid var(--border-color)', 
-        marginBottom: '1.25rem',
-        overflowX: 'auto'
-      }}>
+      <div 
+        role="tablist" 
+        aria-label="Forensic Result Views"
+        style={{ 
+          display: 'flex', 
+          gap: '0.4rem', 
+          borderBottom: '1px solid var(--border-color)', 
+          marginBottom: '1.25rem',
+          overflowX: 'auto'
+        }}
+      >
         <button
           type="button"
+          role="tab"
+          id="tab-overview"
+          aria-selected={activeTab === 'overview'}
+          aria-controls="panel-overview"
           onClick={() => setActiveTab('overview')}
           style={{
             display: 'inline-flex',
@@ -891,6 +911,10 @@ export default function UnifiedForensicResults({
 
         <button
           type="button"
+          role="tab"
+          id="tab-spatial"
+          aria-selected={activeTab === 'spatial'}
+          aria-controls="panel-spatial"
           onClick={() => setActiveTab('spatial')}
           style={{
             display: 'inline-flex',
@@ -912,6 +936,10 @@ export default function UnifiedForensicResults({
 
         <button
           type="button"
+          role="tab"
+          id="tab-disclosures"
+          aria-selected={activeTab === 'disclosures'}
+          aria-controls="panel-disclosures"
           onClick={() => setActiveTab('disclosures')}
           style={{
             display: 'inline-flex',
@@ -933,6 +961,10 @@ export default function UnifiedForensicResults({
 
         <button
           type="button"
+          role="tab"
+          id="tab-findings"
+          aria-selected={activeTab === 'findings'}
+          aria-controls="panel-findings"
           onClick={() => setActiveTab('findings')}
           style={{
             display: 'inline-flex',
@@ -954,6 +986,10 @@ export default function UnifiedForensicResults({
 
         <button
           type="button"
+          role="tab"
+          id="tab-report"
+          aria-selected={activeTab === 'report'}
+          aria-controls="panel-report"
           onClick={() => setActiveTab('report')}
           style={{
             display: 'inline-flex',
@@ -976,7 +1012,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 1: INVESTIGATION OVERVIEW */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Evidence Integrity Metadata Summary */}
           <div style={{ 
             background: 'var(--surface-color-light)', 
@@ -1087,199 +1123,235 @@ export default function UnifiedForensicResults({
 
       {/* TAB 2: SPATIAL ATTENTION MAP */}
       {activeTab === 'spatial' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {/* Spatial Controls */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            flexWrap: 'wrap', 
-            gap: '0.75rem',
-            background: 'var(--surface-color-light)',
-            border: '1px solid var(--border-color)',
-            padding: '0.65rem 0.85rem',
-            borderRadius: '6px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
-                <Sliders size={14} style={{ color: 'var(--text-muted)' }} />
-                <span>Opacity: {Math.round(heatmapOpacity * 100)}%</span>
-                <input 
-                  type="range" 
-                  min="0.1" 
-                  max="1.0" 
-                  step="0.05" 
-                  value={heatmapOpacity} 
-                  onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
-                  style={{ width: '90px', cursor: 'pointer' }}
-                />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} role="tabpanel" id="panel-spatial" aria-labelledby="tab-spatial">
+          {!hasAuthoritativeDimensions ? (
+            <div 
+              data-testid="spatial-dimensions-unavailable"
+              style={{
+                padding: '1.5rem',
+                borderRadius: '8px',
+                background: 'var(--surface-color-light)',
+                border: '1px solid var(--border-color)',
+                textAlign: 'center',
+                margin: '1rem auto',
+                maxWidth: '720px'
+              }}
+            >
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+                <Info size={18} style={{ color: 'var(--primary-color)' }} />
+                <span style={{ fontSize: '0.95rem' }}>Spatial Overlays Unavailable</span>
               </div>
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => setShowOverlays(!showOverlays)}
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-              >
-                {showOverlays ? <EyeOff size={13} /> : <Eye size={13} />}
-                {showOverlays ? 'Hide All Overlays' : 'Show Overlays'}
-              </button>
+              <p style={{ margin: 0, fontSize: '0.825rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                Spatial anomaly overlays are unavailable because authoritative original image dimensions could not be established for this evidence record. In accordance with forensic integrity safeguards, coordinate envelopes are never mapped against estimated dimensions. All mathematical measurements, detection outputs, and scalar metrics remain fully accessible in the detailed disclosures and structured findings below.
+              </p>
             </div>
-
-            {/* Layer Toggles */}
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={visibleLayers['ADVANCED_NOISE']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, ADVANCED_NOISE: e.target.checked })} 
-                />
-                <span style={{ color: '#06b6d4', fontWeight: 600 }}>Noise Anomaly</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={visibleLayers['COPY_MOVE']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, COPY_MOVE: e.target.checked })} 
-                />
-                <span style={{ color: '#10b981', fontWeight: 600 }}>Clone Pairs (SIFT/ORB)</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={visibleLayers['COLOR_CHANNEL']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, COLOR_CHANNEL: e.target.checked })} 
-                />
-                <span style={{ color: '#f59e0b', fontWeight: 600 }}>Color Disparity</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={visibleLayers['OTHER_SPATIAL']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, OTHER_SPATIAL: e.target.checked })} 
-                />
-                <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Resampling/Blocking</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Canvas & Overlay Viewport */}
-          <div style={{ 
-            position: 'relative', 
-            width: '100%', 
-            maxWidth: '920px', 
-            margin: '0 auto', 
-            background: '#09090b', 
-            borderRadius: '8px', 
-            overflow: 'hidden', 
-            border: '1px solid var(--border-color)',
-            boxShadow: '0 4px 20px -2px rgba(0,0,0,0.25)'
-          }}>
-            <AuthenticatedImage
-              src={`/api/evidence/${evidence.id}/raw`}
-              alt={evidence.original_filename}
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-
-            {/* SVG Anomaly Coordinates Overlay in 1:1 Evidence Pixel Geometry */}
-            {showOverlays && (
-              <svg 
-                data-testid="spatial-overlay-svg"
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                viewBox={`0 0 ${imgW} ${imgH}`}
-                preserveAspectRatio="none"
-              >
-                {spatialRegions.map((region) => {
-                  const isLayerVisible = 
-                    ((region.engineId === 'advanced-noise' || region.engineId === 'noise') && visibleLayers['ADVANCED_NOISE']) ||
-                    ((region.engineId === 'copy-move' || region.engineId === 'clone-block' || region.engineId === 'clone-keypoint') && visibleLayers['COPY_MOVE']) ||
-                    (region.engineId === 'color-channel' && visibleLayers['COLOR_CHANNEL']) ||
-                    ((region.engineId === 'resampling' || region.engineId === 'blocking-artifact' || region.engineId === 'jpeg-ghost') && visibleLayers['OTHER_SPATIAL']);
-
-                  if (!isLayerVisible) return null;
-
-                  const isSelected = selectedRegionId === region.id;
-                  const rx = region.pixelX;
-                  const ry = region.pixelY;
-                  const rw = region.pixelWidth;
-                  const rh = region.pixelHeight;
-                  const strokeWidth = isSelected ? Math.max(3, Math.round(imgW * 0.003)) : Math.max(2, Math.round(imgW * 0.002));
-                  const tagHeight = Math.max(18, Math.round(imgW * 0.016));
-                  const fontSize = Math.max(10, Math.min(16, Math.round(imgW * 0.011)));
-
-                  let strokeDash = '6 3';
-                  if (region.role === 'source') {
-                    strokeDash = '8 4';
-                  } else if (region.role === 'destination') {
-                    strokeDash = 'none';
-                  }
-
-                  return (
-                    <g 
-                      key={region.id} 
-                      style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                      onClick={() => setSelectedRegionId(isSelected ? null : region.id)}
-                    >
-                      <rect
-                        x={rx}
-                        y={ry}
-                        width={rw}
-                        height={rh}
-                        fill={region.color}
-                        fillOpacity={isSelected ? 0.6 : region.intensity * heatmapOpacity * 0.4}
-                        stroke={isSelected ? '#ffffff' : region.color}
-                        strokeWidth={strokeWidth}
-                        strokeDasharray={isSelected ? 'none' : strokeDash}
-                      />
-                      <rect
-                        x={rx}
-                        y={Math.max(0, ry - tagHeight - 2)}
-                        width={Math.min(imgW * 0.4, Math.max(imgW * 0.14, rw))}
-                        height={tagHeight}
-                        fill={region.color}
-                        fillOpacity={Math.max(0.75, heatmapOpacity)}
-                        rx={3}
-                      />
-                      <text
-                        x={rx + 6}
-                        y={Math.max(0, ry - tagHeight - 2) + tagHeight - 4}
-                        fill="#ffffff"
-                        fontSize={fontSize}
-                        fontWeight="bold"
-                        fontFamily="sans-serif"
-                      >
-                        {region.role === 'source' ? '[SOURCE] ' : region.role === 'destination' ? '[DEST] ' : ''}
-                        {region.modalityLabel}: {region.description.slice(0, 26)}
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            )}
-
-            {/* Clean baseline notice if 0 spatial regions */}
-            {spatialRegions.length === 0 && (
-              <div style={{
-                position: 'absolute',
-                bottom: '16px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                background: 'rgba(15, 23, 42, 0.88)',
-                color: '#94a3b8',
-                padding: '0.45rem 1rem',
-                borderRadius: '20px',
-                fontSize: '0.78rem',
-                pointerEvents: 'none',
-                backdropFilter: 'blur(4px)',
-                border: '1px solid rgba(255,255,255,0.1)'
+          ) : (
+            <>
+              {/* Spatial Controls */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                flexWrap: 'wrap', 
+                gap: '0.75rem',
+                background: 'var(--surface-color-light)',
+                border: '1px solid var(--border-color)',
+                padding: '0.65rem 0.85rem',
+                borderRadius: '6px'
               }}>
-                🛡️ Clean Baseline: No localized anomaly envelopes detected across active examinations
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
+                    <Sliders size={14} style={{ color: 'var(--text-muted)' }} />
+                    <span>Opacity: {Math.round(heatmapOpacity * 100)}%</span>
+                    <input 
+                      type="range" 
+                      min="0.1" 
+                      max="1.0" 
+                      step="0.05" 
+                      value={heatmapOpacity} 
+                      onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
+                      aria-label="Spatial overlay opacity"
+                      style={{ width: '90px', cursor: 'pointer' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => setShowOverlays(!showOverlays)}
+                    aria-pressed={showOverlays}
+                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                  >
+                    {showOverlays ? <EyeOff size={13} /> : <Eye size={13} />}
+                    {showOverlays ? 'Hide All Overlays' : 'Show Overlays'}
+                  </button>
+                </div>
+
+                {/* Layer Toggles */}
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.75rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={visibleLayers['ADVANCED_NOISE']} 
+                      onChange={e => setVisibleLayers({ ...visibleLayers, ADVANCED_NOISE: e.target.checked })} 
+                    />
+                    <span style={{ color: '#06b6d4', fontWeight: 600 }}>Noise Anomaly</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={visibleLayers['COPY_MOVE']} 
+                      onChange={e => setVisibleLayers({ ...visibleLayers, COPY_MOVE: e.target.checked })} 
+                    />
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>Clone Pairs (SIFT/ORB)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={visibleLayers['COLOR_CHANNEL']} 
+                      onChange={e => setVisibleLayers({ ...visibleLayers, COLOR_CHANNEL: e.target.checked })} 
+                    />
+                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>Color Disparity</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={visibleLayers['OTHER_SPATIAL']} 
+                      onChange={e => setVisibleLayers({ ...visibleLayers, OTHER_SPATIAL: e.target.checked })} 
+                    />
+                    <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Resampling/Blocking</span>
+                  </label>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Canvas & Overlay Viewport */}
+              <div style={{ 
+                position: 'relative', 
+                width: '100%', 
+                maxWidth: '920px', 
+                margin: '0 auto', 
+                background: '#09090b', 
+                borderRadius: '8px', 
+                overflow: 'hidden', 
+                border: '1px solid var(--border-color)',
+                boxShadow: '0 4px 20px -2px rgba(0,0,0,0.25)'
+              }}>
+                <AuthenticatedImage
+                  src={`/api/evidence/${evidence.id}/raw`}
+                  alt={evidence.original_filename}
+                  style={{ width: '100%', height: 'auto', display: 'block' }}
+                />
+
+                {/* SVG Anomaly Coordinates Overlay in 1:1 Evidence Pixel Geometry */}
+                {showOverlays && imgW && imgH && (
+                  <svg 
+                    data-testid="spatial-overlay-svg"
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    viewBox={`0 0 ${imgW} ${imgH}`}
+                    preserveAspectRatio="none"
+                  >
+                    {spatialRegions.map((region) => {
+                      const isLayerVisible = 
+                        ((region.engineId === 'advanced-noise' || region.engineId === 'noise') && visibleLayers['ADVANCED_NOISE']) ||
+                        ((region.engineId === 'copy-move' || region.engineId === 'clone-block' || region.engineId === 'clone-keypoint') && visibleLayers['COPY_MOVE']) ||
+                        (region.engineId === 'color-channel' && visibleLayers['COLOR_CHANNEL']) ||
+                        ((region.engineId === 'resampling' || region.engineId === 'blocking-artifact' || region.engineId === 'jpeg-ghost') && visibleLayers['OTHER_SPATIAL']);
+
+                      if (!isLayerVisible) return null;
+
+                      const isSelected = selectedRegionId === region.id;
+                      const rx = region.pixelX;
+                      const ry = region.pixelY;
+                      const rw = region.pixelWidth;
+                      const rh = region.pixelHeight;
+                      const strokeWidth = isSelected ? Math.max(3, Math.round(imgW * 0.003)) : Math.max(2, Math.round(imgW * 0.002));
+                      const tagHeight = Math.max(18, Math.round(imgW * 0.016));
+                      const fontSize = Math.max(10, Math.min(16, Math.round(imgW * 0.011)));
+
+                      let strokeDash = '6 3';
+                      if (region.role === 'source') {
+                        strokeDash = '8 4';
+                      } else if (region.role === 'destination') {
+                        strokeDash = 'none';
+                      }
+
+                      return (
+                        <g 
+                          key={region.id} 
+                          style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                          onClick={() => setSelectedRegionId(isSelected ? null : region.id)}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`${region.modalityLabel}: ${region.description}`}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSelectedRegionId(isSelected ? null : region.id);
+                            }
+                          }}
+                        >
+                          <rect
+                            x={rx}
+                            y={ry}
+                            width={rw}
+                            height={rh}
+                            fill={region.color}
+                            fillOpacity={isSelected ? 0.6 : region.intensity * heatmapOpacity * 0.4}
+                            stroke={isSelected ? '#ffffff' : region.color}
+                            strokeWidth={strokeWidth}
+                            strokeDasharray={isSelected ? 'none' : strokeDash}
+                          />
+                          <rect
+                            x={rx}
+                            y={Math.max(0, ry - tagHeight - 2)}
+                            width={Math.min(imgW * 0.4, Math.max(imgW * 0.14, rw))}
+                            height={tagHeight}
+                            fill={region.color}
+                            fillOpacity={Math.max(0.75, heatmapOpacity)}
+                            rx={3}
+                          />
+                          <text
+                            x={rx + 6}
+                            y={Math.max(0, ry - tagHeight - 2) + tagHeight - 4}
+                            fill="#ffffff"
+                            fontSize={fontSize}
+                            fontWeight="bold"
+                            fontFamily="sans-serif"
+                          >
+                            {region.role === 'source' ? '[SOURCE] ' : region.role === 'destination' ? '[DEST] ' : ''}
+                            {region.modalityLabel}: {region.description.slice(0, 26)}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                )}
+
+                {/* Clean baseline notice if 0 spatial regions */}
+                {spatialRegions.length === 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '16px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(15, 23, 42, 0.88)',
+                    color: '#94a3b8',
+                    padding: '0.45rem 1rem',
+                    borderRadius: '20px',
+                    fontSize: '0.78rem',
+                    pointerEvents: 'none',
+                    backdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    🛡️ Clean Baseline: No localized anomaly envelopes detected across active examinations
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Interactive Region Inspector Card */}
           {selectedRegionId && (
@@ -1371,7 +1443,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 3: PLAIN-LANGUAGE INTERPRETATIONS */}
       {activeTab === 'disclosures' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-disclosures" aria-labelledby="tab-disclosures" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Plain-language disclosures explain what each forensic engine examined, what was observed, what those observations may indicate, and the crucial limitations that prevent automated conclusions.
           </p>
@@ -1522,29 +1594,51 @@ export default function UnifiedForensicResults({
 
       {/* TAB 4: CONSOLIDATED FINDINGS & FACTS */}
       {activeTab === 'findings' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-findings" aria-labelledby="tab-findings" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {/* Quadrant 1: Verified Facts */}
-          <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.9rem' }}>
-            <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.88rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <ShieldCheck size={16} />
-              1. Verified Provenance & Container Facts
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.5 }}>
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderLeft: '4px solid #10b981', 
+            borderRadius: '6px', 
+            padding: '1rem' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                <ShieldCheck size={16} />
+                1. Verified Provenance & Container Facts
+              </h4>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                VERIFIED FACT
+              </span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.55 }}>
               <li><strong>SHA-256 Digest:</strong> {evidence.sha256_hash ? `${evidence.sha256_hash.slice(0, 16)}…` : 'Recorded on upload'}</li>
               <li><strong>Container Type:</strong> {evidence.image_format || evidence.mime_type}</li>
-              <li><strong>Dimensions:</strong> {evidence.width} × {evidence.height} pixels</li>
+              <li><strong>Dimensions:</strong> {evidence.width && evidence.height ? `${evidence.width} × ${evidence.height} pixels` : 'Dimension metadata absent'}</li>
               <li><strong>Storage Size:</strong> {evidence.file_size ? `${(evidence.file_size / 1024).toFixed(1)} KB` : 'N/A'}</li>
               <li><strong>Registered Hash-Chain Audit Event:</strong> Recorded in SQLite append-only chain</li>
             </ul>
           </div>
 
           {/* Quadrant 2: Algorithmic Observations */}
-          <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.9rem' }}>
-            <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.88rem', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Crosshair size={16} />
-              2. Algorithmic Numerical Observations
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.5 }}>
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderLeft: '4px solid #3b82f6', 
+            borderRadius: '6px', 
+            padding: '1rem' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                <Crosshair size={16} />
+                2. Algorithmic Numerical Observations
+              </h4>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', background: 'rgba(59, 130, 246, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                NUMERICAL OBSERVATION
+              </span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.55 }}>
               <li><strong>Spatial Anomaly Envelopes:</strong> {spatialRegions.length} localized coordinate zones detected</li>
               <li><strong>Examinations Executed:</strong> {metrics.completed} successful, {metrics.failed} failed</li>
               <li><strong>Coincident Anomaly Modalities:</strong> {Array.from(new Set(spatialRegions.map(r => r.modalityLabel))).join(', ') || 'None detected'}</li>
@@ -1552,12 +1646,23 @@ export default function UnifiedForensicResults({
           </div>
 
           {/* Quadrant 3: Forensic Interpretations */}
-          <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.9rem' }}>
-            <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.88rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Sparkles size={16} />
-              3. Plausible Forensic Interpretations
-            </h4>
-            <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.45 }}>
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderLeft: '4px solid #f59e0b', 
+            borderRadius: '6px', 
+            padding: '1rem' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                <Sparkles size={16} />
+                3. Plausible Forensic Interpretations
+              </h4>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                PLAUSIBLE HYPOTHESIS
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.5 }}>
               {spatialRegions.length > 0 
                 ? 'Coincident spatial error variance across independent models (e.g. noise discrepancy + clone keypoints) increases investigative interest. An examiner should inspect these areas in the Microscopy & Loupe tool to evaluate whether texture boundaries explain the variance.'
                 : 'Current parameters isolate no significant localized anomaly envelopes above standard statistical boundaries across completed models.'}
@@ -1565,12 +1670,23 @@ export default function UnifiedForensicResults({
           </div>
 
           {/* Quadrant 4: Evidentiary Limitations */}
-          <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.9rem' }}>
-            <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.88rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <AlertTriangle size={16} />
-              4. Important Evidentiary Limitations
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderLeft: '4px solid #ef4444', 
+            borderRadius: '6px', 
+            padding: '1rem' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.88rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700 }}>
+                <AlertTriangle size={16} />
+                4. Important Evidentiary Limitations
+              </h4>
+              <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#ef4444', background: 'rgba(239, 68, 68, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                CRITICAL BOUNDARY
+              </span>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.55, color: 'var(--text-muted)' }}>
               <li>Correlated observations between multiple compression engines must not be double-counted as independent evidence.</li>
               <li>Camera sensor attribution requires reference profile models from the suspect device.</li>
               <li>High native edge contrast naturally generates ELA variance without editing.</li>
@@ -1581,9 +1697,9 @@ export default function UnifiedForensicResults({
 
       {/* TAB 5: EVIDENTIARY REPORT PREVIEW */}
       {activeTab === 'report' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-report" aria-labelledby="tab-report" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
                 <h4 style={{ margin: 0, fontSize: '1rem' }}>Investigation Evidentiary Report Preview</h4>
                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Case: {caseId || 'Standalone Examination'} | Evidence ID: {evidence.id}</span>
@@ -1599,12 +1715,34 @@ export default function UnifiedForensicResults({
               </button>
             </div>
 
-            {/* Examiner Notes Section */}
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '0.35rem' }}>
-                Examiner Qualitative Findings & Context Notes (Human Analyst Entry):
-              </label>
+            {/* Examiner Notes Section - Visually & Semantically Distinct from Automated Findings */}
+            <div style={{ 
+              marginBottom: '1rem',
+              padding: '0.85rem',
+              borderRadius: '6px',
+              border: '1px solid var(--border-color)',
+              borderLeft: '4px solid #d97706',
+              background: 'var(--surface-base)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                <label htmlFor="examiner-notes" style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>
+                  Examiner Qualitative Findings & Context Notes:
+                </label>
+                <span style={{ 
+                  background: 'rgba(217, 119, 6, 0.12)', 
+                  color: '#d97706', 
+                  border: '1px solid rgba(217, 119, 6, 0.3)', 
+                  padding: '0.12rem 0.45rem', 
+                  borderRadius: '4px', 
+                  fontSize: '0.65rem', 
+                  fontWeight: 800, 
+                  textTransform: 'uppercase' 
+                }}>
+                  HUMAN EXAMINER ENTRY
+                </span>
+              </div>
               <textarea
+                id="examiner-notes"
                 value={examinerNotes}
                 onChange={e => setExaminerNotes(e.target.value)}
                 placeholder="Enter human examiner notes, investigative hypotheses, contextual observations, or justification for further forensic inquiry..."
@@ -1621,6 +1759,9 @@ export default function UnifiedForensicResults({
                   resize: 'vertical'
                 }}
               />
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                Human examiner entries are appended directly to the final evidentiary report and preserved distinct from algorithmic outputs.
+              </div>
             </div>
 
             {/* Structured Report Breakdown */}

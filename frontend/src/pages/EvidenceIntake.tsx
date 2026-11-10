@@ -607,10 +607,12 @@ export default function EvidenceIntake() {
             {/* Hidden native input for accessible OS file picker */}
             <input 
               ref={fileInputRef}
+              id="evidence-file-input"
               type="file" 
               accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
               onChange={handleFileChange}
               style={{ display: 'none' }}
+              aria-label="Select forensic evidence image file"
             />
 
             {!file ? (
@@ -796,7 +798,11 @@ export default function EvidenceIntake() {
 
                 {caseMode === 'new' ? (
                   <div>
+                    <label htmlFor="new-case-title" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-main)' }}>
+                      Investigation Title (Optional)
+                    </label>
                     <input 
+                      id="new-case-title"
                       type="text" 
                       placeholder="Investigation Title (e.g., Target Image Examination or Reference ID)"
                       value={newCaseTitle}
@@ -817,7 +823,11 @@ export default function EvidenceIntake() {
                   </div>
                 ) : (
                   <div>
+                    <label htmlFor="existing-case-select" style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--text-main)' }}>
+                      Select Target Case Dossier
+                    </label>
                     <select 
+                      id="existing-case-select"
                       value={activeCaseIdentifier}
                       onChange={e => setActiveCaseIdentifier(e.target.value)}
                       style={{ 
@@ -878,10 +888,11 @@ export default function EvidenceIntake() {
               <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color-translucent)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="source-platform" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Source Platform
                     </label>
                     <input 
+                      id="source-platform"
                       type="text" 
                       placeholder="e.g., WhatsApp, Email attachment, CCTV export"
                       value={sourcePlatform}
@@ -890,10 +901,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="acquisition-method" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Acquisition Method
                     </label>
                     <select 
+                      id="acquisition-method"
                       value={acquisitionMethod}
                       onChange={e => setAcquisitionMethod(e.target.value)}
                     >
@@ -907,10 +919,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="received-from" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Received From
                     </label>
                     <input 
+                      id="received-from"
                       type="text" 
                       placeholder="Individual, agency, or device ID"
                       value={receivedFrom}
@@ -919,10 +932,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="received-at" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Received Timestamp
                     </label>
                     <input 
+                      id="received-at"
                       type="datetime-local" 
                       value={receivedAt}
                       onChange={e => setReceivedAt(e.target.value)}
@@ -930,10 +944,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="reported-capture-time" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Reported Capture Time
                     </label>
                     <input 
+                      id="reported-capture-time"
                       type="text" 
                       placeholder="Time reported by claimant (keep raw)"
                       value={reportedCaptureTime}
@@ -942,10 +957,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="source-reference-url" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Source Reference URL
                     </label>
                     <input 
+                      id="source-reference-url"
                       type="url" 
                       placeholder="https://..."
                       value={sourceReferenceUrl}
@@ -954,10 +970,11 @@ export default function EvidenceIntake() {
                   </div>
 
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
+                    <label htmlFor="intake-notes" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.3rem', color: 'var(--text-muted)' }}>
                       Acquisition Notes
                     </label>
                     <textarea 
+                      id="intake-notes"
                       rows={2}
                       placeholder="Any initial physical or transmission observations..."
                       value={intakeNotes}

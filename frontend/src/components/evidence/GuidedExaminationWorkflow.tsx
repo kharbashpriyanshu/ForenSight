@@ -859,7 +859,7 @@ export default function GuidedExaminationWorkflow({
           </div>
 
           {/* GUIDED EXAMINATION CARDS GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '0.85rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {FORENSIC_EXAMINATION_CATALOGUE.map(exam => {
               const compatible = isCompatible(exam);
               const isSelected = selectedEngines.has(exam.id);
@@ -874,10 +874,11 @@ export default function GuidedExaminationWorkflow({
                   aria-label={`${exam.name} examination`}
                   style={{
                     background: isSelected ? 'var(--surface-raised)' : 'var(--surface-base)',
-                    border: `1px solid ${isSelected ? 'var(--primary-color)' : 'var(--border-color)'}`,
+                    border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+                    borderLeft: isRecommended ? '4px solid #10b981' : isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
                     borderRadius: '8px',
                     padding: '0.85rem 1rem',
-                    opacity: compatible ? 1 : 0.55,
+                    opacity: compatible ? 1 : 0.65,
                     transition: 'all 0.15s ease',
                     display: 'flex',
                     flexDirection: 'column',
@@ -934,6 +935,19 @@ export default function GuidedExaminationWorkflow({
                                 borderRadius: '3px' 
                               }}>
                                 SUGGESTED
+                              </span>
+                            )}
+                            {!compatible && (
+                              <span style={{ 
+                                fontSize: '0.65rem', 
+                                fontWeight: 800, 
+                                color: '#f59e0b', 
+                                background: 'rgba(245, 158, 11, 0.12)', 
+                                border: '1px solid rgba(245, 158, 11, 0.3)', 
+                                padding: '0.1rem 0.35rem', 
+                                borderRadius: '3px' 
+                              }}>
+                                INCOMPATIBLE ({rawFormat || 'FORMAT'})
                               </span>
                             )}
                           </div>

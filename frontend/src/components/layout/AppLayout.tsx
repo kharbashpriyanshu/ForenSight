@@ -30,6 +30,11 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
   return (
     <div className="app-container">
+      {/* Skip to Content for Keyboard Accessibility */}
+      <a href={isCaseWorkspace ? "#case-content" : "#main-content"} className="skip-to-content">
+        Skip to main content
+      </a>
+
       {/* UNIFIED GLOBAL TOPBAR */}
       <header className="topbar">
         <div className="topbar-left">
