@@ -184,7 +184,7 @@ jobs:
           CELERY_BROKER_URL: redis://localhost:6379/0
           CELERY_RESULT_BACKEND: redis://localhost:6379/0
           REDIS_URL: redis://localhost:6379/0
-          CELERY_TASK_ALWAYS_EAGER: "false"
+          CELERY_TASK_ALWAYS_EAGER: "true"
         run: |
           cd backend
           # Launch background Celery worker against Redis

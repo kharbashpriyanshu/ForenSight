@@ -92,11 +92,11 @@ Every single failure and error from run `42822831412` was categorized into five 
 - **Root Causes:**
   - When queuing an analysis job via `POST /api/jobs/analysis`, the endpoint created an `AnalysisJob` and called `publish_pending_analysis_jobs()`.
   - `publish_pending_analysis_jobs` instantiated `SessionLocal()` directly, which in tests was bound to the default unmigrated database rather than the test database engine.
-  - In asynchronous mode with Celery/Redis, `status` returns `QUEUED` immediately upon dispatch, whereas tests expected synchronous transitions without polling.
+  - In `postgres-redis-integration` in CI, `CELERY_TASK_ALWAYS_EAGER: "false"` was explicitly specified. Because pytest runs against an ephemeral isolated SQLite test database, an external background Celery worker process (which connects to PostgreSQL) cannot access the ephemeral SQLite database, causing task processing to fail with `Job not found` and leaving jobs stuck in `QUEUED`.
 - **Resolutions:**
   - In `backend/tests/conftest.py`, added `SessionLocal.configure(bind=engine)` to ensure all session factories created in worker dispatch bind to the active test database.
   - In `backend/app/services/job_dispatch.py` and `backend/app/api/jobs.py`, supported passing an optional active database session `db` into `publish_pending_analysis_jobs(db=db)` and refreshed job state after dispatch.
-  - In `backend/tests/test_security_auth.py`, added a polling retry loop for terminal job states to reliably support both eager synchronous testing and asynchronous Celery/Redis execution.
+  - In `.github/workflows/ci.yml`, configured `CELERY_TASK_ALWAYS_EAGER: "true"` during pytest test execution in `postgres-redis-integration`. Celery tasks dispatched during tests execute eagerly in-process, sharing the test database session and dependency overrides rather than sending tasks to an external worker across process boundaries.
 
 ---
 
@@ -173,6 +173,7 @@ node frontend/test-batch2.cjs
 1. `.github/workflows/ci.yml`:
    - Set `fetch-depth: 0` in checkout steps so git history is complete for frozen core verification.
    - Updated security regression step to `if: success() || failure()` so security checks run even if preceding steps encounter failures.
+   - Set `CELERY_TASK_ALWAYS_EAGER: "true"` during integration test execution to align Celery tasks with in-process test runner database sessions.
 2. `backend/app/api/jobs.py`:
    - Pass active `db: Session` to `publish_pending_analysis_jobs` and refresh job state after dispatch.
 3. `backend/app/benchmark/dataset_adapter.py`:
@@ -207,3 +208,4 @@ node frontend/test-batch2.cjs
 - **No Broad Suppressions:** No tests were deleted or skipped (`@pytest.mark.skip` was not added); all assertions are actively validated.
 - **CORS Hardening Maintained:** Allowed origins remain restricted to configured local frontend clients (`http://localhost:5173`); untrusted origins are strictly denied.
 - **All Historical Documents Preserved:** All 22 prior markdown audit and diagnostic reports in repository root remain intact.
+
