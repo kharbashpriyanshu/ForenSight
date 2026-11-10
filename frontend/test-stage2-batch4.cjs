@@ -489,19 +489,42 @@ async function run() {
     assert(warningText.includes('Spatial Overlays Unavailable'), 'Warning text must explain dimension unavailability');
     console.log('   ✓ Batch 3.1 dimension safety verified: zero estimated dimension fallbacks');
 
-    // Capture safety screenshot
+    // Capture safety screenshot with #unified-forensic-results scrolled into view
+    await page.evaluate(() => {
+      document.querySelector('#unified-forensic-results')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
+    await new Promise(r => setTimeout(r, 400));
     const safetyShotPath = path.join(screenshotsDir, 'stage2-batch4-safety-dimensions.png');
     const safetyBuf = await page.screenshot({ fullPage: false });
     fs.writeFileSync(safetyShotPath, safetyBuf);
     console.log(`   ✓ Saved safety screenshot to ${safetyShotPath} (exists: ${fs.existsSync(safetyShotPath)})`);
 
+    // Helper to apply and independently verify theme
+    async function applyAndVerifyTheme(targetTheme) {
+      await page.evaluate((theme) => {
+        localStorage.setItem('forensight-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
+      }, targetTheme);
+      await new Promise(r => setTimeout(r, 300));
+      const appliedTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+      assert.strictEqual(appliedTheme, targetTheme, `Theme must be '${targetTheme}', got '${appliedTheme}'`);
+      const bodyBg = await page.evaluate(() => window.getComputedStyle(document.body).backgroundColor);
+      console.log(`   ✓ Confirmed theme: ${appliedTheme} (body background: ${bodyBg})`);
+    }
+
     // Switch back to normal evidence with dimensions for responsive matrix
     currentEvidence = evidenceDataWithDims;
     await page.goto(`${baseUrl}/cases/FS-CASE-S2B4-001/evidence/801`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('#unified-forensic-results');
+    await page.click('#tab-spatial');
+    await page.waitForSelector('#panel-spatial');
+    await page.waitForSelector('[data-testid="spatial-overlay-svg"]');
 
-    // 5. Responsive Behaviour Matrix across 4 Specified Viewports
-    console.log('5. Testing Responsive Behaviour across 4 Specified Viewports...');
+    // 5. Responsive Behaviour Matrix across 4 Specified Viewports (Explicit DARK Theme)
+    console.log('5. Testing Responsive Behaviour across 4 Specified Viewports (Dark Theme)...');
+    await applyAndVerifyTheme('dark');
+
     const viewports = [
       { name: 'Desktop', width: 1440, height: 900, shot: 'stage2-batch4-desktop-dark.png' },
       { name: 'Laptop', width: 1280, height: 800, shot: 'stage2-batch4-laptop-dark.png' },
@@ -510,9 +533,18 @@ async function run() {
     ];
 
     for (const vp of viewports) {
-      console.log(`   Testing ${vp.name} Viewport (${vp.width}x${vp.height})...`);
+      console.log(`   Testing ${vp.name} Viewport (${vp.width}x${vp.height}) in Dark Mode...`);
       await page.setViewport({ width: vp.width, height: vp.height });
+
+      // Bring #unified-forensic-results into view
+      await page.evaluate(() => {
+        document.querySelector('#unified-forensic-results')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      });
       await new Promise(r => setTimeout(r, 400));
+
+      // Confirm theme is dark
+      const activeTheme = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+      assert.strictEqual(activeTheme, 'dark', `${vp.name} viewport must be rendered in dark theme`);
 
       // Verify no horizontal document overflow
       const overflow = await page.evaluate(() => {
@@ -523,24 +555,28 @@ async function run() {
       const vpShotPath = path.join(screenshotsDir, vp.shot);
       const vpBuf = await page.screenshot({ fullPage: false });
       fs.writeFileSync(vpShotPath, vpBuf);
-      console.log(`   ✓ ${vp.name} viewport clean (exists: ${fs.existsSync(vpShotPath)})`);
+      console.log(`   ✓ ${vp.name} viewport dark screenshot clean (exists: ${fs.existsSync(vpShotPath)})`);
     }
 
-    // 6. Theme Toggle & Color Contrast Verification
-    console.log('6. Verifying Dual-Theme Toggle & Contrast...');
+    // 6. Theme Toggle & Color Contrast Verification (Explicit LIGHT Theme)
+    console.log('6. Verifying Dual-Theme Toggle & Contrast (Light Theme)...');
     await page.setViewport({ width: 1440, height: 900 });
-    const themeBtn = await page.$('.btn-theme-toggle');
-    if (themeBtn) {
-      await themeBtn.click();
-      await new Promise(r => setTimeout(r, 300));
-      const lightShotPath = path.join(screenshotsDir, 'stage2-batch4-desktop-light.png');
-      const lightBuf = await page.screenshot({ fullPage: false });
-      fs.writeFileSync(lightShotPath, lightBuf);
-      console.log(`   ✓ Light theme screenshot saved (exists: ${fs.existsSync(lightShotPath)})`);
-      // Toggle back to dark
-      await themeBtn.click();
-      await new Promise(r => setTimeout(r, 200));
-    }
+    await applyAndVerifyTheme('light');
+
+    // Bring #unified-forensic-results into view
+    await page.evaluate(() => {
+      document.querySelector('#unified-forensic-results')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
+    await new Promise(r => setTimeout(r, 400));
+
+    // Confirm theme is light
+    const activeThemeLight = await page.evaluate(() => document.documentElement.getAttribute('data-theme'));
+    assert.strictEqual(activeThemeLight, 'light', 'Desktop must be rendered in light theme');
+
+    const lightShotPath = path.join(screenshotsDir, 'stage2-batch4-desktop-light.png');
+    const lightBuf = await page.screenshot({ fullPage: false });
+    fs.writeFileSync(lightShotPath, lightBuf);
+    console.log(`   ✓ Light theme screenshot saved (exists: ${fs.existsSync(lightShotPath)})`);
 
     console.log('======================================================');
     console.log('STAGE 2 BATCH 4 VERIFICATION COMPLETED SUCCESSFULLY!');

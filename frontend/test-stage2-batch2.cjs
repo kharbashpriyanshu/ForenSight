@@ -61,21 +61,24 @@ let jobCounter = 1000;
 let queueCallCounts = {};
 
 async function startVite() {
-  return new Promise((resolve) => {
-    viteProcess = spawn('npx', ['vite', '--port', String(port), '--host', '127.0.0.1'], {
-      cwd: path.resolve(__dirname),
-      env: { ...process.env, VITE_API_URL: '' },
-      shell: true,
-      stdio: 'pipe',
-    });
-    viteProcess.stdout.on('data', (d) => {
-      const s = d.toString();
-      if (s.includes('ready in') || s.includes('127.0.0.1') || s.includes('localhost')) {
-        resolve();
-      }
-    });
-    setTimeout(resolve, 5000);
-  });
+  viteProcess = spawn(
+    process.execPath,
+    [path.join(__dirname, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
+    { cwd: path.resolve(__dirname), env: { ...process.env, VITE_API_URL: '' }, stdio: 'pipe' },
+  );
+
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    if (viteProcess.exitCode !== null) throw new Error(`Vite exited with code ${viteProcess.exitCode}`);
+    try {
+      const response = await fetch(baseUrl);
+      if (response.ok) return;
+    } catch (_) {
+      // Wait for server to start
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error('Vite server failed to start within timeout');
 }
 
 function jsonResponse(data, status = 200) {
@@ -549,11 +552,7 @@ async function main() {
     if (browser) await browser.close();
     if (viteProcess) {
       try {
-        if (process.platform === 'win32') {
-          spawn('taskkill', ['/pid', String(viteProcess.pid), '/f', '/t']);
-        } else {
-          viteProcess.kill('SIGTERM');
-        }
+        viteProcess.kill('SIGTERM');
       } catch (_) {}
     }
   }
@@ -564,11 +563,7 @@ main().catch((err) => {
   if (browser) browser.close();
   if (viteProcess) {
     try {
-      if (process.platform === 'win32') {
-        spawn('taskkill', ['/pid', String(viteProcess.pid), '/f', '/t']);
-      } else {
-        viteProcess.kill('SIGTERM');
-      }
+      viteProcess.kill('SIGTERM');
     } catch (_) {}
   }
   process.exit(1);
