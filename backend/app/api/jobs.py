@@ -96,8 +96,8 @@ def queue_analysis_job(
                 outbox.next_attempt_at = datetime.datetime.utcnow()
                 outbox.last_error = None
             db.commit()
+            publish_pending_analysis_jobs(outbox_id=outbox.id, db=db)
             db.refresh(existing_job)
-            publish_pending_analysis_jobs(outbox_id=outbox.id)
             return existing_job
         return existing_job
 
@@ -127,7 +127,8 @@ def queue_analysis_job(
     case = db.query(InvestigationCase).filter(InvestigationCase.id == evidence.case_id).first()
     if case:
         AuditService.log_event(db, case.case_identifier, "ANALYSIS_QUEUED", evidence.id, actor=current_user.username, metadata={"analysis_type": analysis_type, "engine_version": engine_version, "request_hash": request_hash, "job_id": job.job_identifier})
-    publish_pending_analysis_jobs(outbox_id=outbox.id)
+    publish_pending_analysis_jobs(outbox_id=outbox.id, db=db)
+    db.refresh(job)
 
     return job
 

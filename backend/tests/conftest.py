@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-from app.db.database import Base, get_db
+from app.db.database import Base, get_db, SessionLocal
 from app.models.domain import InvestigationCase, Evidence
 from app.main import app
 
@@ -17,6 +17,9 @@ engine = create_engine(
     connect_args={"check_same_thread": False, "timeout": 30},
     poolclass=QueuePool,
 )
+
+# Rebind SessionLocal to test engine for background workers and dispatch services in tests
+SessionLocal.configure(bind=engine)
 
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -72,6 +75,7 @@ from fastapi.testclient import TestClient
 @pytest.fixture(autouse=True)
 def client():
     # We yield so the DB is reset between tests
+    app.dependency_overrides[get_current_user] = override_get_current_user
     Base.metadata.create_all(bind=engine)
     yield TestClient(app)
     Base.metadata.drop_all(bind=engine)

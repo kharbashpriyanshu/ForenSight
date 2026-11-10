@@ -180,6 +180,8 @@ class EvidenceService:
                     if width <= 0 or height <= 0 or width * height > settings.MAX_IMAGE_PIXELS:
                         raise HTTPException(status_code=413, detail="Image dimensions exceed the configured pixel limit")
                     image.verify()
+                with Image.open(staging_path) as image:
+                    image.load()
 
             expected_mime = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}.get(image_format)
             if expected_mime is None or expected_mime != claimed_mime:
@@ -342,6 +344,8 @@ class EvidenceService:
                     if width <= 0 or height <= 0 or width * height > settings.MAX_IMAGE_PIXELS:
                         raise HTTPException(status_code=413, detail="Image dimensions exceed the configured pixel limit")
                     image.verify()
+                with Image.open(staging_path) as image:
+                    image.load()
 
             expected_mime = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}.get(image_format)
             if expected_mime is None or expected_mime != claimed_mime:

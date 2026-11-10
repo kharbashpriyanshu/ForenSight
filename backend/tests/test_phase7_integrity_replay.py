@@ -53,8 +53,8 @@ def test_phase7_investigation_replay_and_integrity_verification(replay_env, db_s
     ev_id = res_e.json()["id"]
 
     # 2. Run analysis
-    res_j = client.post(f"/api/jobs/analysis/{ev_id}/metadata", headers=headers)
-    assert res_j.status_code == 202
+    res_j = client.post(f"/api/evidence/{ev_id}/analysis/metadata", headers=headers)
+    assert res_j.status_code == 200
 
     # 3. Generate correlations and report
     client.post(f"/api/cases/{case.id}/correlations/run", headers=headers)
@@ -139,7 +139,8 @@ def test_phase7_forensic_validation_manifest_structure(replay_env):
         res_e = client.post(f"/api/cases/{case.id}/evidence", files={"file": ("manifest_test.jpg", f, "image/jpeg")}, headers=headers)
     ev_id = res_e.json()["id"]
 
-    client.post(f"/api/jobs/analysis/{ev_id}/metadata", headers=headers)
+    res_meta = client.post(f"/api/evidence/{ev_id}/analysis/metadata", headers=headers)
+    assert res_meta.status_code == 200
     client.post(f"/api/cases/{case.id}/correlations/run", headers=headers)
     client.post(f"/api/cases/{case.id}/reports?format=json", headers=headers)
 

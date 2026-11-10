@@ -591,11 +591,33 @@ def test_cli_subcommands():
 def test_frozen_core_integrity():
     """
     Enforces the frozen core boundary: backend/app/forensics/ (38 files)
-    must remain byte-for-byte identical to commit 259251b.
+    must remain byte-for-byte identical to the frozen baseline.
     """
-    cmd = ["git", "diff", "259251b", "--", "backend/app/forensics/"]
-    res = subprocess.run(cmd, capture_output=True, text=True)
-    assert res.returncode == 0
-    assert len(res.stdout.strip()) == 0, (
-        f"CRITICAL VIOLATION: backend/app/forensics/ has been modified!\n{res.stdout}"
-    )
+    check_rev = subprocess.run(["git", "cat-file", "-e", "259251b^{commit}"], capture_output=True)
+    if check_rev.returncode == 0:
+        cmd = ["git", "diff", "259251b", "--", "backend/app/forensics/"]
+        res = subprocess.run(cmd, capture_output=True, text=True)
+        assert res.returncode == 0
+        assert len(res.stdout.strip()) == 0, (
+            f"CRITICAL VIOLATION: backend/app/forensics/ has been modified!\n{res.stdout}"
+        )
+    else:
+        # Fallback to cryptographic manifest verification for shallow checkouts
+        manifest_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "forensics_freeze_manifest.json")
+        assert os.path.exists(manifest_path), f"Freeze manifest not found at {manifest_path}"
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            expected = json.load(f)
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        forensics_dir = os.path.join(base_dir, "app", "forensics")
+        current = {}
+        for root, _, files in os.walk(forensics_dir):
+            for file in sorted(files):
+                if file.endswith(".py"):
+                    full_p = os.path.join(root, file)
+                    rel_p = os.path.relpath(full_p, base_dir).replace("\\", "/")
+                    h = hashlib.sha256()
+                    with open(full_p, "rb") as fp:
+                        while chunk := fp.read(8192):
+                            h.update(chunk)
+                    current[rel_p] = h.hexdigest()
+        assert current == expected, "Cryptographic manifest mismatch on forensics core files!"

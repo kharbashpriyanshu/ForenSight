@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -48,6 +50,7 @@ jobs:
           python -m pytest tests/ -v
 
       - name: Run Dedicated Security Regression Tests
+        if: success() || failure()
         run: |
           cd backend
           python -m pytest tests/test_security_auth.py -v
@@ -58,6 +61,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
@@ -98,6 +103,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Validate Docker Compose Configuration
         run: |
@@ -136,6 +143,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5

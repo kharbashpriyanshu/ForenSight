@@ -3,14 +3,19 @@
 import datetime
 import uuid
 
+from typing import Optional
+from sqlalchemy.orm import Session
 from app.db.database import SessionLocal
 from app.models.domain import AnalysisJobOutbox
 
 
-def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None) -> dict:
+def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None, db: Optional[Session] = None) -> dict:
     from app.workers.analysis_worker import run_analysis_task
 
-    db = SessionLocal()
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
     published = 0
     deferred = 0
     try:
@@ -21,7 +26,9 @@ def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None) -> di
         )
         if outbox_id is not None:
             query = query.filter(AnalysisJobOutbox.id == outbox_id)
-        rows = query.order_by(AnalysisJobOutbox.id.asc()).limit(limit).with_for_update(skip_locked=True).all()
+        if db.get_bind().dialect.name == "postgresql":
+            query = query.with_for_update(skip_locked=True)
+        rows = query.order_by(AnalysisJobOutbox.id.asc()).limit(limit).all()
 
         for row in rows:
             row.attempt_count += 1
@@ -53,4 +60,5 @@ def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None) -> di
         db.rollback()
         raise
     finally:
-        db.close()
+        if close_db:
+            db.close()

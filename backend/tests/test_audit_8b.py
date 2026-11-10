@@ -57,13 +57,20 @@ def test_path_traversal(client):
     assert res.status_code == 404
 
 def test_cors_headers(client):
+    # Allowed frontend origin (Vite dev server)
     res = client.options("/api/cases", headers={
-        "Origin": "http://localhost:3000",
+        "Origin": "http://localhost:5173",
         "Access-Control-Request-Method": "GET"
     })
-    # Since CORS is *, it should allow
     assert res.status_code == 200
-    assert "access-control-allow-origin" in res.headers
+    assert res.headers.get("access-control-allow-origin") == "http://localhost:5173"
+
+    # Untrusted origin must not receive allowed CORS headers
+    res_bad = client.options("/api/cases", headers={
+        "Origin": "http://untrusted-origin.com",
+        "Access-Control-Request-Method": "GET"
+    })
+    assert res_bad.headers.get("access-control-allow-origin") is None
 
 def test_security_headers(client):
     res = client.get("/api/health")

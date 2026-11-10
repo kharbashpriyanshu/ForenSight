@@ -84,42 +84,44 @@ def phase5_env(db_session):
     db_session.refresh(ev_1)
     db_session.refresh(ev_2)
 
-    # Add an analysis and audit events to Case A
-    audit_ev = AuditEvent(
-        case_id=case_a.case_identifier,
-        evidence_id=ev_1.id,
-        event_type="EVIDENCE_INGESTED",
+    # Add audit events to Case A using the supported AuditService to preserve hash-chain integrity
+    from app.services.audit import AuditService
+    AuditService.log_event(
+        db_session,
+        case_a.case_identifier,
+        "EVIDENCE_INGESTED",
+        ev_1.id,
         actor="inv_a_p5",
-        safe_metadata='{"filename": "tampered_document.jpg"}',
+        metadata={"filename": "tampered_document.jpg"},
     )
-    audit_job = AuditEvent(
-        case_id=case_a.case_identifier,
-        evidence_id=ev_1.id,
-        event_type="ANALYSIS_COMPLETED",
+    AuditService.log_event(
+        db_session,
+        case_a.case_identifier,
+        "ANALYSIS_COMPLETED",
+        ev_1.id,
         actor="inv_a_p5",
-        safe_metadata='{"engine": "ELA"}',
+        metadata={"engine": "ELA"},
     )
-    db_session.add_all([audit_ev, audit_job])
-    db_session.commit()
 
     test_client = TestClient(app)
 
-    yield {
-        "client": test_client,
-        "user_a": user_a,
-        "user_b": user_b,
-        "admin": admin,
-        "token_a": token_a,
-        "token_b": token_b,
-        "token_admin": token_admin,
-        "case_a": case_a,
-        "case_b": case_b,
-        "ev_1": ev_1,
-        "ev_2": ev_2,
-    }
-
-    if old_override:
-        app.dependency_overrides[get_current_user] = old_override
+    try:
+        yield {
+            "client": test_client,
+            "user_a": user_a,
+            "user_b": user_b,
+            "admin": admin,
+            "token_a": token_a,
+            "token_b": token_b,
+            "token_admin": token_admin,
+            "case_a": case_a,
+            "case_b": case_b,
+            "ev_1": ev_1,
+            "ev_2": ev_2,
+        }
+    finally:
+        if old_override:
+            app.dependency_overrides[get_current_user] = old_override
 
 def test_phase5_case_overview_enriched_metrics(phase5_env):
     """

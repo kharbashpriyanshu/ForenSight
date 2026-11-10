@@ -10,6 +10,7 @@ Enforces security safeguards:
 """
 
 import os
+import re
 import json
 import hashlib
 from typing import Dict, Any, List, Optional, Tuple, Union
@@ -31,7 +32,7 @@ def validate_safe_relative_path(dataset_root: str, rel_path: str) -> str:
     Validates that a relative path does not escape the designated dataset root.
     Strictly defends against directory traversal attacks.
     """
-    if not rel_path or ".." in rel_path or rel_path.startswith("/") or rel_path.startswith("\\"):
+    if not rel_path or ".." in rel_path or rel_path.startswith("/") or rel_path.startswith("\\") or bool(re.match(r"^[a-zA-Z]:", rel_path)):
         raise ValueError(f"Path traversal detected in relative path: '{rel_path}'")
 
     full_path = os.path.abspath(os.path.join(dataset_root, rel_path))

@@ -393,6 +393,17 @@ def test_job_lifecycle_and_idempotency(auth_test_env):
     res = client.post(f"/api/jobs/analysis/{ev_a_id}/metadata", headers=headers_a)
     assert res.status_code == 202
     job_data = res.json()
+    job_id = job_data["id"]
+
+    if job_data["status"] != "COMPLETED":
+        import time
+        for _ in range(25):
+            time.sleep(0.2)
+            status_res = client.get(f"/api/jobs/{job_id}", headers=headers_a)
+            if status_res.status_code == 200 and status_res.json()["status"] == "COMPLETED":
+                job_data = status_res.json()
+                break
+
     assert job_data["status"] == "COMPLETED"
     assert job_data["analysis_type"] == "metadata"
     assert job_data["analysis_id"] is not None
@@ -432,6 +443,17 @@ def test_job_failure_terminal_state_sanitized(auth_test_env):
     res = client.post(f"/api/jobs/analysis/{png_ev_id}/jpeg-dct", headers=headers_a)
     assert res.status_code == 202
     failed_job = res.json()
+    job_id = failed_job["id"]
+
+    if failed_job["status"] != "FAILED":
+        import time
+        for _ in range(25):
+            time.sleep(0.2)
+            status_res = client.get(f"/api/jobs/{job_id}", headers=headers_a)
+            if status_res.status_code == 200 and status_res.json()["status"] in ["FAILED", "COMPLETED"]:
+                failed_job = status_res.json()
+                break
+
     assert failed_job["status"] == "FAILED"
     err_msg = failed_job.get("safe_error_message", "")
     assert "PNG" in err_msg or "JPEG" in err_msg or "not supported" in err_msg.lower()
