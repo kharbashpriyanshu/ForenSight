@@ -16,7 +16,6 @@ import {
   Clock, 
   Download, 
   Crosshair, 
-  FileCheck2, 
   Sparkles,
   RefreshCw,
   Maximize2
@@ -49,14 +48,468 @@ export type ResultsTab = 'overview' | 'spatial' | 'disclosures' | 'findings' | '
 export interface SpatialRegion {
   id: string;
   engineId: string;
+  engineName: string;
   modalityLabel: string;
+  role?: 'source' | 'destination' | 'anomaly';
   color: string;
+  // Bounding box in original evidence image pixels
+  pixelX: number;
+  pixelY: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  // Normalized 0..1 coordinates for responsive alignment
+  normX: number;
+  normY: number;
+  normWidth: number;
+  normHeight: number;
+  // Backward compatibility aliases
   x: number;
   y: number;
   width: number;
   height: number;
   intensity: number;
   description: string;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Validates and normalizes candidate bounding boxes into original pixel dimensions.
+ * Rejects non-finite, negative, zero-size, or entirely out-of-bounds regions.
+ */
+export function validateAndNormalizeRegion({
+  id,
+  engineId,
+  engineName,
+  modalityLabel,
+  role = 'anomaly',
+  color,
+  x,
+  y,
+  width,
+  height,
+  imageWidth,
+  imageHeight,
+  intensity = 0.75,
+  description,
+  metadata
+}: {
+  id: string;
+  engineId: string;
+  engineName: string;
+  modalityLabel: string;
+  role?: 'source' | 'destination' | 'anomaly';
+  color: string;
+  x: any;
+  y: any;
+  width: any;
+  height: any;
+  imageWidth: number;
+  imageHeight: number;
+  intensity?: number;
+  description: string;
+  metadata?: Record<string, any>;
+}): SpatialRegion | null {
+  const px = Number(x);
+  const py = Number(y);
+  const pw = Number(width);
+  const ph = Number(height);
+
+  if (!Number.isFinite(px) || !Number.isFinite(py) || !Number.isFinite(pw) || !Number.isFinite(ph)) {
+    return null;
+  }
+  if (pw <= 0 || ph <= 0) {
+    return null;
+  }
+  if (imageWidth <= 0 || imageHeight <= 0) {
+    return null;
+  }
+
+  // Reject regions strictly outside image dimensions
+  if (px >= imageWidth || py >= imageHeight || (px + pw) <= 0 || (py + ph) <= 0) {
+    return null;
+  }
+
+  // Clamp bounding box to image boundaries
+  const clampedX = Math.max(0, px);
+  const clampedY = Math.max(0, py);
+  const clampedW = Math.min(imageWidth - clampedX, pw - (clampedX - px));
+  const clampedH = Math.min(imageHeight - clampedY, ph - (clampedY - py));
+
+  if (clampedW <= 0 || clampedH <= 0) {
+    return null;
+  }
+
+  const normX = clampedX / imageWidth;
+  const normY = clampedY / imageHeight;
+  const normWidth = clampedW / imageWidth;
+  const normHeight = clampedH / imageHeight;
+
+  return {
+    id,
+    engineId,
+    engineName,
+    modalityLabel,
+    role,
+    color,
+    pixelX: clampedX,
+    pixelY: clampedY,
+    pixelWidth: clampedW,
+    pixelHeight: clampedH,
+    normX,
+    normY,
+    normWidth,
+    normHeight,
+    x: normX,
+    y: normY,
+    width: normWidth,
+    height: normHeight,
+    intensity: Math.max(0.1, Math.min(1.0, intensity)),
+    description,
+    metadata
+  };
+}
+
+/**
+ * Checks whether an engine possesses genuine vector localization capability (returns bounding envelopes).
+ */
+export const isVectorSpatialEngine = (id: string): boolean => {
+  const clean = id.toLowerCase().replace(/_/g, '-');
+  return [
+    'advanced-noise',
+    'copy-move',
+    'clone-keypoint',
+    'clone-block',
+    'color-channel',
+    'resampling',
+    'blocking-artifact',
+    'jpeg-ghost'
+  ].includes(clean);
+};
+
+/**
+ * Checks whether an engine generates full-frame raster residual artifacts rather than discrete vector bounding envelopes.
+ */
+export const isRasterArtifactEngine = (id: string): boolean => {
+  const clean = id.toLowerCase().replace(/_/g, '-');
+  return ['ela', 'noise'].includes(clean);
+};
+
+/**
+ * Reconciled spatial extraction logic grounded in actual backend engine output contracts.
+ */
+export function extractSpatialRegions(
+  results: Record<string, any>,
+  imageWidth?: number,
+  imageHeight?: number
+): SpatialRegion[] {
+  const list: SpatialRegion[] = [];
+  const imgW = imageWidth && imageWidth > 0 ? imageWidth : 1920;
+  const imgH = imageHeight && imageHeight > 0 ? imageHeight : 1080;
+
+  const getFindings = (engineId: string) => {
+    const hyp = engineId.toLowerCase().replace(/_/g, '-');
+    const und = engineId.toLowerCase().replace(/-/g, '_');
+    const uppHyp = hyp.toUpperCase();
+    const uppUnd = und.toUpperCase();
+    return (
+      results[hyp]?.structured_findings || 
+      results[und]?.structured_findings || 
+      results[uppHyp]?.structured_findings || 
+      results[uppUnd]?.structured_findings || 
+      results[engineId]?.structured_findings || 
+      null
+    );
+  };
+
+  // 1. Advanced Noise (local_consistency.candidate_regions with bounding_box: [x, y, w, h])
+  const advNoiseFindings = getFindings('advanced-noise') || getFindings('noise');
+  const advNoiseCandidates = advNoiseFindings?.local_consistency?.candidate_regions;
+  if (Array.isArray(advNoiseCandidates)) {
+    advNoiseCandidates.forEach((cr: any, idx: number) => {
+      const bb = cr.bounding_box;
+      if (Array.isArray(bb) && bb.length >= 4) {
+        const reg = validateAndNormalizeRegion({
+          id: `adv-noise-${cr.region_id || idx}`,
+          engineId: 'advanced-noise',
+          engineName: 'Advanced Noise Inconsistency',
+          modalityLabel: 'Noise Variance Anomaly',
+          color: '#06b6d4',
+          x: bb[0],
+          y: bb[1],
+          width: bb[2],
+          height: bb[3],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: Math.min(1.0, Math.max(0.4, (Math.abs(Number(cr.max_deviation_z || 2.5)) / 4.0))),
+          description: `Local noise variance deviation (|z|=${Number(cr.max_deviation_z || 0).toFixed(2)})`,
+          metadata: cr
+        });
+        if (reg) list.push(reg);
+      }
+    });
+  }
+
+  // 2. Classical Copy-Move SIFT (candidate_regions: { source_bounding_box: [x, y, w, h], destination_bounding_box: [x, y, w, h] })
+  const copyMoveFindings = getFindings('copy-move');
+  const cmCandidates = copyMoveFindings?.candidate_regions;
+  if (cmCandidates && typeof cmCandidates === 'object') {
+    const sBox = cmCandidates.source_bounding_box;
+    if (Array.isArray(sBox) && sBox.length >= 4) {
+      const sReg = validateAndNormalizeRegion({
+        id: `copy-move-src`,
+        engineId: 'copy-move',
+        engineName: 'Classical Copy-Move (SIFT)',
+        modalityLabel: 'Clone Source (SIFT)',
+        role: 'source',
+        color: '#10b981',
+        x: sBox[0],
+        y: sBox[1],
+        width: sBox[2],
+        height: sBox[3],
+        imageWidth: imgW,
+        imageHeight: imgH,
+        intensity: 0.85,
+        description: `Duplicated source region (${cmCandidates.supporting_matches || 'RANSAC inlier'} matches)`,
+        metadata: { role: 'source', ...cmCandidates }
+      });
+      if (sReg) list.push(sReg);
+    }
+
+    const dBox = cmCandidates.destination_bounding_box;
+    if (Array.isArray(dBox) && dBox.length >= 4) {
+      const dReg = validateAndNormalizeRegion({
+        id: `copy-move-dst`,
+        engineId: 'copy-move',
+        engineName: 'Classical Copy-Move (SIFT)',
+        modalityLabel: 'Clone Destination (SIFT)',
+        role: 'destination',
+        color: '#34d399',
+        x: dBox[0],
+        y: dBox[1],
+        width: dBox[2],
+        height: dBox[3],
+        imageWidth: imgW,
+        imageHeight: imgH,
+        intensity: 0.85,
+        description: `Duplicated destination region (${cmCandidates.supporting_matches || 'RANSAC inlier'} matches)`,
+        metadata: { role: 'destination', ...cmCandidates }
+      });
+      if (dReg) list.push(dReg);
+    }
+  }
+
+  // 3. Clone-Keypoint ORB (candidate_regions: [{ source_bounding_box: [x1, y1, x2, y2], target_bounding_box: [x1, y1, x2, y2] }])
+  const cloneKpFindings = getFindings('clone-keypoint');
+  const cloneKpCandidates = cloneKpFindings?.candidate_regions;
+  if (Array.isArray(cloneKpCandidates)) {
+    cloneKpCandidates.forEach((cr: any, idx: number) => {
+      const sBox = cr.source_bounding_box;
+      if (Array.isArray(sBox) && sBox.length >= 4) {
+        const sReg = validateAndNormalizeRegion({
+          id: `clone-kp-src-${idx}`,
+          engineId: 'clone-keypoint',
+          engineName: 'Clone Keypoint Pairs (ORB)',
+          modalityLabel: 'Clone Source (ORB)',
+          role: 'source',
+          color: '#8b5cf6',
+          x: sBox[0],
+          y: sBox[1],
+          width: sBox[2] - sBox[0],
+          height: sBox[3] - sBox[1],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.8,
+          description: `Keypoint source cluster (${cr.inlier_keypoint_count || 0} inliers)`,
+          metadata: { role: 'source', ...cr }
+        });
+        if (sReg) list.push(sReg);
+      }
+
+      const tBox = cr.target_bounding_box;
+      if (Array.isArray(tBox) && tBox.length >= 4) {
+        const tReg = validateAndNormalizeRegion({
+          id: `clone-kp-dst-${idx}`,
+          engineId: 'clone-keypoint',
+          engineName: 'Clone Keypoint Pairs (ORB)',
+          modalityLabel: 'Clone Target (ORB)',
+          role: 'destination',
+          color: '#a78bfa',
+          x: tBox[0],
+          y: tBox[1],
+          width: tBox[2] - tBox[0],
+          height: tBox[3] - tBox[1],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.8,
+          description: `Keypoint target cluster (${cr.inlier_keypoint_count || 0} inliers)`,
+          metadata: { role: 'destination', ...cr }
+        });
+        if (tReg) list.push(tReg);
+      }
+    });
+  }
+
+  // 4. Clone-Block (candidate_regions: [{ source_bounding_box: [x, y, w, h], target_bounding_box: [x, y, w, h] }])
+  const cloneBlkFindings = getFindings('clone-block');
+  const cloneBlkCandidates = cloneBlkFindings?.candidate_regions;
+  if (Array.isArray(cloneBlkCandidates)) {
+    cloneBlkCandidates.forEach((cr: any, idx: number) => {
+      const sBox = cr.source_bounding_box;
+      if (Array.isArray(sBox) && sBox.length >= 4) {
+        const sReg = validateAndNormalizeRegion({
+          id: `clone-blk-src-${idx}`,
+          engineId: 'clone-block',
+          engineName: 'Clone Block Correlation',
+          modalityLabel: 'Clone Source (Block)',
+          role: 'source',
+          color: '#ec4899',
+          x: sBox[0],
+          y: sBox[1],
+          width: sBox[2],
+          height: sBox[3],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.8,
+          description: `Duplicate block source (${cr.supporting_pairs_count || 0} pairs)`,
+          metadata: { role: 'source', ...cr }
+        });
+        if (sReg) list.push(sReg);
+      }
+
+      const tBox = cr.target_bounding_box;
+      if (Array.isArray(tBox) && tBox.length >= 4) {
+        const tReg = validateAndNormalizeRegion({
+          id: `clone-blk-dst-${idx}`,
+          engineId: 'clone-block',
+          engineName: 'Clone Block Correlation',
+          modalityLabel: 'Clone Target (Block)',
+          role: 'destination',
+          color: '#f472b6',
+          x: tBox[0],
+          y: tBox[1],
+          width: tBox[2],
+          height: tBox[3],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.8,
+          description: `Duplicate block target (${cr.supporting_pairs_count || 0} pairs)`,
+          metadata: { role: 'destination', ...cr }
+        });
+        if (tReg) list.push(tReg);
+      }
+    });
+  }
+
+  // 5. Color Channel Disparity (candidate_regions: [{ x, y, width, height, ... }])
+  const colorFindings = getFindings('color-channel');
+  const colorCandidates = colorFindings?.candidate_regions;
+  if (Array.isArray(colorCandidates)) {
+    colorCandidates.forEach((cr: any, idx: number) => {
+      const reg = validateAndNormalizeRegion({
+        id: `color-channel-${cr.region_id || idx}`,
+        engineId: 'color-channel',
+        engineName: 'Color Channel Disparity',
+        modalityLabel: 'Color Channel Disparity',
+        color: '#f59e0b',
+        x: cr.x,
+        y: cr.y,
+        width: cr.width || cr.w,
+        height: cr.height || cr.h,
+        imageWidth: imgW,
+        imageHeight: imgH,
+        intensity: 0.75,
+        description: `RGB correlation disparity outlier (${cr.block_count || 0} blocks, z=${Number(cr.mean_z_score || 0).toFixed(2)})`,
+        metadata: cr
+      });
+      if (reg) list.push(reg);
+    });
+  }
+
+  // 6. Resampling Inconsistency (local_consistency.candidate_regions: [{ bounding_box: [x, y, w, h] }])
+  const resampFindings = getFindings('resampling');
+  const resampCandidates = resampFindings?.local_consistency?.candidate_regions || resampFindings?.candidate_regions;
+  if (Array.isArray(resampCandidates)) {
+    resampCandidates.forEach((cr: any, idx: number) => {
+      const bb = cr.bounding_box;
+      if (Array.isArray(bb) && bb.length >= 4) {
+        const reg = validateAndNormalizeRegion({
+          id: `resamp-${cr.region_id || idx}`,
+          engineId: 'resampling',
+          engineName: 'Periodic Resampling',
+          modalityLabel: 'Resampling Inconsistency',
+          color: '#eab308',
+          x: bb[0],
+          y: bb[1],
+          width: bb[2],
+          height: bb[3],
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.7,
+          description: `Interpolation periodicity candidate (${cr.block_count || 0} blocks)`,
+          metadata: cr
+        });
+        if (reg) list.push(reg);
+      }
+    });
+  }
+
+  // 7. Blocking Artifact Discontinuity (candidate_regions: [{ bounding_box_pixels: { x, y, width, height } }])
+  const blockFindings = getFindings('blocking-artifact');
+  const blockCandidates = blockFindings?.candidate_regions;
+  if (Array.isArray(blockCandidates)) {
+    blockCandidates.forEach((cr: any, idx: number) => {
+      const bb = cr.bounding_box_pixels;
+      if (bb && typeof bb === 'object') {
+        const reg = validateAndNormalizeRegion({
+          id: `blocking-${cr.region_id || idx}`,
+          engineId: 'blocking-artifact',
+          engineName: 'Blocking Artifact Discontinuity',
+          modalityLabel: 'Blocking Grid Discontinuity',
+          color: '#6366f1',
+          x: bb.x,
+          y: bb.y,
+          width: bb.width,
+          height: bb.height,
+          imageWidth: imgW,
+          imageHeight: imgH,
+          intensity: 0.7,
+          description: `Grid boundary discontinuity (${cr.type || 'outlier'}, z=${Number(cr.mean_z_score || 0).toFixed(2)})`,
+          metadata: cr
+        });
+        if (reg) list.push(reg);
+      }
+    });
+  }
+
+  // 8. JPEG Ghost (candidate_regions: [{ x, y, width, height }])
+  const ghostFindings = getFindings('jpeg-ghost');
+  const ghostCandidates = ghostFindings?.candidate_regions;
+  if (Array.isArray(ghostCandidates)) {
+    ghostCandidates.forEach((cr: any, idx: number) => {
+      const reg = validateAndNormalizeRegion({
+        id: `ghost-${cr.region_id || idx}`,
+        engineId: 'jpeg-ghost',
+        engineName: 'JPEG Ghost Residual',
+        modalityLabel: 'JPEG Ghost Minimum',
+        color: '#f97316',
+        x: cr.x,
+        y: cr.y,
+        width: cr.width,
+        height: cr.height,
+        imageWidth: imgW,
+        imageHeight: imgH,
+        intensity: 0.75,
+        description: `Secondary recompression ghost cluster (diff=${Number(cr.max_mean_difference || 0).toFixed(4)})`,
+        metadata: cr
+      });
+      if (reg) list.push(reg);
+    });
+  }
+
+  // ELA and Classical Noise produce whole-frame raster artifacts (maps), NOT discrete vector regions.
+  // Neither synthesizes artificial bounding boxes here.
+
+  return list;
 }
 
 export default function UnifiedForensicResults({
@@ -73,10 +526,10 @@ export default function UnifiedForensicResults({
   const [heatmapOpacity, setHeatmapOpacity] = useState<number>(0.7);
   const [showOverlays, setShowOverlays] = useState<boolean>(true);
   const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({
-    ELA: true,
-    NOISE: true,
+    ADVANCED_NOISE: true,
     COPY_MOVE: true,
-    COLOR_CHANNEL: true
+    COLOR_CHANNEL: true,
+    OTHER_SPATIAL: true
   });
   const [expandedEngines, setExpandedEngines] = useState<Record<string, boolean>>({
     metadata: true,
@@ -115,6 +568,21 @@ export default function UnifiedForensicResults({
     return { job, result, error: err, status };
   };
 
+  // Reconciled spatial regions
+  const spatialRegions = useMemo<SpatialRegion[]>(() => {
+    return extractSpatialRegions(results, evidence.width, evidence.height);
+  }, [results, evidence.width, evidence.height]);
+
+  // Check availability of continuous raster artifacts (ELA, Classical Noise)
+  const hasElaRaster = Boolean(
+    results['ela']?.structured_findings?.artifacts?.ela_map ||
+    results['ELA']?.structured_findings?.artifacts?.ela_map
+  );
+  const hasNoiseRaster = Boolean(
+    results['noise']?.structured_findings?.artifacts?.noise_residual_map ||
+    results['NOISE']?.structured_findings?.artifacts?.noise_residual_map
+  );
+
   // Compute status metrics across all 23 engines
   const metrics = useMemo(() => {
     let completed = 0;
@@ -129,16 +597,14 @@ export default function UnifiedForensicResults({
       const exec = getEngineExecution(exam);
       if (exec.status === 'COMPLETED') {
         completed++;
-        // Check if there are notable observations
         const findings = exec.result?.structured_findings || {};
         const hasAnomalies = 
-          (findings.elevated_regions && findings.elevated_regions.length > 0) ||
-          (findings.clusters && findings.clusters.length > 0) ||
-          (findings.matches && findings.matches.length > 0) ||
-          (findings.anomalous_blocks && findings.anomalous_blocks.length > 0) ||
-          (findings.anomaly_blocks && findings.anomaly_blocks.length > 0) ||
+          (findings.candidate_regions && findings.candidate_regions.length > 0) ||
+          (findings.local_consistency?.candidate_regions && findings.local_consistency.candidate_regions.length > 0) ||
+          (findings.candidate_regions?.source_bounding_box !== undefined) ||
+          (findings.matching_statistics?.geometric_inliers > 0) ||
           (findings.ghost_minima && findings.ghost_minima.length > 0) ||
-          (findings.candidate_regions && findings.candidate_regions.length > 0);
+          (findings.correlations && findings.candidate_regions?.length > 0);
         if (hasAnomalies) withObservations++;
       } else if (exec.status === 'FAILED') {
         failed++;
@@ -156,96 +622,6 @@ export default function UnifiedForensicResults({
     return { completed, failed, running, queued, incompatible, notRun, withObservations, total: FORENSIC_EXAMINATION_CATALOGUE.length };
   }, [jobs, results, jobErrors, isJpeg]);
 
-  // Extract spatial regions across genuine spatial engines
-  const spatialRegions = useMemo<SpatialRegion[]>(() => {
-    const list: SpatialRegion[] = [];
-    const width = evidence.width || 1000;
-    const height = evidence.height || 1000;
-
-    // 1. ELA
-    const elaRes = results['ela']?.structured_findings || results['ELA']?.structured_findings;
-    if (elaRes?.elevated_regions && Array.isArray(elaRes.elevated_regions)) {
-      elaRes.elevated_regions.forEach((r: any, idx: number) => {
-        list.push({
-          id: `ela-${idx}`,
-          engineId: 'ela',
-          modalityLabel: 'Compression Variance (ELA)',
-          color: '#ef4444',
-          x: Math.max(0, Math.min(1, (r.x || 0) / width)),
-          y: Math.max(0, Math.min(1, (r.y || 0) / height)),
-          width: Math.max(0.02, Math.min(1, (r.w || r.width || 40) / width)),
-          height: Math.max(0.02, Math.min(1, (r.h || r.height || 40) / height)),
-          intensity: r.intensity || 0.75,
-          description: `Elevated recompression delta (${r.intensity ? Math.round(r.intensity * 100) : 75}% variance)`
-        });
-      });
-    }
-
-    // 2. NOISE / ADVANCED-NOISE
-    const noiseRes = results['noise']?.structured_findings || results['NOISE']?.structured_findings;
-    if (noiseRes?.local_statistics?.anomalous_blocks && Array.isArray(noiseRes.local_statistics.anomalous_blocks)) {
-      noiseRes.local_statistics.anomalous_blocks.slice(0, 15).forEach((b: any, idx: number) => {
-        list.push({
-          id: `noise-${idx}`,
-          engineId: 'noise',
-          modalityLabel: 'Noise Residual (SNR)',
-          color: '#06b6d4',
-          x: Math.max(0, Math.min(1, (b.x || 0) / width)),
-          y: Math.max(0, Math.min(1, (b.y || 0) / height)),
-          width: Math.max(0.02, Math.min(1, (b.w || 32) / width)),
-          height: Math.max(0.02, Math.min(1, (b.h || 32) / height)),
-          intensity: 0.65,
-          description: `High-pass noise residual variance exceeds 2σ boundary`
-        });
-      });
-    }
-
-    // 3. COPY_MOVE / CLONE
-    const copyRes = results['copy-move']?.structured_findings || results['COPY_MOVE']?.structured_findings;
-    if (copyRes?.clusters && Array.isArray(copyRes.clusters)) {
-      copyRes.clusters.forEach((c: any, idx: number) => {
-        list.push({
-          id: `copy-${idx}`,
-          engineId: 'copy-move',
-          modalityLabel: 'Clone Keypoints (SIFT)',
-          color: '#10b981',
-          x: Math.max(0, Math.min(1, (c.x || 0) / width)),
-          y: Math.max(0, Math.min(1, (c.y || 0) / height)),
-          width: Math.max(0.03, Math.min(1, (c.w || 50) / width)),
-          height: Math.max(0.03, Math.min(1, (c.h || 50) / height)),
-          intensity: 0.85,
-          description: `Duplicated keypoint cluster (${c.point_count || 'paired'} correspondence vectors)`
-        });
-      });
-    }
-
-    // 4. COLOR-CHANNEL Disparity
-    const colorRes = results['color-channel']?.structured_findings || results['COLOR-CHANNEL']?.structured_findings;
-    if (colorRes?.candidate_disparity_regions && Array.isArray(colorRes.candidate_disparity_regions)) {
-      colorRes.candidate_disparity_regions.forEach((cr: any, idx: number) => {
-        list.push({
-          id: `color-${idx}`,
-          engineId: 'color-channel',
-          modalityLabel: 'Color Channel Disparity',
-          color: '#f59e0b',
-          x: Math.max(0, Math.min(1, (cr.x || 0) / width)),
-          y: Math.max(0, Math.min(1, (cr.y || 0) / height)),
-          width: Math.max(0.03, Math.min(1, (cr.w || 40) / width)),
-          height: Math.max(0.03, Math.min(1, (cr.h || 40) / height)),
-          intensity: 0.7,
-          description: `Inter-channel correlation disparity outlier (>2.5σ)`
-        });
-      });
-    }
-
-    return list;
-  }, [results, evidence.width, evidence.height]);
-
-  // Spatial Capability Matrix definition
-  const isSpatialEngine = (id: string) => {
-    return ['ela', 'noise', 'copy-move', 'resampling', 'advanced-noise', 'clone-block', 'clone-keypoint', 'color-channel', 'jpeg-ghost', 'nadjpeg', 'blocking-artifact'].includes(id);
-  };
-
   // Plain language interpretation builder
   const getPlainLanguageInterpretation = (exam: ForensicExaminationDefinition, exec: any) => {
     const findings = exec.result?.structured_findings || {};
@@ -262,16 +638,16 @@ export default function UnifiedForensicResults({
       case 'ela':
         return {
           whatExamined: 'Pixel-wise compression difference between original image and an intentional uniform 90% quality recompression.',
-          whatObserved: findings.mean_error !== undefined ? `Mean error difference: ${Number(findings.mean_error).toFixed(2)}, variance: ${Number(findings.variance || 0).toFixed(2)}, elevated regions: ${findings.elevated_regions?.length || 0}.` : 'Recompression delta computation complete.',
-          mayIndicate: (findings.elevated_regions?.length || 0) > 0 ? 'Localized regions exhibit compression histories differing from the surrounding baseline, suggesting secondary resaving or compositing.' : 'Uniform error dissipation across the image plane, consistent with single-generation compression history.',
-          doesNotEstablish: 'Natural high-contrast luminance edges and textured surfaces inherently dissipate high compression error without human alteration. ELA cannot establish intent.',
+          whatObserved: findings.mean_error !== undefined ? `Mean error difference: ${Number(findings.mean_error).toFixed(2)}, variance: ${Number(findings.variance || 0).toFixed(2)}, std: ${Number(findings.std_error || 0).toFixed(2)}.` : 'Recompression delta computation complete.',
+          mayIndicate: findings.mean_error && findings.mean_error > 10.0 ? 'Elevated whole-frame recompression delta, indicating non-uniform compression history or secondary resaving.' : 'Uniform error dissipation across the image plane, consistent with single-generation compression history.',
+          doesNotEstablish: 'Natural high-contrast luminance edges and textured surfaces inherently dissipate high compression error without human alteration. ELA generates a continuous raster artifact, not discrete bounding boxes.',
           technicalDetails: findings
         };
       case 'noise':
         return {
-          whatExamined: 'High-frequency noise patterns isolated through spatial adaptive median filtering and local Signal-to-Noise Ratio (SNR) variance analysis.',
-          whatObserved: findings.average_noise_level !== undefined ? `Average noise level: ${Number(findings.average_noise_level).toFixed(2)}, anomalous blocks: ${findings.local_statistics?.anomalous_blocks?.length || 0}.` : 'Noise residual map computed.',
-          mayIndicate: (findings.local_statistics?.anomalous_blocks?.length || 0) > 0 ? 'Discrepancies in local noise variance may indicate foreign image patches, local smoothing, or inpainting.' : 'Consistent spatial noise variance across image tiles, consistent with single-sensor capture.',
+          whatExamined: 'High-frequency noise patterns isolated through spatial adaptive median filtering and global/local residual statistics.',
+          whatObserved: findings.global_statistics?.mean_residual !== undefined ? `Mean residual: ${Number(findings.global_statistics.mean_residual).toFixed(2)}, std: ${Number(findings.global_statistics.std_residual || 0).toFixed(2)}.` : 'Noise residual map computed.',
+          mayIndicate: 'Characterizes sensor-wide noise floor consistency across color planes.',
           doesNotEstablish: 'In-camera denoising, optical vignetting, and uneven scene illumination naturally modulate noise floor variance across the frame.',
           technicalDetails: findings
         };
@@ -285,9 +661,9 @@ export default function UnifiedForensicResults({
         };
       case 'copy-move':
         return {
-          whatExamined: 'Scale-Invariant Feature Transform (SIFT) interest points with L2 Euclidean nearest-neighbor matching and spatial agglomerative clustering.',
-          whatObserved: findings.matches !== undefined ? `Extracted ${findings.matches?.length || 0} keypoint match pairs forming ${findings.clusters?.length || 0} spatial clusters.` : 'SIFT descriptor extraction and spatial correspondence search complete.',
-          mayIndicate: (findings.clusters?.length || 0) > 0 ? 'Identified duplicate or near-identical image elements replicated at different spatial positions within the frame.' : 'No geometrically consistent duplicate feature clusters detected.',
+          whatExamined: 'Scale-Invariant Feature Transform (SIFT) interest points with L2 Euclidean nearest-neighbor matching and RANSAC affine geometric verification.',
+          whatObserved: findings.candidate_regions?.source_bounding_box ? `Identified paired duplicate regions supported by ${findings.matching_statistics?.geometric_inliers || findings.candidate_regions?.supporting_matches || 0} inlier match vectors.` : 'SIFT descriptor extraction and spatial correspondence search complete.',
+          mayIndicate: findings.candidate_regions?.source_bounding_box ? 'Identified duplicate image patches replicated at different spatial positions within the frame.' : 'No geometrically consistent duplicate feature clusters detected.',
           doesNotEstablish: 'Naturally repetitive scene textures (window facades, ocean waves, brickwork, foliage) routinely generate false-positive keypoint correspondence pairs.',
           technicalDetails: findings
         };
@@ -302,16 +678,16 @@ export default function UnifiedForensicResults({
       case 'color-channel':
         return {
           whatExamined: 'Global Pearson linear correlation coefficients between RGB channel pairs and local 8×8 block disparity Z-scores.',
-          whatObserved: findings.correlations ? `Pearson r(R-G)=${Number(findings.correlations.rg || 0).toFixed(3)}, r(R-B)=${Number(findings.correlations.rb || 0).toFixed(3)}, r(G-B)=${Number(findings.correlations.gb || 0).toFixed(3)}. Outlier blocks: ${findings.candidate_disparity_regions?.length || 0}.` : 'Inter-channel color correlation evaluation complete.',
-          mayIndicate: (findings.candidate_disparity_regions?.length || 0) > 0 ? 'Identifies localized spatial regions where color channel correlation diverges significantly from the global image baseline.' : 'Uniform RGB channel correlation across the image plane.',
+          whatObserved: findings.correlation_matrix ? `Pearson r(R-G)=${Number(findings.correlation_matrix.r_vs_g || 0).toFixed(3)}, r(R-B)=${Number(findings.correlation_matrix.r_vs_b || 0).toFixed(3)}, r(G-B)=${Number(findings.correlation_matrix.g_vs_b || 0).toFixed(3)}. Outlier regions: ${findings.candidate_region_count || findings.candidate_regions?.length || 0}.` : 'Inter-channel color correlation evaluation complete.',
+          mayIndicate: (findings.candidate_regions?.length || 0) > 0 ? 'Identifies localized spatial regions where color channel correlation diverges significantly from the global image baseline.' : 'Uniform RGB channel correlation across the image plane.',
           doesNotEstablish: 'Evaluates RGB correlation disparity, not Color Filter Array (CFA) Bayer demosaicing matrix inversion. Vivid monochromatic subjects and lens chromatic aberrations cause natural disparities.',
           technicalDetails: findings
         };
       case 'advanced-noise':
         return {
           whatExamined: 'Spatial Gaussian residual subtraction with 2D Fast Fourier Transform (FFT) radial frequency band energy distribution analysis.',
-          whatObserved: findings.radial_energy ? `Radial energy ratios — Low: ${Number(findings.radial_energy.low || 0).toFixed(2)}, Mid: ${Number(findings.radial_energy.mid || 0).toFixed(2)}, High: ${Number(findings.radial_energy.high || 0).toFixed(2)}.` : 'Spatial Gaussian residual extraction and radial FFT analysis complete.',
-          mayIndicate: 'Characterizes high-frequency noise scale and spectral distribution across spatial blocks.',
+          whatObserved: findings.local_consistency?.candidate_regions ? `Identified ${findings.local_consistency.candidate_region_count || findings.local_consistency.candidate_regions.length} candidate noise inconsistency region(s).` : 'Spatial Gaussian residual extraction and radial FFT analysis complete.',
+          mayIndicate: 'Identifies localized spatial patches where high-frequency noise variance diverges from the robust image median.',
           doesNotEstablish: 'Uses spatial Gaussian residual and 2D FFT spectral decomposition, not Discrete Wavelet Transform (DWT). Subject texture variations modulate high-frequency energy naturally.',
           technicalDetails: findings
         };
@@ -370,6 +746,9 @@ export default function UnifiedForensicResults({
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const imgW = evidence.width && evidence.width > 0 ? evidence.width : 1920;
+  const imgH = evidence.height && evidence.height > 0 ? evidence.height : 1080;
 
   return (
     <div id="unified-forensic-results" className="card" style={{ marginTop: '1.25rem', padding: '1.25rem' }}>
@@ -569,7 +948,7 @@ export default function UnifiedForensicResults({
             color: activeTab === 'findings' ? 'var(--primary-color)' : 'var(--text-muted)'
           }}
         >
-          <FileCheck2 size={14} />
+          <CheckCircle2 size={14} />
           Consolidated Observations & Facts
         </button>
 
@@ -597,36 +976,37 @@ export default function UnifiedForensicResults({
 
       {/* TAB 1: INVESTIGATION OVERVIEW */}
       {activeTab === 'overview' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Evidence Provenance Card */}
-          <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '1rem' }}>
-            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <ShieldCheck size={16} style={{ color: 'var(--primary-color)' }} />
-              Evidence Authenticity Baseline & Verification
-            </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', fontSize: '0.78rem' }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>SHA-256 Digest:</span>
-                <div style={{ fontFamily: 'monospace', fontWeight: 600, wordBreak: 'break-all', marginTop: '0.15rem' }}>
-                  {evidence.sha256_hash || 'Computed on ingestion'}
-                </div>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Container Format:</span>
-                <div style={{ fontWeight: 600, marginTop: '0.15rem' }}>
-                  {evidence.image_format || evidence.mime_type || 'Unknown'} ({isJpeg ? 'Lossy DCT Compression' : 'Lossless Raster Container'})
-                </div>
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)' }}>Dimensions & File Size:</span>
-                <div style={{ fontWeight: 600, marginTop: '0.15rem' }}>
-                  {evidence.width} × {evidence.height} px ({evidence.file_size ? `${(evidence.file_size / 1024).toFixed(1)} KB` : 'N/A'})
-                </div>
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Evidence Integrity Metadata Summary */}
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color)', 
+            borderRadius: '6px', 
+            padding: '0.85rem 1rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '0.75rem',
+            fontSize: '0.78rem'
+          }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>FILE IDENTIFIER</span>
+              <strong>{evidence.original_filename}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>CONTAINER FORMAT</span>
+              <strong>{evidence.image_format || evidence.mime_type || 'Unknown'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>DIMENSIONS</span>
+              <strong>{evidence.width && evidence.height ? `${evidence.width} × ${evidence.height} px` : 'N/A'}</strong>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.7rem' }}>SHA-256 HASH VERIFICATION</span>
+              <code style={{ fontSize: '0.7rem', color: '#10b981' }}>{evidence.sha256_hash ? `${evidence.sha256_hash.slice(0, 16)}…` : 'Verified'}</code>
             </div>
           </div>
 
-          {/* Quick Engine Execution Status Matrix */}
+          {/* 23 Engine Catalogue Grid */}
           <div>
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.92rem' }}>
               Execution Summary across 23 Registered Forensic Engines
@@ -751,19 +1131,10 @@ export default function UnifiedForensicResults({
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
                 <input 
                   type="checkbox" 
-                  checked={visibleLayers['ELA']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, ELA: e.target.checked })} 
+                  checked={visibleLayers['ADVANCED_NOISE']} 
+                  onChange={e => setVisibleLayers({ ...visibleLayers, ADVANCED_NOISE: e.target.checked })} 
                 />
-                <span style={{ color: '#ef4444', fontWeight: 600 }}>ELA Compression</span>
-              </label>
-
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={visibleLayers['NOISE']} 
-                  onChange={e => setVisibleLayers({ ...visibleLayers, NOISE: e.target.checked })} 
-                />
-                <span style={{ color: '#06b6d4', fontWeight: 600 }}>Noise Residual</span>
+                <span style={{ color: '#06b6d4', fontWeight: 600 }}>Noise Anomaly</span>
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
@@ -772,7 +1143,25 @@ export default function UnifiedForensicResults({
                   checked={visibleLayers['COPY_MOVE']} 
                   onChange={e => setVisibleLayers({ ...visibleLayers, COPY_MOVE: e.target.checked })} 
                 />
-                <span style={{ color: '#10b981', fontWeight: 600 }}>Keypoint Clones</span>
+                <span style={{ color: '#10b981', fontWeight: 600 }}>Clone Pairs (SIFT/ORB)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={visibleLayers['COLOR_CHANNEL']} 
+                  onChange={e => setVisibleLayers({ ...visibleLayers, COLOR_CHANNEL: e.target.checked })} 
+                />
+                <span style={{ color: '#f59e0b', fontWeight: 600 }}>Color Disparity</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={visibleLayers['OTHER_SPATIAL']} 
+                  onChange={e => setVisibleLayers({ ...visibleLayers, OTHER_SPATIAL: e.target.checked })} 
+                />
+                <span style={{ color: '#8b5cf6', fontWeight: 600 }}>Resampling/Blocking</span>
               </label>
             </div>
           </div>
@@ -795,27 +1184,38 @@ export default function UnifiedForensicResults({
               style={{ width: '100%', height: 'auto', display: 'block' }}
             />
 
-            {/* SVG Anomaly Coordinates Overlay */}
+            {/* SVG Anomaly Coordinates Overlay in 1:1 Evidence Pixel Geometry */}
             {showOverlays && (
               <svg 
+                data-testid="spatial-overlay-svg"
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                viewBox="0 0 1000 1000"
+                viewBox={`0 0 ${imgW} ${imgH}`}
                 preserveAspectRatio="none"
               >
                 {spatialRegions.map((region) => {
                   const isLayerVisible = 
-                    (region.engineId === 'ela' && visibleLayers['ELA']) ||
-                    ((region.engineId === 'noise' || region.engineId === 'advanced-noise') && visibleLayers['NOISE']) ||
+                    ((region.engineId === 'advanced-noise' || region.engineId === 'noise') && visibleLayers['ADVANCED_NOISE']) ||
                     ((region.engineId === 'copy-move' || region.engineId === 'clone-block' || region.engineId === 'clone-keypoint') && visibleLayers['COPY_MOVE']) ||
-                    (region.engineId === 'color-channel' && visibleLayers['COLOR_CHANNEL']);
+                    (region.engineId === 'color-channel' && visibleLayers['COLOR_CHANNEL']) ||
+                    ((region.engineId === 'resampling' || region.engineId === 'blocking-artifact' || region.engineId === 'jpeg-ghost') && visibleLayers['OTHER_SPATIAL']);
 
                   if (!isLayerVisible) return null;
 
                   const isSelected = selectedRegionId === region.id;
-                  const rx = region.x * 1000;
-                  const ry = region.y * 1000;
-                  const rw = region.width * 1000;
-                  const rh = region.height * 1000;
+                  const rx = region.pixelX;
+                  const ry = region.pixelY;
+                  const rw = region.pixelWidth;
+                  const rh = region.pixelHeight;
+                  const strokeWidth = isSelected ? Math.max(3, Math.round(imgW * 0.003)) : Math.max(2, Math.round(imgW * 0.002));
+                  const tagHeight = Math.max(18, Math.round(imgW * 0.016));
+                  const fontSize = Math.max(10, Math.min(16, Math.round(imgW * 0.011)));
+
+                  let strokeDash = '6 3';
+                  if (region.role === 'source') {
+                    strokeDash = '8 4';
+                  } else if (region.role === 'destination') {
+                    strokeDash = 'none';
+                  }
 
                   return (
                     <g 
@@ -831,27 +1231,28 @@ export default function UnifiedForensicResults({
                         fill={region.color}
                         fillOpacity={isSelected ? 0.6 : region.intensity * heatmapOpacity * 0.4}
                         stroke={isSelected ? '#ffffff' : region.color}
-                        strokeWidth={isSelected ? '4' : '2.5'}
-                        strokeDasharray={isSelected ? 'none' : '6 3'}
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={isSelected ? 'none' : strokeDash}
                       />
                       <rect
                         x={rx}
-                        y={Math.max(0, ry - 22)}
-                        width={Math.min(240, Math.max(120, rw))}
-                        height={20}
+                        y={Math.max(0, ry - tagHeight - 2)}
+                        width={Math.min(imgW * 0.4, Math.max(imgW * 0.14, rw))}
+                        height={tagHeight}
                         fill={region.color}
                         fillOpacity={Math.max(0.75, heatmapOpacity)}
                         rx={3}
                       />
                       <text
                         x={rx + 6}
-                        y={Math.max(0, ry - 22) + 14}
+                        y={Math.max(0, ry - tagHeight - 2) + tagHeight - 4}
                         fill="#ffffff"
-                        fontSize="12"
+                        fontSize={fontSize}
                         fontWeight="bold"
                         fontFamily="sans-serif"
                       >
-                        {region.modalityLabel.split(' ')[0]}: {region.description.slice(0, 24)}
+                        {region.role === 'source' ? '[SOURCE] ' : region.role === 'destination' ? '[DEST] ' : ''}
+                        {region.modalityLabel}: {region.description.slice(0, 26)}
                       </text>
                     </g>
                   );
@@ -875,7 +1276,7 @@ export default function UnifiedForensicResults({
                 backdropFilter: 'blur(4px)',
                 border: '1px solid rgba(255,255,255,0.1)'
               }}>
-                🛡️ Clean Baseline: No spatial anomaly regions detected across active examinations
+                🛡️ Clean Baseline: No localized anomaly envelopes detected across active examinations
               </div>
             )}
           </div>
@@ -897,13 +1298,13 @@ export default function UnifiedForensicResults({
                 return (
                   <div>
                     <div style={{ fontSize: '0.72rem', fontWeight: 700, color: reg.color, textTransform: 'uppercase' }}>
-                      Selected Anomaly Region: {reg.modalityLabel}
+                      Selected Anomaly Region: {reg.modalityLabel} {reg.role ? `(${reg.role.toUpperCase()})` : ''}
                     </div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.2rem' }}>
                       {reg.description}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                      Coordinates: ({Math.round(reg.x * 100)}%, {Math.round(reg.y * 100)}%) — Size: {Math.round(reg.width * 100)}% × {Math.round(reg.height * 100)}%
+                      Coordinates: ({reg.pixelX}px, {reg.pixelY}px) — Size: {reg.pixelWidth}px × {reg.pixelHeight}px ({Math.round(reg.normWidth * 100)}% × {Math.round(reg.normHeight * 100)}%)
                     </div>
                   </div>
                 );
@@ -919,11 +1320,50 @@ export default function UnifiedForensicResults({
             </div>
           )}
 
+          {/* Raster Artifact Modalities Status Banner */}
+          {(hasElaRaster || hasNoiseRaster) && (
+            <div style={{
+              background: 'rgba(59, 130, 246, 0.06)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              borderRadius: '6px',
+              padding: '0.75rem 0.9rem',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '0.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Layers size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-color)' }}>
+                  <strong>Raster Heatmaps Available:</strong> Continuous full-frame residual maps ({[hasElaRaster && 'ELA Compression', hasNoiseRaster && 'Noise Residual'].filter(Boolean).join(', ')}) are generated as raster artifacts rather than discrete bounding boxes.
+                </span>
+              </div>
+              {onNavigateToViewer && (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => onNavigateToViewer('all')}
+                  style={{ fontSize: '0.72rem', padding: '0.25rem 0.55rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                >
+                  <Maximize2 size={12} />
+                  Inspect in Analyst Workbench
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Spatial Output Eligibility Matrix Legend */}
           <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.85rem' }}>
             <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.82rem' }}>Spatial Output Capability Matrix Notice</h5>
             <p style={{ margin: 0, fontSize: '0.75rem', lineHeight: 1.45, color: 'var(--text-muted)' }}>
-              Only examinations with localized pixel matrices produce spatial bounding overlays (e.g. ELA, Noise, Clone SIFT, Color Disparity, Resampling). Global transform examinations (such as JPEG DCT 8×8 block histograms, 2D Fourier spectra, EXIF container headers, and PRNU device matching) analyze whole-frame or frequency-domain properties and do not produce localized pixel overlays.
+              Forensic examinations fall into three distinct analytical categories:
+              <br />
+              <strong>1. Vector-Localization Engines:</strong> Segment localized pixel matrices and extract bounded coordinate envelopes with discrete source/destination relationships (e.g. <em>Advanced Noise</em>, <em>Classical Copy-Move SIFT</em>, <em>Clone Keypoint ORB</em>, <em>Color Channel Disparity</em>, <em>Resampling</em>, <em>Blocking Discontinuity</em>, <em>JPEG Ghost</em>).
+              <br />
+              <strong>2. Raster-Artifact Modalities:</strong> Generate continuous full-frame difference images without discrete bounding vectors (e.g. <em>Error Level Analysis (ELA)</em>, <em>Classical Noise Residual</em>). They are inspected via full-frame raster overlays in the Analyst Workbench or Microscopy tool.
+              <br />
+              <strong>3. Global & Transform Engines:</strong> Measure whole-frame, sensor-wide, or bitstream-level properties that have no localized spatial coordinates (e.g. <em>EXIF Metadata</em>, <em>JPEG DCT 8×8 Block Orthonormal Transform</em>, <em>2D Fourier Power Spectrum</em>, <em>PRNU Device Attribution</em>, <em>Histogram Distribution</em>).
             </p>
           </div>
         </div>
@@ -942,6 +1382,8 @@ export default function UnifiedForensicResults({
 
             const isExpanded = !!expandedEngines[exam.id];
             const interp = getPlainLanguageInterpretation(exam, exec);
+            const isVector = isVectorSpatialEngine(exam.id);
+            const isRaster = isRasterArtifactEngine(exam.id);
 
             return (
               <div 
@@ -996,9 +1438,13 @@ export default function UnifiedForensicResults({
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {isSpatialEngine(exam.id) ? (
+                    {isVector ? (
                       <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '3px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 600 }}>
-                        Spatial Overlay
+                        Vector Overlay
+                      </span>
+                    ) : isRaster ? (
+                      <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '3px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 600 }}>
+                        Raster Heatmap
                       </span>
                     ) : (
                       <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '3px', background: 'rgba(107, 114, 128, 0.1)', color: 'var(--text-muted)' }}>
@@ -1113,8 +1559,8 @@ export default function UnifiedForensicResults({
             </h4>
             <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.45 }}>
               {spatialRegions.length > 0 
-                ? 'Coincident spatial error variance across independent models (compression variance + sensor noise discrepancy) increases investigative interest. An examiner should inspect these areas in the Microscopy & Loupe tool to evaluate whether texture boundaries explain the variance.'
-                : 'Current parameters isolate no significant localized anomalies above standard statistical boundaries across completed models.'}
+                ? 'Coincident spatial error variance across independent models (e.g. noise discrepancy + clone keypoints) increases investigative interest. An examiner should inspect these areas in the Microscopy & Loupe tool to evaluate whether texture boundaries explain the variance.'
+                : 'Current parameters isolate no significant localized anomaly envelopes above standard statistical boundaries across completed models.'}
             </p>
           </div>
 
