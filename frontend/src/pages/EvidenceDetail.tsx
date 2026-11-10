@@ -6,6 +6,7 @@ import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard'
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 import GuidedExaminationWorkflow from '../components/evidence/GuidedExaminationWorkflow';
+import UnifiedForensicResults from '../components/evidence/UnifiedForensicResults';
 const AdvancedJpegViewer = lazy(() => import('../components/evidence/AdvancedJpegViewer'));
 const CompressionHistoryViewer = lazy(() => import('../components/evidence/CompressionHistoryViewer'));
 const BlockingArtifactViewer = lazy(() => import('../components/evidence/BlockingArtifactViewer'));
@@ -554,9 +555,24 @@ export default function EvidenceDetail() {
             onQueueJob={runAsyncJob}
             onBatchQueue={handleBatchQueueJobs}
             onViewResults={() => {
+              const el = document.getElementById('unified-forensic-results') || document.getElementById('workbench-nav');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
+
+          {/* Unified Forensic Results & Evidentiary Synthesis (Stage 2 Batch 3) */}
+          <UnifiedForensicResults
+            evidence={uploadResult}
+            caseId={caseId}
+            jobs={jobs}
+            results={results}
+            jobErrors={jobErrors}
+            onNavigateToViewer={(viewerId) => {
+              setWorkbenchTab(viewerId as any);
               const el = document.getElementById('workbench-nav');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
+            onRefresh={() => { if (evidenceId) fetchEvidenceAndJobs(evidenceId); }}
           />
 
           {/* Categorized Forensic Workbench Navigation */}
