@@ -16,3 +16,15 @@ class ELAResult(BaseModel):
     statistics: ELAStatistics
     error_image_path: str
     recompressed_image_path: str
+
+    @property
+    def error_map_path(self) -> str:
+        return self.error_image_path
+
+    @property
+    def mean_error(self) -> float:
+        return self.statistics.mean_error
+
+    @property
+    def max_error(self) -> float:
+        return self.statistics.max_error

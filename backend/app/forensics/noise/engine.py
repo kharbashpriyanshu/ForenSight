@@ -97,11 +97,11 @@ class NoiseEngine:
             norm_global = normalize_to_uint8(residual, global_stats.max_residual)
             norm_local = normalize_to_uint8(local_residual, local_stats.max_residual)
             
-            global_map_path = os.path.join(output_dir, f"noise_residual_{run_id}.jpg")
-            local_map_path = os.path.join(output_dir, f"noise_local_{run_id}.jpg")
+            global_map_path = os.path.join(output_dir, f"noise_residual_{run_id}.png")
+            local_map_path = os.path.join(output_dir, f"noise_local_{run_id}.png")
             
-            Image.fromarray(norm_global, mode='L').save(global_map_path, 'JPEG', quality=95)
-            Image.fromarray(norm_local, mode='L').save(local_map_path, 'JPEG', quality=95)
+            Image.fromarray(norm_global, mode='L').save(global_map_path, 'PNG')
+            Image.fromarray(norm_local, mode='L').save(local_map_path, 'PNG')
             
             return NoiseResult(
                 width=width,

@@ -124,8 +124,8 @@ class JPEGDCTEngine:
             
             os.makedirs(output_dir, exist_ok=True)
             run_id = uuid.uuid4().hex[:8]
-            vis_path = os.path.join(output_dir, f"dct_energy_map_{run_id}.jpg")
-            vis_img.save(vis_path, 'JPEG', quality=95)
+            vis_path = os.path.join(output_dir, f"dct_energy_map_{run_id}.png")
+            vis_img.save(vis_path, 'PNG')
             
             return JPEGDCTResult(
                 image_width=orig_w,

@@ -130,7 +130,7 @@ class CopyMoveEngine:
             
             run_id = uuid.uuid4().hex[:8]
             os.makedirs(output_dir, exist_ok=True)
-            vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.jpg")
+            vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.png")
             cv2.imwrite(vis_path, vis_img)
             
             return CopyMoveResult(
@@ -180,7 +180,7 @@ class CopyMoveEngine:
         
         run_id = uuid.uuid4().hex[:8]
         os.makedirs(output_dir, exist_ok=True)
-        vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.jpg")
+        vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.png")
         cv2.imwrite(vis_path, img) # Just save original as map since no matches
         
         return CopyMoveResult(

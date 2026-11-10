@@ -26,7 +26,7 @@ class ELAEngine:
             
             run_id = uuid.uuid4().hex[:8]
             recompressed_path = os.path.join(output_dir, f"ela_recompressed_{run_id}.jpg")
-            error_map_path = os.path.join(output_dir, f"ela_map_{run_id}.jpg")
+            error_map_path = os.path.join(output_dir, f"ela_map_{run_id}.png")
             
             # 1. Save recompressed image
             img.save(recompressed_path, 'JPEG', quality=quality)
@@ -66,9 +66,9 @@ class ELAEngine:
                 
             norm_arr = np.clip(norm_arr, 0, 255).astype(np.uint8)
             
-            # 5. Save Error Map
+            # 5. Save Error Map (Lossless PNG)
             error_img = Image.fromarray(norm_arr, mode='RGB')
-            error_img.save(error_map_path, 'JPEG', quality=95)
+            error_img.save(error_map_path, 'PNG')
             
             return ELAResult(
                 input_format=img_format,
