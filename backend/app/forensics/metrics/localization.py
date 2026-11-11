@@ -343,3 +343,4 @@ def calculate_bbox_iou(
         return 0.0
 
     return float(intersection / union)
+

@@ -416,3 +416,4 @@ class TestFullRunnerAndReports:
         assert "Classical DIP Image Fidelity Results" in md_text
         assert "Spatial Tamper Localization Results" in md_text
         assert "False-Positive Resistance on Negative Controls" in md_text
+

@@ -221,3 +221,4 @@ With the completion of Batch 1 (Foundational DIP Fidelity Metrics) and Batch 2 (
   3. Verify job state transitions (`QUEUED` $\to$ `RUNNING` $\to$ `COMPLETED`) with result persistence in PostgreSQL.
   4. Update CI workflow to run the live worker integration test against background Redis and Celery daemon processes.
 - **Status:** Proposed only. Not started.
+
