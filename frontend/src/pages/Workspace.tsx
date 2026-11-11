@@ -230,7 +230,7 @@ const Workspace: React.FC = () => {
         {/* FORENSIC INTEGRITY FOOTER */}
         <div className="sidebar-footer">
           <div className="sidebar-footer-title">
-            Scientific Freeze: <strong className="sidebar-footer-state">Enforced</strong>
+            Scientific Baseline: <strong className="sidebar-footer-state">Verified</strong>
           </div>
           <div className="sidebar-footer-axiom">Observation ≠ Proof</div>
         </div>

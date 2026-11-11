@@ -48,7 +48,17 @@ interface CaseStats {
   } | null;
 }
 
-function getAssessmentDetails(assessment: string | null) {
+function getAssessmentDetails(assessment: string | null, evidenceCount: number = 0) {
+  if (evidenceCount === 0) {
+    return {
+      title: 'Awaiting Evidence Acquisition',
+      color: '#64748b',
+      bg: 'rgba(100, 116, 139, 0.06)',
+      border: 'rgba(100, 116, 139, 0.2)',
+      badge: 'AWAITING INTAKE',
+      description: 'No evidence items have been acquired for this case. Ingest an image to begin automated multi-engine forensic examination and correlation.'
+    };
+  }
   if (!assessment) {
     return {
       title: 'Assessment In Progress',
@@ -56,7 +66,7 @@ function getAssessmentDetails(assessment: string | null) {
       bg: 'rgba(71, 85, 105, 0.06)',
       border: 'rgba(71, 85, 105, 0.18)',
       badge: 'PENDING',
-      description: 'Automated cross-engine evaluation running or awaiting evidence ingestion.'
+      description: 'Automated multi-engine examination running or awaiting scheduled passes.'
     };
   }
   const clean = assessment.toUpperCase();
@@ -201,7 +211,11 @@ const CaseOverview: React.FC = () => {
     }
   }
 
-  const assessmentDetails = getAssessmentDetails(stats.latest_assessment);
+  const assessmentDetails = getAssessmentDetails(stats.latest_assessment, stats.evidence_count);
+
+  const hasEvidence = stats.evidence_count > 0;
+  const hasAnalyses = stats.completed_analysis_count > 0;
+  const hasFindings = stats.findings_count > 0;
 
   // Investigation workflow milestones
   const workflowMilestones = [
@@ -211,43 +225,48 @@ const CaseOverview: React.FC = () => {
       title: 'Intake & Claim Context',
       status: intake?.claim_summary ? 'Documented' : 'Optional',
       isComplete: Boolean(intake?.claim_summary),
-      description: intake?.claim_summary ? 'Reported context recorded' : 'Define initial origin claim',
+      isActionable: true,
+      description: intake?.claim_summary ? 'Reported claim context recorded' : 'Define initial origin claim context',
       action: () => setEditingIntake(true)
     },
     {
       id: 'evidence',
       icon: FolderOpen,
       title: 'Evidence Preservation',
-      status: stats.evidence_count > 0 ? `${stats.evidence_count} Registered` : 'Awaiting Files',
-      isComplete: stats.evidence_count > 0,
-      description: stats.evidence_count > 0 ? `${stats.evidence_count} files hashed & sealed` : 'Upload primary source images',
+      status: hasEvidence ? `${stats.evidence_count} Preserved` : 'Awaiting Intake',
+      isComplete: hasEvidence,
+      isActionable: true,
+      description: hasEvidence ? `${stats.evidence_count} ${stats.evidence_count === 1 ? 'file' : 'files'} SHA-256 hashed & sealed` : 'Primary source image intake pending',
       action: () => navigate(`/cases/${caseId}/evidence`)
     },
     {
       id: 'analysis',
       icon: Cpu,
       title: 'Automated Examination',
-      status: stats.completed_analysis_count > 0 ? `${stats.completed_analysis_count} Executed` : 'Not Started',
-      isComplete: stats.completed_analysis_count > 0,
-      description: `${stats.completed_analysis_count} engine passes completed`,
+      status: !hasEvidence ? 'Awaiting Evidence' : (hasAnalyses ? `${stats.completed_analysis_count} Executed` : (stats.running_job_count > 0 ? `${stats.running_job_count} Running` : 'Pending')),
+      isComplete: hasAnalyses,
+      isActionable: hasEvidence,
+      description: !hasEvidence ? 'Requires evidence intake before execution' : `${stats.completed_analysis_count} engine passes completed`,
       action: () => navigate(`/cases/${caseId}/evidence`)
     },
     {
       id: 'adjudication',
       icon: CheckCircle2,
       title: 'Analyst Findings',
-      status: stats.findings_count > 0 ? `${stats.findings_count} Observations` : 'Pending Review',
-      isComplete: stats.findings_count > 0,
-      description: stats.findings_count > 0 ? 'Documented expert anomalies' : 'Correlate signals in workspace',
+      status: !hasEvidence ? 'Awaiting Evidence' : (hasFindings ? `${stats.findings_count} Observations` : 'Pending Review'),
+      isComplete: hasFindings,
+      isActionable: hasEvidence,
+      description: !hasEvidence ? 'Requires examination results to correlate' : (hasFindings ? 'Documented expert anomalies' : 'Correlate signals in workbench'),
       action: () => navigate(`/cases/${caseId}/analyst`)
     },
     {
       id: 'reporting',
       icon: ShieldCheck,
-      title: 'Custody & Final Report',
-      status: stats.audit_event_count > 0 ? 'Trail Sealed' : 'Ready',
-      isComplete: stats.audit_event_count > 0,
-      description: `${stats.audit_event_count} cryptographic custody logs`,
+      title: 'Custody & Case Reporting',
+      status: !hasEvidence ? 'Awaiting Evidence' : (hasAnalyses ? 'Ready to Compile' : 'Awaiting Analysis'),
+      isComplete: false,
+      isActionable: hasEvidence,
+      description: !hasEvidence ? 'Case ledger initialized; report compilation requires evidence' : `${stats.audit_event_count} ledger entries logged; ready for formal report compilation`,
       action: () => navigate(`/cases/${caseId}/reports`)
     }
   ];
@@ -468,7 +487,7 @@ const CaseOverview: React.FC = () => {
             {stats.evidence_count}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Cryptographically sealed
+            {stats.evidence_count === 0 ? 'Awaiting evidence acquisition' : `${stats.evidence_count} ${stats.evidence_count === 1 ? 'file' : 'files'} SHA-256 preserved`}
           </div>
         </div>
 
@@ -477,13 +496,13 @@ const CaseOverview: React.FC = () => {
             <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', fontFamily: 'var(--font-tech)', letterSpacing: '0.06em' }}>
               Completed Passes
             </span>
-            <CheckCircle2 size={14} style={{ color: '#15803d', opacity: 0.8 }} />
+            <CheckCircle2 size={14} style={{ color: stats.completed_analysis_count > 0 ? '#15803d' : 'var(--text-muted)', opacity: 0.8 }} />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#15803d', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: stats.completed_analysis_count > 0 ? '#15803d' : 'var(--text-main)', fontFamily: 'var(--font-mono)', letterSpacing: '-0.03em' }}>
             {stats.completed_analysis_count ?? 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Out of {stats.analysis_count || stats.completed_analysis_count || 0} scheduled jobs
+            {stats.evidence_count === 0 ? 'Awaiting evidence acquisition' : `Out of ${stats.analysis_count || stats.completed_analysis_count || 0} scheduled passes`}
           </div>
         </div>
 
@@ -498,7 +517,7 @@ const CaseOverview: React.FC = () => {
             {(stats.running_job_count || 0) + (stats.pending_job_count || 0)}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            {(stats.running_job_count || 0) > 0 ? `${stats.running_job_count} running in background` : 'Analysis queue idle'}
+            {(stats.running_job_count || 0) > 0 ? `${stats.running_job_count} running in background` : (stats.evidence_count === 0 ? 'Queue idle — no evidence' : 'Analysis queue idle')}
           </div>
         </div>
 
@@ -513,7 +532,7 @@ const CaseOverview: React.FC = () => {
             {stats.findings_count || 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Recorded observations
+            {stats.evidence_count === 0 ? 'Awaiting analysis passes' : 'Recorded observations'}
           </div>
         </div>
 
@@ -528,7 +547,7 @@ const CaseOverview: React.FC = () => {
             {stats.audit_event_count ?? 0}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Immutable ledger records
+            {stats.evidence_count === 0 ? 'Ledger initialized (case creation)' : `${stats.audit_event_count ?? 0} immutable ledger entries`}
           </div>
         </div>
       </div>
@@ -549,7 +568,7 @@ const CaseOverview: React.FC = () => {
                   Investigation Workflow
                 </h2>
                 <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Structured forensic workflow from evidence intake to verified reporting
+                  Structured forensic examination workflow from evidence intake to formal case reporting
                 </p>
               </div>
               <span style={{ fontSize: '0.7rem', color: 'var(--accent-color)', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
@@ -563,7 +582,7 @@ const CaseOverview: React.FC = () => {
                 return (
                   <div
                     key={milestone.id}
-                    onClick={milestone.action}
+                    onClick={milestone.isActionable ? milestone.action : undefined}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -572,10 +591,11 @@ const CaseOverview: React.FC = () => {
                       borderRadius: '9px',
                       background: milestone.isComplete ? 'var(--surface-color-light)' : 'rgba(255, 255, 255, 0.4)',
                       border: '1px solid var(--border-color-translucent)',
-                      cursor: 'pointer',
+                      cursor: milestone.isActionable ? 'pointer' : 'default',
+                      opacity: milestone.isActionable ? 1 : 0.65,
                       transition: 'all 0.18s ease'
                     }}
-                    className="hover:border-amber-400"
+                    className={milestone.isActionable ? "hover:border-amber-400" : undefined}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
                       <span style={{ 
@@ -585,13 +605,13 @@ const CaseOverview: React.FC = () => {
                         width: '28px',
                         height: '28px',
                         borderRadius: '6px',
-                        color: milestone.isComplete ? '#15803d' : 'var(--text-muted)',
+                        color: milestone.isComplete ? '#15803d' : (milestone.isActionable ? 'var(--text-muted)' : 'var(--text-muted)'),
                         background: milestone.isComplete ? 'rgba(21, 128, 61, 0.08)' : 'rgba(0,0,0,0.04)'
                       }}>
                         <IconComponent size={14} />
                       </span>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: milestone.isActionable ? 'var(--text-main)' : 'var(--text-muted)' }}>
                           {milestone.title}
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
@@ -604,12 +624,12 @@ const CaseOverview: React.FC = () => {
                       <span style={{ 
                         fontSize: '0.7rem', 
                         fontWeight: 700, 
-                        color: milestone.isComplete ? '#15803d' : 'var(--text-muted)',
+                        color: milestone.isComplete ? '#15803d' : (milestone.isActionable ? 'var(--text-muted)' : 'var(--text-muted)'),
                         fontFamily: 'var(--font-tech)'
                       }}>
                         {milestone.status}
                       </span>
-                      <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+                      {milestone.isActionable && <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />}
                     </div>
                   </div>
                 );
@@ -625,7 +645,7 @@ const CaseOverview: React.FC = () => {
                   Forensic Assessment & Engine State
                 </h3>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  Framework: <strong style={{ color: 'var(--text-main)' }}>{stats.rule_version || 'Correlated Rule Engine'}</strong> (Scientifically Frozen)
+                  Framework: <strong style={{ color: 'var(--text-main)' }}>{stats.rule_version || 'Correlated Rule Engine'}</strong> {stats.evidence_count === 0 ? '(Idle — Awaiting Evidence)' : '(Scientifically Frozen)'}
                 </div>
               </div>
               <span style={{ 
@@ -661,7 +681,7 @@ const CaseOverview: React.FC = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.9rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color-translucent)', fontSize: '0.76rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>
-                Principle: <strong style={{ color: 'var(--text-main)' }}>Observation != Proof</strong>
+                Principle: <strong style={{ color: 'var(--text-main)' }}>Observation ≠ Proof</strong>
               </span>
               <button 
                 type="button" 

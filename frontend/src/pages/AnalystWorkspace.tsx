@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
 import { 
   Network, 
@@ -76,6 +76,7 @@ const DEFAULT_COLOR = { fill: '#64748b', border: '#475569', text: '#ffffff' };
 
 const AnalystWorkspace: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'findings' | 'graph' | 'notes' | 'search'>('findings');
   
@@ -711,7 +712,7 @@ const AnalystWorkspace: React.FC = () => {
                 FORENSIC INTELLIGENCE SUITE
               </span>
               <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                ANALYST ACTIVE
+                EXAMINATION WORKBENCH
               </span>
             </div>
             <h2 className="card-title" style={{ margin: 0 }}>Analyst Investigation Workspace</h2>
@@ -722,9 +723,11 @@ const AnalystWorkspace: React.FC = () => {
 
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <button 
-              className="primary-button" 
+              type="button"
+              className="secondary-button" 
               onClick={handleRunCorrelations}
               disabled={evaluating}
+              title="Evaluate recorded observations against deterministic correlation rules"
             >
               {evaluating ? 'Evaluating Rules...' : 'Run Correlation Engine'}
             </button>
@@ -769,21 +772,76 @@ const AnalystWorkspace: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       {activeTab === 'findings' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Conflict Notice Banner */}
-          <div style={{ background: 'rgba(245, 158, 11, 0.08)', borderLeft: '4px solid #f59e0b', padding: '0.85rem 1rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-            <strong>Scientific Methodology Notice:</strong> Correlated findings represent deterministic intersection of objective observations (e.g. metadata software tags, ELA block variance, keypoint clustering). ForenSight distinguishes <em>Negative Evidence</em> (incompatible formats or absent tags) from <em>No Evidence</em>. No synthetic manipulation percentages are generated.
+          {/* Methodology Notice Banner */}
+          <div style={{ 
+            background: 'var(--surface-color-light)', 
+            border: '1px solid var(--border-color-translucent)', 
+            borderLeft: '3px solid var(--accent-color)', 
+            padding: '0.65rem 0.9rem', 
+            borderRadius: '6px', 
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.45
+          }}>
+            <strong style={{ color: 'var(--text-main)' }}>Methodology Notice:</strong> Correlated findings represent deterministic intersections of recorded forensic observations (e.g. metadata software tags, ELA block variance, keypoint clustering). ForenSight distinguishes <em>Negative Evidence</em> (incompatible formats or verified absent signatures) from <em>No Evidence</em> (untested or absent files). No synthetic manipulation percentages are generated.
           </div>
 
           {loadingFindings ? (
             <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading findings...</div>
           ) : findings.length === 0 ? (
-            <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-              <div style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                No correlated findings have been generated yet. Click "Run Correlation Engine" to evaluate observations against deterministic rules.
+            <div className="card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', maxWidth: '680px', margin: '0 auto' }}>
+              <div style={{ 
+                width: '44px', 
+                height: '44px', 
+                borderRadius: '10px', 
+                background: 'rgba(59, 130, 246, 0.08)', 
+                color: 'var(--primary-color)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                margin: '0 auto 1rem' 
+              }}>
+                <Network size={22} />
               </div>
-              <button className="primary-button" onClick={handleRunCorrelations} disabled={evaluating}>
-                Run Correlation Engine
-              </button>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                No Correlated Findings Available
+              </h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.84rem', lineHeight: 1.55, margin: '0 0 1.25rem' }}>
+                Correlated findings are produced when the deterministic rule engine evaluates cross-modality observations (such as metadata anomalies, DCT block inconsistencies, or clone keypoint clusters) recorded from acquired evidence.
+              </p>
+              <div style={{ 
+                background: 'var(--surface-color-light)', 
+                border: '1px solid var(--border-color-translucent)', 
+                borderRadius: '8px', 
+                padding: '0.85rem 1rem', 
+                fontSize: '0.8rem', 
+                color: 'var(--text-muted)',
+                textAlign: 'left',
+                marginBottom: '1.5rem',
+                lineHeight: 1.45
+              }}>
+                <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '0.2rem' }}>Recommended Next Step:</strong>
+                If evidence files have not been acquired yet, add an evidence item and execute analytical engine passes. If evidence is already present, evaluate existing observations against formal correlation rules.
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button 
+                  type="button"
+                  className="primary-button" 
+                  onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                >
+                  <span>Acquire Evidence File</span>
+                  <ArrowRight size={14} />
+                </button>
+                <button 
+                  type="button"
+                  className="secondary-button" 
+                  onClick={handleRunCorrelations} 
+                  disabled={evaluating}
+                >
+                  {evaluating ? 'Evaluating Rules...' : 'Evaluate Existing Observations'}
+                </button>
+              </div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: selectedFinding ? '1fr 420px' : '1fr', gap: '1.25rem' }}>

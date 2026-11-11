@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import { fetchApi } from '../api';
 
 interface ReportItem {
@@ -124,30 +125,39 @@ export default function ReportsInterface() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <select
-              value={formatOption}
-              onChange={e => setFormatOption(e.target.value as 'pdf' | 'json')}
-              style={{ padding: '0.55rem 0.75rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '0.85rem' }}
-            >
-              <option value="pdf">Formal Investigation Report (PDF)</option>
-              <option value="json">Forensic Case Archive (JSON)</option>
-            </select>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                value={formatOption}
+                onChange={e => setFormatOption(e.target.value as 'pdf' | 'json')}
+                style={{ padding: '0.55rem 0.75rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '0.85rem' }}
+              >
+                <option value="pdf">Formal Case Report (PDF)</option>
+                <option value="json">Case Findings & Summary (JSON)</option>
+              </select>
 
-            <button 
-              className="primary-button" 
-              onClick={handleGenerate} 
-              disabled={generating}
-            >
-              {generating ? 'Compiling Report...' : 'Generate New Report'}
-            </button>
-            <button className="secondary-button" onClick={() => void handleCaseExport()} disabled={exportingBundle}>
-              {exportingBundle ? 'Signing case bundle…' : 'Export signed case bundle'}
-            </button>
+              <button 
+                className="primary-button" 
+                onClick={handleGenerate} 
+                disabled={generating}
+              >
+                {generating ? 'Compiling Report...' : 'Compile Case Report'}
+              </button>
+              <button className="secondary-button" onClick={() => void handleCaseExport()} disabled={exportingBundle}>
+                {exportingBundle ? 'Packaging archive…' : 'Export Case Archive (.forensight)'}
+              </button>
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+              Case bundles package raw evidence binaries, manifests, and Ed25519 signatures (when configured on server)
+            </div>
           </div>
         </div>
 
-        {exportError && <div role="alert" style={{ marginTop: '0.75rem', color: '#ef4444' }}>{exportError}</div>}
+        {exportError && (
+          <div role="alert" style={{ marginTop: '0.75rem', padding: '0.55rem 0.85rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '6px', color: '#ef4444', fontSize: '0.8rem' }}>
+            <strong>Export Notice:</strong> {exportError.toLowerCase().includes('signing') ? 'Case bundle signing is not configured on this server (server requires CASE_EXPORT_SIGNING_PRIVATE_KEY configuration before exporting signed bundles).' : exportError}
+          </div>
+        )}
 
         <div style={{ marginTop: '1.25rem', background: 'rgba(59, 130, 246, 0.05)', borderLeft: '4px solid var(--primary-color)', padding: '0.75rem 1rem', borderRadius: '4px', fontSize: '0.85rem' }}>
           <strong>Publication Standard:</strong> Generated reports include Title Header, Case Registry, Ingested Evidence Hashes, Multi-Modality Observations (ELA, Noise, JPEG-DCT, Copy-Move, Metadata), Correlated Forensic Assessment, Technical Chain of Custody, and Explicit Scientific Limitations.
@@ -159,8 +169,35 @@ export default function ReportsInterface() {
         <h3 className="card-title">Generated Case Reports ({reports.length})</h3>
 
         {reports.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            No investigation reports generated yet. Click "Generate New Report" to compile a formal report.
+          <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ 
+              width: '40px', 
+              height: '40px', 
+              borderRadius: '8px', 
+              background: 'rgba(59, 130, 246, 0.08)', 
+              color: 'var(--primary-color)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              margin: '0 auto 0.75rem' 
+            }}>
+              <FileText size={20} />
+            </div>
+            <h4 style={{ margin: '0 0 0.35rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              No Case Reports Compiled Yet
+            </h4>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
+              Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document.
+            </p>
+            <button 
+              type="button"
+              className="primary-button" 
+              onClick={handleGenerate} 
+              disabled={generating}
+              style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
+            >
+              {generating ? 'Compiling Report...' : `Compile ${formatOption.toUpperCase()} Report`}
+            </button>
           </div>
         ) : (
           <table className="evidence-table">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileUp, FolderArchive, ArrowRight, ChevronDown } from 'lucide-react';
+import { FileUp, FolderArchive, FolderPlus, ArrowRight, ChevronDown } from 'lucide-react';
 import { fetchApi, prefetchApi } from '../api';
 
 const PAGE_SIZE = 100;
@@ -100,7 +100,7 @@ export default function CasesList() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#1d4ed8', background: 'rgba(37, 99, 235, 0.08)', border: '1px solid rgba(37, 99, 235, 0.2)', padding: '0.15rem 0.5rem', borderRadius: '9999px', letterSpacing: '0.05em' }}>
-              STATION MASTER DIRECTORY
+              INVESTIGATION DIRECTORY
             </span>
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.025em' }}>Forensic Investigations</h1>
@@ -159,7 +159,7 @@ export default function CasesList() {
         </div>
       )}
       
-      {/* 1. Investigation Entry Hub: Dual Pathways A & B */}
+      {/* 1. Investigation Entry Hub */}
       <div className="card" style={{ 
         marginBottom: '1.75rem', 
         padding: '1.5rem', 
@@ -177,13 +177,13 @@ export default function CasesList() {
               Start an Investigation
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, maxWidth: '640px' }}>
-              Select an investigation pathway to begin image tamper examination, compression analysis, and cryptographic evidence registration.
+              Select an investigation workflow to begin image tamper examination, compression analysis, and cryptographic evidence registration.
             </p>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
-          {/* Pathway A: Examine an Image */}
+          {/* Action 1: Examine an Image */}
           <div style={{ 
             background: 'var(--surface-color-light)', 
             border: '1px solid var(--border-color)', 
@@ -209,7 +209,7 @@ export default function CasesList() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--accent-color)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Path A — Quick Entry
+                    Direct Image Intake
                   </div>
                   <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
                     Examine an Image
@@ -232,7 +232,7 @@ export default function CasesList() {
             </button>
           </div>
 
-          {/* Pathway B: Open Existing Investigation */}
+          {/* Action 2: Open Existing Investigation */}
           <div style={{ 
             background: 'var(--surface-color-light)', 
             border: '1px solid var(--border-color)', 
@@ -258,7 +258,7 @@ export default function CasesList() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Path B — Directory
+                    Existing Investigations
                   </div>
                   <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
                     Open Existing Investigation
@@ -286,10 +286,11 @@ export default function CasesList() {
         </div>
       </div>
       
-      {/* 2. Advanced: Initialize Case Dossier Form */}
+      {/* 2. Initialize Case Dossier Form */}
       <div className="card" style={{ marginBottom: '2rem', borderTop: '3px solid #2563eb' }}>
         <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span>📂</span> Open New Forensic Dossier
+          <FolderPlus size={18} style={{ color: '#2563eb' }} />
+          <span>Open New Forensic Dossier</span>
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
           Record the reported claim and source context separately from what image analysis later observes.

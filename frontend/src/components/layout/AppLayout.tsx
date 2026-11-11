@@ -59,7 +59,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="topbar-right">
           {/* Workspace Context Badge */}
           <span className={`context-pill ${isCaseWorkspace ? 'context-pill-case' : 'context-pill-station'}`}>
-            {isCaseWorkspace ? 'INVESTIGATION WORKSPACE' : 'CASES DIRECTORY'}
+            {isCaseWorkspace ? 'INVESTIGATION WORKSPACE' : 'INVESTIGATION DIRECTORY'}
           </span>
 
           {/* Theme Toggle (Light / Dark) */}
@@ -68,9 +68,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           {/* Multi-User RBAC & Security */}
           <AccountSecurityPanel />
 
-          <span className="status-badge" title="Role-Based Access Control Active">
+          <span className="status-badge" title="Role-based access protection active">
             <span className="status-dot-nominal" aria-hidden="true" />
-            <span className="status-badge-text">RBAC Active</span>
+            <span className="status-badge-text">Access Protected</span>
           </span>
 
           {/* Explicit Sign Out Action */}
@@ -145,7 +145,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
 
               <div className="sidebar-footer">
                 <div className="sidebar-footer-title">
-                  Scientific Freeze: <strong className="sidebar-footer-state">Enforced</strong>
+                  Scientific Baseline: <strong className="sidebar-footer-state">Verified</strong>
                 </div>
                 <div className="sidebar-footer-axiom">Observation ≠ Proof</div>
               </div>
