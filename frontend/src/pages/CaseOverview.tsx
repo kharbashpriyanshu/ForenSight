@@ -589,10 +589,10 @@ const CaseOverview: React.FC = () => {
                       justifyContent: 'space-between',
                       padding: '0.75rem 0.95rem',
                       borderRadius: '9px',
-                      background: milestone.isComplete ? 'var(--surface-color-light)' : 'rgba(255, 255, 255, 0.4)',
+                      background: 'var(--surface-color-light)',
                       border: '1px solid var(--border-color-translucent)',
-                      cursor: milestone.isActionable ? 'pointer' : 'default',
-                      opacity: milestone.isActionable ? 1 : 0.65,
+                      cursor: milestone.isActionable ? 'pointer' : 'not-allowed',
+                      opacity: milestone.isActionable ? 1 : 0.82,
                       transition: 'all 0.18s ease'
                     }}
                     className={milestone.isActionable ? "hover:border-amber-400" : undefined}
@@ -605,13 +605,13 @@ const CaseOverview: React.FC = () => {
                         width: '28px',
                         height: '28px',
                         borderRadius: '6px',
-                        color: milestone.isComplete ? '#15803d' : (milestone.isActionable ? 'var(--text-muted)' : 'var(--text-muted)'),
-                        background: milestone.isComplete ? 'rgba(21, 128, 61, 0.08)' : 'rgba(0,0,0,0.04)'
+                        color: milestone.isComplete ? '#15803d' : (milestone.isActionable ? 'var(--primary-color)' : 'var(--text-muted)'),
+                        background: milestone.isComplete ? 'rgba(21, 128, 61, 0.08)' : (milestone.isActionable ? 'rgba(28, 43, 58, 0.06)' : 'rgba(0,0,0,0.04)')
                       }}>
                         <IconComponent size={14} />
                       </span>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: milestone.isActionable ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
                           {milestone.title}
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
@@ -624,7 +624,7 @@ const CaseOverview: React.FC = () => {
                       <span style={{ 
                         fontSize: '0.7rem', 
                         fontWeight: 700, 
-                        color: milestone.isComplete ? '#15803d' : (milestone.isActionable ? 'var(--text-muted)' : 'var(--text-muted)'),
+                        color: milestone.isComplete ? '#15803d' : 'var(--text-muted)',
                         fontFamily: 'var(--font-tech)'
                       }}>
                         {milestone.status}

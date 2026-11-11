@@ -19,6 +19,7 @@ export default function ReportsInterface() {
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [evidenceCount, setEvidenceCount] = useState<number | null>(null);
+  const [overviewError, setOverviewError] = useState('');
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [formatOption, setFormatOption] = useState<'pdf' | 'json'>('pdf');
@@ -32,13 +33,14 @@ export default function ReportsInterface() {
 
   const fetchInitialData = async () => {
     setLoading(true);
+    setOverviewError('');
     try {
       const [reportsRes, overviewRes] = await Promise.all([
         fetchApi(`/cases/${caseId}/reports`),
         fetchApi(`/cases/${caseId}/overview`).catch(() => null)
       ]);
 
-      if (reportsRes.ok) {
+      if (reportsRes && reportsRes.ok) {
         const reportsData = await reportsRes.json();
         setReports(Array.isArray(reportsData) ? reportsData : []);
       }
@@ -47,10 +49,15 @@ export default function ReportsInterface() {
         const overviewData = await overviewRes.json();
         if (typeof overviewData.evidence_count === 'number') {
           setEvidenceCount(overviewData.evidence_count);
+        } else {
+          setOverviewError('Unable to determine case evidence count from server response.');
         }
+      } else {
+        setOverviewError('Could not verify case evidence status. Overview service unavailable.');
       }
     } catch (err) {
       console.error('Error fetching initial reports data', err);
+      setOverviewError('Failed to load investigation overview data.');
     } finally {
       setLoading(false);
     }
@@ -140,6 +147,7 @@ export default function ReportsInterface() {
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading reports...</div>;
 
   const isZeroEvidence = evidenceCount === 0;
+  const isCompilationBlocked = isZeroEvidence || Boolean(overviewError) || evidenceCount === null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -167,9 +175,15 @@ export default function ReportsInterface() {
               <button 
                 className="primary-button" 
                 onClick={handleGenerate} 
-                disabled={generating || isZeroEvidence}
-                title={isZeroEvidence ? 'Evidence acquisition and analysis passes required before compiling report' : undefined}
-                style={isZeroEvidence ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                disabled={generating || isCompilationBlocked}
+                title={
+                  overviewError 
+                    ? `Compilation unavailable: ${overviewError}` 
+                    : isCompilationBlocked 
+                    ? 'Evidence acquisition and analysis passes required before compiling report' 
+                    : undefined
+                }
+                style={isCompilationBlocked ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
               >
                 {generating ? 'Compiling Report...' : 'Compile Case Report'}
               </button>
@@ -183,7 +197,28 @@ export default function ReportsInterface() {
           </div>
         </div>
 
-        {isZeroEvidence && (
+        {overviewError && (
+          <div 
+            role="alert" 
+            style={{ 
+              marginTop: '1rem', 
+              padding: '0.75rem 1rem', 
+              background: 'rgba(239, 68, 68, 0.08)', 
+              border: '1px solid rgba(239, 68, 68, 0.25)', 
+              borderRadius: '6px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.65rem' 
+            }}
+          >
+            <AlertCircle size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.825rem', color: '#ef4444' }}>
+              <strong>Evidence Verification Unavailable:</strong> {overviewError} Report compilation is locked until case status can be verified.
+            </span>
+          </div>
+        )}
+
+        {isZeroEvidence && !overviewError && (
           <div 
             role="note"
             style={{ 
@@ -260,7 +295,7 @@ export default function ReportsInterface() {
               )}
             </p>
 
-            {isZeroEvidence ? (
+            {isZeroEvidence && !overviewError ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button 
@@ -284,6 +319,21 @@ export default function ReportsInterface() {
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Report compilation is disabled until evidence has been ingested and examined.
+                </span>
+              </div>
+            ) : isCompilationBlocked ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                <button 
+                  type="button"
+                  className="secondary-button" 
+                  disabled={true}
+                  title={overviewError || "Evidence acquisition and analysis passes required before compiling report"}
+                  style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', opacity: 0.5, cursor: 'not-allowed' }}
+                >
+                  Compile {formatOption.toUpperCase()} Report
+                </button>
+                <span style={{ fontSize: '0.75rem', color: overviewError ? '#ef4444' : 'var(--text-muted)' }}>
+                  {overviewError ? 'Report compilation is locked until case evidence status can be verified.' : 'Report compilation is disabled until evidence has been ingested and examined.'}
                 </span>
               </div>
             ) : (
