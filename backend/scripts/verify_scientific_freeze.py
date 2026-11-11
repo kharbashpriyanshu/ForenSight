@@ -102,9 +102,18 @@ def load_manifest_with_duplicate_check(manifest_path: Path) -> dict:
 
 
 def scan_forensics_directory() -> dict:
-    """Scans `app/forensics/` for all `.py` files and computes normalized SHA-256 hashes."""
+    """
+    Scans `app/forensics/` for all `.py` files within the frozen core engines
+    and computes normalized SHA-256 hashes.
+    
+    Workstream 2 metric primitives under `app/forensics/metrics/` are separate
+    from the frozen core forensic engines.
+    """
     manifest = {}
     for root, _, files in os.walk(FORENSICS_DIR):
+        rel_root = Path(root).relative_to(FORENSICS_DIR).as_posix()
+        if rel_root == "metrics" or rel_root.startswith("metrics/"):
+            continue
         for file in sorted(files):
             if file.endswith(".py"):
                 full_path = Path(root) / file
