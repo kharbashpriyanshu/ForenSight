@@ -13,9 +13,27 @@ from app.forensics.metrics.fidelity import (
     calculate_psnr,
     calculate_ssim,
 )
+from app.forensics.metrics.localization import (
+    calculate_confusion_matrix,
+    calculate_iou,
+    calculate_precision,
+    calculate_recall,
+    calculate_f1,
+    calculate_dice,
+    calculate_all_localization_metrics,
+    calculate_bbox_iou,
+)
 
 __all__ = [
     "calculate_mse",
     "calculate_psnr",
     "calculate_ssim",
+    "calculate_confusion_matrix",
+    "calculate_iou",
+    "calculate_precision",
+    "calculate_recall",
+    "calculate_f1",
+    "calculate_dice",
+    "calculate_all_localization_metrics",
+    "calculate_bbox_iou",
 ]

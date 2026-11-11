@@ -1,0 +1,187 @@
+{
+  "engine_id": "JPEG-STRUCTURE",
+  "engine_version": "1.0.0",
+  "evidence_id": 1063,
+  "analysis_id": null,
+  "evidence_sha256": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+  "parameters": {},
+  "provenance": {
+    "engine": "JPEG-STRUCTURE",
+    "version": "1.0.0",
+    "specification": "ITU-T T.81 / ISO/IEC 10918-1"
+  },
+  "structure": {
+    "total_bytes": 3258,
+    "marker_sequence": [
+      "SOI",
+      "APP0",
+      "DQT",
+      "DQT",
+      "SOF0",
+      "DHT",
+      "DHT",
+      "DHT",
+      "DHT",
+      "SOS",
+      "EOI"
+    ],
+    "dimensions": {
+      "width": 256,
+      "height": 256
+    },
+    "precision": 8,
+    "sof_marker": "SOF0",
+    "components": [
+      {
+        "component_id": 1,
+        "name": "Y",
+        "horizontal_sampling": 2,
+        "vertical_sampling": 2,
+        "quantization_table_id": 0
+      },
+      {
+        "component_id": 2,
+        "name": "Cb",
+        "horizontal_sampling": 1,
+        "vertical_sampling": 1,
+        "quantization_table_id": 1
+      },
+      {
+        "component_id": 3,
+        "name": "Cr",
+        "horizontal_sampling": 1,
+        "vertical_sampling": 1,
+        "quantization_table_id": 1
+      }
+    ],
+    "restart_interval": null,
+    "segments": [
+      {
+        "marker": "SOI",
+        "code": "0xFFD8",
+        "offset": 0,
+        "length": 0,
+        "size": 2
+      },
+      {
+        "marker": "APP0",
+        "code": "0xFFE0",
+        "offset": 2,
+        "length": 16,
+        "size": 18
+      },
+      {
+        "marker": "DQT",
+        "code": "0xFFDB",
+        "offset": 20,
+        "length": 67,
+        "size": 69
+      },
+      {
+        "marker": "DQT",
+        "code": "0xFFDB",
+        "offset": 89,
+        "length": 67,
+        "size": 69
+      },
+      {
+        "marker": "SOF0",
+        "code": "0xFFC0",
+        "offset": 158,
+        "length": 17,
+        "size": 19,
+        "precision": 8,
+        "dimensions": {
+          "width": 256,
+          "height": 256
+        },
+        "component_count": 3,
+        "components": [
+          {
+            "component_id": 1,
+            "name": "Y",
+            "horizontal_sampling": 2,
+            "vertical_sampling": 2,
+            "quantization_table_id": 0
+          },
+          {
+            "component_id": 2,
+            "name": "Cb",
+            "horizontal_sampling": 1,
+            "vertical_sampling": 1,
+            "quantization_table_id": 1
+          },
+          {
+            "component_id": 3,
+            "name": "Cr",
+            "horizontal_sampling": 1,
+            "vertical_sampling": 1,
+            "quantization_table_id": 1
+          }
+        ]
+      },
+      {
+        "marker": "DHT",
+        "code": "0xFFC4",
+        "offset": 177,
+        "length": 31,
+        "size": 33
+      },
+      {
+        "marker": "DHT",
+        "code": "0xFFC4",
+        "offset": 210,
+        "length": 181,
+        "size": 183
+      },
+      {
+        "marker": "DHT",
+        "code": "0xFFC4",
+        "offset": 393,
+        "length": 31,
+        "size": 33
+      },
+      {
+        "marker": "DHT",
+        "code": "0xFFC4",
+        "offset": 426,
+        "length": 181,
+        "size": 183
+      },
+      {
+        "marker": "SOS",
+        "code": "0xFFDA",
+        "offset": 609,
+        "length": 12,
+        "size": 14,
+        "component_count": 3,
+        "scan_components": [
+          {
+            "component_id": 1,
+            "dc_huffman_table_id": 0,
+            "ac_huffman_table_id": 0
+          },
+          {
+            "component_id": 2,
+            "dc_huffman_table_id": 1,
+            "ac_huffman_table_id": 1
+          },
+          {
+            "component_id": 3,
+            "dc_huffman_table_id": 1,
+            "ac_huffman_table_id": 1
+          }
+        ]
+      },
+      {
+        "marker": "EOI",
+        "code": "0xFFD9",
+        "offset": 3256,
+        "length": 0,
+        "size": 2
+      }
+    ],
+    "structural_anomalies": [],
+    "trailing_bytes_count": 0
+  }
+}

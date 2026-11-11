@@ -1,0 +1,31 @@
+{
+  "engine_id": "CLONE-KEYPOINT",
+  "engine_version": "1.0.0",
+  "evidence_id": 1198,
+  "analysis_id": null,
+  "original_dimensions": [
+    256,
+    256
+  ],
+  "analysis_dimensions": [
+    256,
+    256
+  ],
+  "scale_factor": 1.0,
+  "keypoint_count": 39,
+  "raw_match_candidates": 14,
+  "filtered_match_count": 2,
+  "geometric_inlier_count": 0,
+  "geometric_inlier_ratio": 0.0,
+  "affine_model": null,
+  "candidate_regions": [],
+  "inlier_pairs_sample": [],
+  "parameters": {
+    "max_features": 1000,
+    "min_spatial_distance": 30.0,
+    "ratio_threshold": 0.75,
+    "min_inliers": 4,
+    "ransac_reproj_threshold": 5.0,
+    "max_dimension": 2048
+  }
+}

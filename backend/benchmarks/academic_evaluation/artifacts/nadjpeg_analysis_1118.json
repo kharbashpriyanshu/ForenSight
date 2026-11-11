@@ -1,0 +1,422 @@
+{
+  "engine_id": "NADJPEG",
+  "engine_version": "1.0.0",
+  "evidence_id": 1118,
+  "analysis_id": null,
+  "evidence_sha256": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+  "parameters": {
+    "max_dimension": 2048,
+    "spatial_threshold": 1.35
+  },
+  "provenance": {
+    "engine": "NADJPEG",
+    "version": "1.0.0",
+    "method": "64-Phase Integer Boundary Discontinuity Matrix (Li 2008 / Bianchi 2011)"
+  },
+  "results": {
+    "has_non_aligned_double_jpeg_traces": true,
+    "candidate_shift_offset": {
+      "row_shift": 7,
+      "col_shift": 7
+    },
+    "peak_contrast_ratio": 2.4418,
+    "aligned_contrast_ratio": 1.2599,
+    "energy_distribution_64": [
+      {
+        "row_shift": 0,
+        "col_shift": 0,
+        "raw_energy": 0.5629,
+        "contrast_ratio": 1.2599
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 1,
+        "raw_energy": 0.5244,
+        "contrast_ratio": 1.1737
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 2,
+        "raw_energy": 0.5886,
+        "contrast_ratio": 1.3174
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 3,
+        "raw_energy": 0.4692,
+        "contrast_ratio": 1.0503
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 4,
+        "raw_energy": 0.5972,
+        "contrast_ratio": 1.3368
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 5,
+        "raw_energy": 0.5377,
+        "contrast_ratio": 1.2036
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 6,
+        "raw_energy": 0.4058,
+        "contrast_ratio": 0.9083
+      },
+      {
+        "row_shift": 0,
+        "col_shift": 7,
+        "raw_energy": 0.9419,
+        "contrast_ratio": 2.1084
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 0,
+        "raw_energy": 0.414,
+        "contrast_ratio": 0.9267
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 1,
+        "raw_energy": 0.3755,
+        "contrast_ratio": 0.8405
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 2,
+        "raw_energy": 0.4397,
+        "contrast_ratio": 0.9842
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 3,
+        "raw_energy": 0.3204,
+        "contrast_ratio": 0.7171
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 4,
+        "raw_energy": 0.4484,
+        "contrast_ratio": 1.0036
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 5,
+        "raw_energy": 0.3889,
+        "contrast_ratio": 0.8704
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 6,
+        "raw_energy": 0.2569,
+        "contrast_ratio": 0.575
+      },
+      {
+        "row_shift": 1,
+        "col_shift": 7,
+        "raw_energy": 0.793,
+        "contrast_ratio": 1.7751
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 0,
+        "raw_energy": 0.4938,
+        "contrast_ratio": 1.1053
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 1,
+        "raw_energy": 0.4553,
+        "contrast_ratio": 1.0191
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 2,
+        "raw_energy": 0.5195,
+        "contrast_ratio": 1.1628
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 3,
+        "raw_energy": 0.4001,
+        "contrast_ratio": 0.8957
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 4,
+        "raw_energy": 0.5281,
+        "contrast_ratio": 1.1822
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 5,
+        "raw_energy": 0.4686,
+        "contrast_ratio": 1.049
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 6,
+        "raw_energy": 0.3367,
+        "contrast_ratio": 0.7536
+      },
+      {
+        "row_shift": 2,
+        "col_shift": 7,
+        "raw_energy": 0.8728,
+        "contrast_ratio": 1.9537
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 0,
+        "raw_energy": 0.3616,
+        "contrast_ratio": 0.8093
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 1,
+        "raw_energy": 0.3231,
+        "contrast_ratio": 0.7231
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 2,
+        "raw_energy": 0.3873,
+        "contrast_ratio": 0.8669
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 3,
+        "raw_energy": 0.2679,
+        "contrast_ratio": 0.5998
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 4,
+        "raw_energy": 0.3959,
+        "contrast_ratio": 0.8863
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 5,
+        "raw_energy": 0.3364,
+        "contrast_ratio": 0.7531
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 6,
+        "raw_energy": 0.2045,
+        "contrast_ratio": 0.4577
+      },
+      {
+        "row_shift": 3,
+        "col_shift": 7,
+        "raw_energy": 0.7406,
+        "contrast_ratio": 1.6578
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 0,
+        "raw_energy": 0.4991,
+        "contrast_ratio": 1.1172
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 1,
+        "raw_energy": 0.4606,
+        "contrast_ratio": 1.0309
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 2,
+        "raw_energy": 0.5248,
+        "contrast_ratio": 1.1747
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 3,
+        "raw_energy": 0.4055,
+        "contrast_ratio": 0.9076
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 4,
+        "raw_energy": 0.5334,
+        "contrast_ratio": 1.1941
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 5,
+        "raw_energy": 0.4739,
+        "contrast_ratio": 1.0609
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 6,
+        "raw_energy": 0.342,
+        "contrast_ratio": 0.7655
+      },
+      {
+        "row_shift": 4,
+        "col_shift": 7,
+        "raw_energy": 0.8781,
+        "contrast_ratio": 1.9656
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 0,
+        "raw_energy": 0.4108,
+        "contrast_ratio": 0.9195
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 1,
+        "raw_energy": 0.3723,
+        "contrast_ratio": 0.8333
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 2,
+        "raw_energy": 0.4365,
+        "contrast_ratio": 0.977
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 3,
+        "raw_energy": 0.3171,
+        "contrast_ratio": 0.7099
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 4,
+        "raw_energy": 0.4451,
+        "contrast_ratio": 0.9964
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 5,
+        "raw_energy": 0.3856,
+        "contrast_ratio": 0.8632
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 6,
+        "raw_energy": 0.2537,
+        "contrast_ratio": 0.5678
+      },
+      {
+        "row_shift": 5,
+        "col_shift": 7,
+        "raw_energy": 0.7898,
+        "contrast_ratio": 1.7679
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 0,
+        "raw_energy": 0.2825,
+        "contrast_ratio": 0.6324
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 1,
+        "raw_energy": 0.244,
+        "contrast_ratio": 0.5462
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 2,
+        "raw_energy": 0.3082,
+        "contrast_ratio": 0.6899
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 3,
+        "raw_energy": 0.1889,
+        "contrast_ratio": 0.4228
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 4,
+        "raw_energy": 0.3169,
+        "contrast_ratio": 0.7093
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 5,
+        "raw_energy": 0.2574,
+        "contrast_ratio": 0.5761
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 6,
+        "raw_energy": 0.1254,
+        "contrast_ratio": 0.2808
+      },
+      {
+        "row_shift": 6,
+        "col_shift": 7,
+        "raw_energy": 0.6616,
+        "contrast_ratio": 1.4809
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 0,
+        "raw_energy": 0.7118,
+        "contrast_ratio": 1.5933
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 1,
+        "raw_energy": 0.6733,
+        "contrast_ratio": 1.5071
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 2,
+        "raw_energy": 0.7375,
+        "contrast_ratio": 1.6508
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 3,
+        "raw_energy": 0.6182,
+        "contrast_ratio": 1.3837
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 4,
+        "raw_energy": 0.7462,
+        "contrast_ratio": 1.6702
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 5,
+        "raw_energy": 0.6867,
+        "contrast_ratio": 1.537
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 6,
+        "raw_energy": 0.5547,
+        "contrast_ratio": 1.2417
+      },
+      {
+        "row_shift": 7,
+        "col_shift": 7,
+        "raw_energy": 1.0909,
+        "contrast_ratio": 2.4418
+      }
+    ],
+    "matrix_statistics": {
+      "mean_energy": 0.4826,
+      "median_energy": 0.4467,
+      "std_energy": 0.194
+    }
+  },
+  "limitations": [
+    "Non-aligned grid analysis detects crop or translation shifts; if the recompression is aligned at (0,0), use ADJPEG instead.",
+    "High-frequency image textures and natural geometric grid lines (e.g. brick walls, textiles) can generate non-compression boundary energy peaks.",
+    "Very weak primary compression (e.g. Q1 near 100) leaves faint boundary steps that may fall below detection thresholds after second compression.",
+    "Candidate shift detections require contextual analyst review and do not alone prove fraudulent intent."
+  ]
+}

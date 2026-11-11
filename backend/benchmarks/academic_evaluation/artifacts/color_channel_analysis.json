@@ -1,0 +1,80 @@
+{
+  "engine": "COLOR-CHANNEL",
+  "version": "1.0.0",
+  "image_dimensions": [
+    256,
+    256
+  ],
+  "block_grid_dimensions": [
+    16,
+    16
+  ],
+  "block_size": 16,
+  "correlation_matrix": {
+    "r_vs_g": 0.6906,
+    "r_vs_b": 0.3769,
+    "g_vs_b": 0.6665
+  },
+  "channel_difference_statistics": {
+    "rg": {
+      "mean": 24.2387,
+      "std": 22.4439,
+      "max": 100.0
+    },
+    "rb": {
+      "mean": 26.6176,
+      "std": 39.8814,
+      "max": 160.0
+    },
+    "gb": {
+      "mean": 22.4407,
+      "std": 26.2689,
+      "max": 120.0
+    },
+    "composite": {
+      "mean": 24.4323,
+      "std": 26.0409,
+      "max": 106.67
+    }
+  },
+  "candidate_regions": [
+    {
+      "region_id": 1,
+      "x": 48,
+      "y": 48,
+      "width": 48,
+      "height": 48,
+      "block_count": 8,
+      "mean_z_score": 2.682,
+      "mean_channel_diff": 90.831,
+      "interpretation": "Candidate localized region with elevated inter-channel disparity."
+    },
+    {
+      "region_id": 2,
+      "x": 128,
+      "y": 128,
+      "width": 16,
+      "height": 64,
+      "block_count": 4,
+      "mean_z_score": 3.053,
+      "mean_channel_diff": 100.0,
+      "interpretation": "Candidate localized region with elevated inter-channel disparity."
+    }
+  ],
+  "candidate_region_count": 2,
+  "algorithm_parameters": {
+    "block_size": 16,
+    "z_score_threshold": 2.5,
+    "min_cluster_blocks": 4
+  },
+  "reproducibility": {
+    "deterministic": true,
+    "color_space": "sRGB"
+  },
+  "limitations": [
+    "Natural scenes with vivid, saturated objects (e.g. red flowers, green foliage, blue sky) naturally produce high localized channel differences.",
+    "Monochromatic or heavily desaturated images exhibit near-identical channels and cannot yield chromatic divergence measurements.",
+    "Camera optical vignetting and lateral chromatic aberration cause natural radial shifts between color channels toward image boundaries.",
+    "Candidate regions indicate statistical deviation in channel relationship relative to the image host; they do NOT prove intentional forgery."
+  ]
+}

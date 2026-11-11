@@ -1,0 +1,197 @@
+{
+  "engine": "FOURIER",
+  "version": "1.0.0",
+  "image_dimensions": [
+    256,
+    256
+  ],
+  "transform_dimensions": [
+    256,
+    256
+  ],
+  "total_energy": 39133850370048.0,
+  "radial_energy_ratios": {
+    "low_frequency": 0.994488,
+    "mid_frequency": 0.003217,
+    "high_frequency": 0.002295
+  },
+  "spectral_entropy": 1.2898,
+  "dominant_peaks": [
+    {
+      "u": 128,
+      "v": 146,
+      "normalized_radius": 0.0994,
+      "orientation_deg": 90.0,
+      "magnitude": 69425.12,
+      "prominence_sigma": 4.29
+    },
+    {
+      "u": 128,
+      "v": 110,
+      "normalized_radius": 0.0994,
+      "orientation_deg": -90.0,
+      "magnitude": 69425.12,
+      "prominence_sigma": 4.29
+    },
+    {
+      "u": 128,
+      "v": 114,
+      "normalized_radius": 0.0773,
+      "orientation_deg": -90.0,
+      "magnitude": 87711.3,
+      "prominence_sigma": 4.25
+    },
+    {
+      "u": 128,
+      "v": 142,
+      "normalized_radius": 0.0773,
+      "orientation_deg": 90.0,
+      "magnitude": 87711.3,
+      "prominence_sigma": 4.25
+    },
+    {
+      "u": 128,
+      "v": 138,
+      "normalized_radius": 0.0552,
+      "orientation_deg": 90.0,
+      "magnitude": 127694.54,
+      "prominence_sigma": 4.19
+    },
+    {
+      "u": 128,
+      "v": 118,
+      "normalized_radius": 0.0552,
+      "orientation_deg": -90.0,
+      "magnitude": 127694.54,
+      "prominence_sigma": 4.19
+    },
+    {
+      "u": 128,
+      "v": 106,
+      "normalized_radius": 0.1215,
+      "orientation_deg": -90.0,
+      "magnitude": 54941.37,
+      "prominence_sigma": 4.18
+    },
+    {
+      "u": 128,
+      "v": 150,
+      "normalized_radius": 0.1215,
+      "orientation_deg": 90.0,
+      "magnitude": 54941.37,
+      "prominence_sigma": 4.18
+    },
+    {
+      "u": 128,
+      "v": 154,
+      "normalized_radius": 0.1436,
+      "orientation_deg": 90.0,
+      "magnitude": 47382.04,
+      "prominence_sigma": 4.11
+    },
+    {
+      "u": 128,
+      "v": 102,
+      "normalized_radius": 0.1436,
+      "orientation_deg": -90.0,
+      "magnitude": 47382.04,
+      "prominence_sigma": 4.11
+    },
+    {
+      "u": 128,
+      "v": 122,
+      "normalized_radius": 0.0331,
+      "orientation_deg": -90.0,
+      "magnitude": 205728.44,
+      "prominence_sigma": 4.06
+    },
+    {
+      "u": 128,
+      "v": 134,
+      "normalized_radius": 0.0331,
+      "orientation_deg": 90.0,
+      "magnitude": 205728.44,
+      "prominence_sigma": 4.06
+    },
+    {
+      "u": 128,
+      "v": 158,
+      "normalized_radius": 0.1657,
+      "orientation_deg": 90.0,
+      "magnitude": 41769.54,
+      "prominence_sigma": 4.02
+    },
+    {
+      "u": 128,
+      "v": 98,
+      "normalized_radius": 0.1657,
+      "orientation_deg": -90.0,
+      "magnitude": 41769.54,
+      "prominence_sigma": 4.02
+    },
+    {
+      "u": 128,
+      "v": 170,
+      "normalized_radius": 0.232,
+      "orientation_deg": 90.0,
+      "magnitude": 30277.88,
+      "prominence_sigma": 3.95
+    },
+    {
+      "u": 128,
+      "v": 86,
+      "normalized_radius": 0.232,
+      "orientation_deg": -90.0,
+      "magnitude": 30277.88,
+      "prominence_sigma": 3.95
+    },
+    {
+      "u": 128,
+      "v": 94,
+      "normalized_radius": 0.1878,
+      "orientation_deg": -90.0,
+      "magnitude": 36121.04,
+      "prominence_sigma": 3.94
+    },
+    {
+      "u": 128,
+      "v": 162,
+      "normalized_radius": 0.1878,
+      "orientation_deg": 90.0,
+      "magnitude": 36121.04,
+      "prominence_sigma": 3.94
+    },
+    {
+      "u": 128,
+      "v": 90,
+      "normalized_radius": 0.2099,
+      "orientation_deg": -90.0,
+      "magnitude": 30794.12,
+      "prominence_sigma": 3.85
+    },
+    {
+      "u": 128,
+      "v": 166,
+      "normalized_radius": 0.2099,
+      "orientation_deg": 90.0,
+      "magnitude": 30794.12,
+      "prominence_sigma": 3.85
+    }
+  ],
+  "dominant_peak_count": 20,
+  "algorithm_parameters": {
+    "max_transform_dimension": 2048,
+    "peak_prominence_sigma": 3.0,
+    "max_reported_peaks": 20
+  },
+  "reproducibility": {
+    "deterministic": true,
+    "transform": "2D-FFT centered (fftshift)"
+  },
+  "limitations": [
+    "Periodic frequency components arise routinely from natural textures, textiles, halftone printing screens, repetitive architectural facades, and regular geometric patterns.",
+    "JPEG lossy compression generates characteristic 8x8 block grid harmonics along Cartesian horizontal and vertical frequency axes.",
+    "Spectral peaks indicate spatial periodicity in the luminance signal; they do NOT by themselves constitute proof of forgery or tampering.",
+    "Image resizing before FFT analysis can introduce or attenuate high-frequency harmonics depending on the interpolation kernel."
+  ]
+}

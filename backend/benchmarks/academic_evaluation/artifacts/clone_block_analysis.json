@@ -1,0 +1,1864 @@
+{
+  "engine_id": "CLONE-BLOCK",
+  "engine_version": "1.0.0",
+  "source_image_sha256": "ee291af48b81dca4b32439c5fda5c55367f7ebd41614d75e9cc882d4adc57e44",
+  "original_dimensions": [
+    256,
+    256
+  ],
+  "analysis_dimensions": [
+    256,
+    256
+  ],
+  "scale_factor": 1.0,
+  "total_matches": 11893,
+  "max_cluster_size": 837,
+  "dimensions": {
+    "original": [
+      256,
+      256
+    ],
+    "processed": [
+      256,
+      256
+    ],
+    "downsampled": false,
+    "scale_factor": 1.0
+  },
+  "parameters": {
+    "block_size": 16,
+    "stride": 8,
+    "min_spatial_distance": 32.0,
+    "similarity_threshold": 0.96,
+    "min_cluster_size": 3,
+    "displacement_tolerance": 12.0,
+    "search_window": 15
+  },
+  "block_statistics": {
+    "total_blocks_extracted": 961,
+    "skipped_flat_blocks": 0,
+    "valid_active_blocks": 961,
+    "matched_pairs_count": 11893,
+    "displacement_clusters_count": 46,
+    "max_cluster_size": 837,
+    "displacement_consistency": 0.0704
+  },
+  "candidate_regions_count": 46,
+  "candidate_regions": [
+    {
+      "region_id": "clone-cluster-1",
+      "supporting_pairs_count": 837,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        36,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        224,
+        256
+      ],
+      "target_bounding_box": [
+        32,
+        0,
+        224,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-2",
+      "supporting_pairs_count": 729,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        36,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        224,
+        224
+      ],
+      "target_bounding_box": [
+        32,
+        0,
+        224,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-3",
+      "supporting_pairs_count": 725,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        48,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        208,
+        240
+      ],
+      "target_bounding_box": [
+        48,
+        16,
+        208,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-4",
+      "supporting_pairs_count": 725,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        48,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        208,
+        240
+      ],
+      "target_bounding_box": [
+        48,
+        0,
+        208,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-5",
+      "supporting_pairs_count": 713,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        60,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        192,
+        256
+      ],
+      "target_bounding_box": [
+        64,
+        0,
+        192,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-6",
+      "supporting_pairs_count": 621,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        60,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        192,
+        224
+      ],
+      "target_bounding_box": [
+        64,
+        0,
+        192,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-7",
+      "supporting_pairs_count": 609,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        84,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        176,
+        240
+      ],
+      "target_bounding_box": [
+        80,
+        16,
+        176,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-8",
+      "supporting_pairs_count": 609,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        84,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        176,
+        240
+      ],
+      "target_bounding_box": [
+        80,
+        0,
+        176,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-9",
+      "supporting_pairs_count": 589,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        96,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        160,
+        256
+      ],
+      "target_bounding_box": [
+        96,
+        0,
+        160,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-10",
+      "supporting_pairs_count": 513,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        96,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        160,
+        224
+      ],
+      "target_bounding_box": [
+        96,
+        0,
+        160,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-11",
+      "supporting_pairs_count": 493,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        108,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        144,
+        240
+      ],
+      "target_bounding_box": [
+        112,
+        16,
+        144,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-12",
+      "supporting_pairs_count": 493,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        108,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        144,
+        240
+      ],
+      "target_bounding_box": [
+        112,
+        0,
+        144,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-13",
+      "supporting_pairs_count": 465,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        132,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        128,
+        256
+      ],
+      "target_bounding_box": [
+        128,
+        0,
+        128,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-14",
+      "supporting_pairs_count": 405,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        0,
+        36
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        240,
+        224
+      ],
+      "target_bounding_box": [
+        8,
+        32,
+        240,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-15",
+      "supporting_pairs_count": 405,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        132,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        128,
+        224
+      ],
+      "target_bounding_box": [
+        128,
+        0,
+        128,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-16",
+      "supporting_pairs_count": 377,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        144,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        112,
+        240
+      ],
+      "target_bounding_box": [
+        144,
+        16,
+        112,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-17",
+      "supporting_pairs_count": 377,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        144,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        112,
+        240
+      ],
+      "target_bounding_box": [
+        144,
+        0,
+        112,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-18",
+      "supporting_pairs_count": 341,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        156,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        96,
+        256
+      ],
+      "target_bounding_box": [
+        160,
+        0,
+        96,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-19",
+      "supporting_pairs_count": 297,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        156,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        96,
+        224
+      ],
+      "target_bounding_box": [
+        160,
+        0,
+        96,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-20",
+      "supporting_pairs_count": 261,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        180,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        80,
+        240
+      ],
+      "target_bounding_box": [
+        176,
+        16,
+        80,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-21",
+      "supporting_pairs_count": 261,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        180,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        80,
+        240
+      ],
+      "target_bounding_box": [
+        176,
+        0,
+        80,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-22",
+      "supporting_pairs_count": 217,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        192,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        64,
+        256
+      ],
+      "target_bounding_box": [
+        192,
+        0,
+        64,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-23",
+      "supporting_pairs_count": 189,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        192,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        64,
+        224
+      ],
+      "target_bounding_box": [
+        192,
+        0,
+        64,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-24",
+      "supporting_pairs_count": 145,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        204,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        48,
+        240
+      ],
+      "target_bounding_box": [
+        208,
+        16,
+        48,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-25",
+      "supporting_pairs_count": 145,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        204,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        48,
+        240
+      ],
+      "target_bounding_box": [
+        208,
+        0,
+        48,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-26",
+      "supporting_pairs_count": 93,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        228,
+        0
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        32,
+        256
+      ],
+      "target_bounding_box": [
+        224,
+        0,
+        32,
+        256
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-27",
+      "supporting_pairs_count": 81,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        228,
+        -36
+      ],
+      "source_bounding_box": [
+        0,
+        32,
+        32,
+        224
+      ],
+      "target_bounding_box": [
+        224,
+        0,
+        32,
+        224
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-28",
+      "supporting_pairs_count": 29,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        240,
+        -12
+      ],
+      "source_bounding_box": [
+        0,
+        16,
+        16,
+        240
+      ],
+      "target_bounding_box": [
+        240,
+        0,
+        16,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-29",
+      "supporting_pairs_count": 29,
+      "mean_similarity": 1.0,
+      "nominal_displacement": [
+        240,
+        12
+      ],
+      "source_bounding_box": [
+        0,
+        0,
+        16,
+        240
+      ],
+      "target_bounding_box": [
+        240,
+        16,
+        16,
+        240
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-30",
+      "supporting_pairs_count": 14,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        24,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        224,
+        32
+      ],
+      "target_bounding_box": [
+        32,
+        224,
+        224,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-31",
+      "supporting_pairs_count": 12,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        60,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        192,
+        32
+      ],
+      "target_bounding_box": [
+        64,
+        224,
+        192,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-32",
+      "supporting_pairs_count": 10,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        84,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        160,
+        32
+      ],
+      "target_bounding_box": [
+        96,
+        224,
+        160,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-33",
+      "supporting_pairs_count": 8,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        120,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        128,
+        32
+      ],
+      "target_bounding_box": [
+        128,
+        224,
+        128,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-34",
+      "supporting_pairs_count": 8,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        12,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        240,
+        16
+      ],
+      "target_bounding_box": [
+        16,
+        240,
+        240,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-35",
+      "supporting_pairs_count": 7,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        24,
+        -240
+      ],
+      "source_bounding_box": [
+        16,
+        240,
+        208,
+        16
+      ],
+      "target_bounding_box": [
+        40,
+        0,
+        208,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-36",
+      "supporting_pairs_count": 7,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        36,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        208,
+        16
+      ],
+      "target_bounding_box": [
+        48,
+        240,
+        208,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-37",
+      "supporting_pairs_count": 6,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        156,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        96,
+        32
+      ],
+      "target_bounding_box": [
+        160,
+        224,
+        96,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-38",
+      "supporting_pairs_count": 6,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        60,
+        -240
+      ],
+      "source_bounding_box": [
+        16,
+        240,
+        176,
+        16
+      ],
+      "target_bounding_box": [
+        72,
+        0,
+        176,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-39",
+      "supporting_pairs_count": 6,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        72,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        176,
+        16
+      ],
+      "target_bounding_box": [
+        80,
+        240,
+        176,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-40",
+      "supporting_pairs_count": 5,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        84,
+        -240
+      ],
+      "source_bounding_box": [
+        16,
+        240,
+        144,
+        16
+      ],
+      "target_bounding_box": [
+        104,
+        0,
+        144,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-41",
+      "supporting_pairs_count": 5,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        108,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        144,
+        16
+      ],
+      "target_bounding_box": [
+        112,
+        240,
+        144,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-42",
+      "supporting_pairs_count": 4,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        180,
+        228
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        64,
+        32
+      ],
+      "target_bounding_box": [
+        192,
+        224,
+        64,
+        32
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-43",
+      "supporting_pairs_count": 4,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        120,
+        -240
+      ],
+      "source_bounding_box": [
+        16,
+        240,
+        112,
+        16
+      ],
+      "target_bounding_box": [
+        136,
+        0,
+        112,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-44",
+      "supporting_pairs_count": 4,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        132,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        112,
+        16
+      ],
+      "target_bounding_box": [
+        144,
+        240,
+        112,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-45",
+      "supporting_pairs_count": 3,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        156,
+        -240
+      ],
+      "source_bounding_box": [
+        16,
+        240,
+        80,
+        16
+      ],
+      "target_bounding_box": [
+        168,
+        0,
+        80,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    },
+    {
+      "region_id": "clone-cluster-46",
+      "supporting_pairs_count": 3,
+      "mean_similarity": 0.974,
+      "nominal_displacement": [
+        168,
+        240
+      ],
+      "source_bounding_box": [
+        8,
+        0,
+        80,
+        16
+      ],
+      "target_bounding_box": [
+        176,
+        240,
+        80,
+        16
+      ],
+      "classification": "candidate duplicated region"
+    }
+  ],
+  "sample_matched_pairs": [
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        40,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        0
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        72,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        64,
+        0
+      ],
+      "spatial_distance": 64.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        96,
+        0
+      ],
+      "spatial_distance": 96.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        136,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        128,
+        0
+      ],
+      "spatial_distance": 128.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        168,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        160,
+        0
+      ],
+      "spatial_distance": 160.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        200,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        192,
+        0
+      ],
+      "spatial_distance": 192.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        232,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        224,
+        0
+      ],
+      "spatial_distance": 224.0
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        56,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        88,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        80,
+        16
+      ],
+      "spatial_distance": 81.58
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        120,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        112,
+        16
+      ],
+      "spatial_distance": 113.14
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        152,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        144,
+        16
+      ],
+      "spatial_distance": 144.89
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        184,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        176,
+        16
+      ],
+      "spatial_distance": 176.73
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        216,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        208,
+        16
+      ],
+      "spatial_distance": 208.61
+    },
+    {
+      "source": [
+        8,
+        8
+      ],
+      "target": [
+        8,
+        40
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        0,
+        32
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        72,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        0
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        64,
+        0
+      ],
+      "spatial_distance": 64.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        136,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        96,
+        0
+      ],
+      "spatial_distance": 96.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        168,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        128,
+        0
+      ],
+      "spatial_distance": 128.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        200,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        160,
+        0
+      ],
+      "spatial_distance": 160.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        232,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        192,
+        0
+      ],
+      "spatial_distance": 192.0
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        88,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        120,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        80,
+        16
+      ],
+      "spatial_distance": 81.58
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        152,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        112,
+        16
+      ],
+      "spatial_distance": 113.14
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        184,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        144,
+        16
+      ],
+      "spatial_distance": 144.89
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        216,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        176,
+        16
+      ],
+      "spatial_distance": 176.73
+    },
+    {
+      "source": [
+        8,
+        40
+      ],
+      "target": [
+        40,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        -32
+      ],
+      "spatial_distance": 45.25
+    },
+    {
+      "source": [
+        40,
+        8
+      ],
+      "target": [
+        40,
+        40
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        0,
+        32
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        0
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        136,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        64,
+        0
+      ],
+      "spatial_distance": 64.0
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        168,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        96,
+        0
+      ],
+      "spatial_distance": 96.0
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        200,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        128,
+        0
+      ],
+      "spatial_distance": 128.0
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        232,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        160,
+        0
+      ],
+      "spatial_distance": 160.0
+    },
+    {
+      "source": [
+        24,
+        24
+      ],
+      "target": [
+        72,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        -16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        120,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        152,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        80,
+        16
+      ],
+      "spatial_distance": 81.58
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        184,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        112,
+        16
+      ],
+      "spatial_distance": 113.14
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        216,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        144,
+        16
+      ],
+      "spatial_distance": 144.89
+    },
+    {
+      "source": [
+        8,
+        40
+      ],
+      "target": [
+        72,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        64,
+        -32
+      ],
+      "spatial_distance": 71.55
+    },
+    {
+      "source": [
+        40,
+        40
+      ],
+      "target": [
+        72,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        -32
+      ],
+      "spatial_distance": 45.25
+    },
+    {
+      "source": [
+        72,
+        8
+      ],
+      "target": [
+        72,
+        40
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        0,
+        32
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        136,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        32,
+        0
+      ],
+      "spatial_distance": 32.0
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        168,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        64,
+        0
+      ],
+      "spatial_distance": 64.0
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        200,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        96,
+        0
+      ],
+      "spatial_distance": 96.0
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        232,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        128,
+        0
+      ],
+      "spatial_distance": 128.0
+    },
+    {
+      "source": [
+        24,
+        24
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        80,
+        -16
+      ],
+      "spatial_distance": 81.58
+    },
+    {
+      "source": [
+        56,
+        24
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        -16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        152,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        48,
+        16
+      ],
+      "spatial_distance": 50.6
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        184,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        80,
+        16
+      ],
+      "spatial_distance": 81.58
+    },
+    {
+      "source": [
+        104,
+        8
+      ],
+      "target": [
+        216,
+        24
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        112,
+        16
+      ],
+      "spatial_distance": 113.14
+    },
+    {
+      "source": [
+        8,
+        40
+      ],
+      "target": [
+        104,
+        8
+      ],
+      "similarity": 1.0,
+      "displacement": [
+        96,
+        -32
+      ],
+      "spatial_distance": 101.19
+    }
+  ],
+  "scientific_limitations": "Candidate duplicated regions identified by block similarity are empirical geometric observations. Natural repetitive scene structures (e.g. windows, brick facades, floor tiles, repetitive textiles) frequently generate high block correlation and do not by themselves constitute proof of forgery."
+}

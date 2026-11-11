@@ -1,0 +1,43 @@
+{
+  "engine_id": "PRNU",
+  "engine_version": "1.0.0",
+  "evidence_id": 1218,
+  "analysis_id": null,
+  "original_dimensions": [
+    256,
+    256
+  ],
+  "analysis_dimensions": [
+    256,
+    256
+  ],
+  "scale_factor": 1.0,
+  "residual_statistics": {
+    "variance": 0.280996,
+    "energy": 0.280996,
+    "mean": 0.0,
+    "std": 0.53009,
+    "min": -7.9171,
+    "max": 7.8121
+  },
+  "suitability": {
+    "suitability_index": 0.9124,
+    "status": "SUITABLE",
+    "saturated_ratio": 0.0,
+    "dynamic_range": 151.0,
+    "residual_variance": 0.280996,
+    "residual_energy": 0.280996,
+    "notes": "Image contains adequate tonal distribution for PRNU evaluation."
+  },
+  "reference_comparison": null,
+  "match_status": "NOT_ESTIMATED",
+  "correlation": null,
+  "parameters": {
+    "filter_sigma": 1.5,
+    "filter_window": 5,
+    "zero_mean_normalization": true,
+    "max_dimension": 2048,
+    "reference_id": null
+  },
+  "scientific_guardrail": "Photo-Response Non-Uniformity (PRNU) evaluates high-frequency sensor pattern noise. Without a case-scoped reference camera fingerprint, camera source cannot be estimated. Method inapplicability or NOT_ESTIMATED status does NOT constitute negative evidence."
+}

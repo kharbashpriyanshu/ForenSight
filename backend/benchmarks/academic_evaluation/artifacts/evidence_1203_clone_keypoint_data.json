@@ -1,0 +1,131 @@
+{
+  "engine_id": "CLONE-KEYPOINT",
+  "engine_version": "1.0.0",
+  "evidence_id": 1203,
+  "analysis_id": null,
+  "original_dimensions": [
+    256,
+    256
+  ],
+  "analysis_dimensions": [
+    256,
+    256
+  ],
+  "scale_factor": 1.0,
+  "keypoint_count": 77,
+  "raw_match_candidates": 28,
+  "filtered_match_count": 6,
+  "geometric_inlier_count": 5,
+  "geometric_inlier_ratio": 0.8333,
+  "affine_model": {
+    "matrix": [
+      [
+        0.009955017839711843,
+        0.0003613373595947811,
+        204.3428929346649
+      ],
+      [
+        -0.0003613373595947811,
+        0.009955017839711843,
+        205.05395400371933
+      ]
+    ],
+    "scale": 0.01,
+    "rotation_deg": -2.08,
+    "translation": [
+      204.34,
+      205.05
+    ],
+    "mean_reprojection_error": 0.641
+  },
+  "candidate_regions": [
+    {
+      "region_id": "CLONE_KEYPOINT_R1",
+      "source_bounding_box": [
+        192,
+        130,
+        207,
+        151
+      ],
+      "target_bounding_box": [
+        206,
+        206,
+        207,
+        207
+      ],
+      "inlier_keypoint_count": 5,
+      "mean_reprojection_error": 0.641,
+      "estimated_scale": 0.01,
+      "estimated_rotation_degrees": -2.08,
+      "estimated_translation": [
+        204.34,
+        205.05
+      ]
+    }
+  ],
+  "inlier_pairs_sample": [
+    {
+      "src": [
+        207.36001586914062,
+        151.20001220703125
+      ],
+      "dst": [
+        206.032958984375,
+        206.032958984375
+      ],
+      "hamming_dist": 27.0
+    },
+    {
+      "src": [
+        207.60000610351562,
+        150.0
+      ],
+      "dst": [
+        207.36001586914062,
+        207.36001586914062
+      ],
+      "hamming_dist": 32.0
+    },
+    {
+      "src": [
+        207.36001586914062,
+        150.3360137939453
+      ],
+      "dst": [
+        206.032958984375,
+        206.032958984375
+      ],
+      "hamming_dist": 25.0
+    },
+    {
+      "src": [
+        192.0,
+        130.0
+      ],
+      "dst": [
+        206.53060913085938,
+        206.53060913085938
+      ],
+      "hamming_dist": 23.0
+    },
+    {
+      "src": [
+        192.0,
+        130.0
+      ],
+      "dst": [
+        206.032958984375,
+        206.032958984375
+      ],
+      "hamming_dist": 18.0
+    }
+  ],
+  "parameters": {
+    "max_features": 1000,
+    "min_spatial_distance": 30.0,
+    "ratio_threshold": 0.75,
+    "min_inliers": 4,
+    "ransac_reproj_threshold": 5.0,
+    "max_dimension": 2048
+  }
+}

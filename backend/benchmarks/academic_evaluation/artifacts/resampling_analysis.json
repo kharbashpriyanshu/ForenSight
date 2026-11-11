@@ -1,0 +1,117 @@
+{
+  "engine_id": "RESAMPLING",
+  "engine_version": "1.0.0",
+  "source_image_sha256": "76344b17bf670c3edfc108bc339c8260b3a80b9ba7e813a98af853bfb56a6b80",
+  "dimensions": {
+    "original": [
+      256,
+      256
+    ],
+    "processed": [
+      256,
+      256
+    ],
+    "downsampled": false,
+    "scale_factor": 1.0
+  },
+  "parameters": {
+    "min_period": 1.5,
+    "max_period": 8.0,
+    "evaluated_frequency_range": [
+      0.125,
+      0.5
+    ],
+    "block_size": 32,
+    "z_score_threshold": 2.5,
+    "min_cluster_blocks": 2
+  },
+  "horizontal_metrics": {
+    "peak_frequency": 0.1758,
+    "peak_period": 5.689,
+    "peak_strength_ratio": 4.207
+  },
+  "vertical_metrics": {
+    "peak_frequency": 0.4961,
+    "peak_period": 2.016,
+    "peak_strength_ratio": 5.604
+  },
+  "directional_asymmetry": 0.1424,
+  "dominant_period": 2.016,
+  "dominant_axis": "vertical",
+  "dominant_peak_strength": 5.604,
+  "local_consistency": {
+    "blocks_x": 8,
+    "blocks_y": 8,
+    "total_blocks": 64,
+    "baseline_response_median": 0.02189,
+    "baseline_response_mad": 0.00426,
+    "candidate_region_count": 4,
+    "candidate_regions": [
+      {
+        "region_id": "resampling-consistent-1",
+        "bounding_box": [
+          96,
+          0,
+          64,
+          32
+        ],
+        "block_count": 2,
+        "mean_deviation_z": 6.848,
+        "max_deviation_z": 7.888,
+        "baseline_response": 0.0219,
+        "local_response": 0.0651,
+        "dominant_period": 2.016,
+        "classification": "candidate resampling-consistent region"
+      },
+      {
+        "region_id": "resampling-consistent-4",
+        "bounding_box": [
+          64,
+          224,
+          128,
+          32
+        ],
+        "block_count": 4,
+        "mean_deviation_z": 5.017,
+        "max_deviation_z": 7.616,
+        "baseline_response": 0.0219,
+        "local_response": 0.0535,
+        "dominant_period": 2.016,
+        "classification": "candidate resampling-consistent region"
+      },
+      {
+        "region_id": "resampling-consistent-2",
+        "bounding_box": [
+          0,
+          96,
+          32,
+          96
+        ],
+        "block_count": 3,
+        "mean_deviation_z": 4.817,
+        "max_deviation_z": 7.294,
+        "baseline_response": 0.0219,
+        "local_response": 0.0523,
+        "dominant_period": 2.016,
+        "classification": "candidate resampling-consistent region"
+      },
+      {
+        "region_id": "resampling-consistent-3",
+        "bounding_box": [
+          224,
+          96,
+          32,
+          96
+        ],
+        "block_count": 3,
+        "mean_deviation_z": 4.526,
+        "max_deviation_z": 6.996,
+        "baseline_response": 0.0219,
+        "local_response": 0.0504,
+        "dominant_period": 2.016,
+        "classification": "candidate resampling-consistent region"
+      }
+    ]
+  },
+  "scientific_limitations": "Periodic derivative patterns are empirical forensic indicators of possible interpolation. Periodic structures can also originate naturally from repetitive scene textures (e.g. fabrics, brickwork, screens) or optical sensor demosaicing filters, and must be contextualized."
+}

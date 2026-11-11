@@ -1,0 +1,95 @@
+{
+  "engine_id": "ADJPEG",
+  "engine_version": "1.0.0",
+  "evidence_id": 1107,
+  "analysis_id": null,
+  "evidence_sha256": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+  "parameters": {
+    "max_dimension": 2048,
+    "hist_range": 40,
+    "total_blocks_evaluated": 1024
+  },
+  "provenance": {
+    "engine": "ADJPEG",
+    "version": "1.0.0",
+    "method": "Aligned Double JPEG Discrete Cosine Histogram Periodicity (Popescu-Farid 2004)"
+  },
+  "results": {
+    "has_aligned_double_jpeg_traces": false,
+    "periodic_modes_count": 1,
+    "evaluated_modes_count": 8,
+    "max_periodicity_ratio": 3.752,
+    "mode_evaluations": [
+      {
+        "mode": "(1,0)",
+        "periodicity_ratio": 3.068,
+        "peak_frequency": 0.3333,
+        "estimated_period": 3.0,
+        "is_periodic": false,
+        "zero_bins_count": 71
+      },
+      {
+        "mode": "(0,1)",
+        "periodicity_ratio": 3.752,
+        "peak_frequency": 0.3333,
+        "estimated_period": 3.0,
+        "is_periodic": true,
+        "zero_bins_count": 64
+      },
+      {
+        "mode": "(1,1)",
+        "periodicity_ratio": 1.249,
+        "peak_frequency": 0.2963,
+        "estimated_period": 3.38,
+        "is_periodic": false,
+        "zero_bins_count": 70
+      },
+      {
+        "mode": "(2,0)",
+        "periodicity_ratio": 1.268,
+        "peak_frequency": 0.284,
+        "estimated_period": 3.52,
+        "is_periodic": false,
+        "zero_bins_count": 73
+      },
+      {
+        "mode": "(0,2)",
+        "periodicity_ratio": 1.226,
+        "peak_frequency": 0.284,
+        "estimated_period": 3.52,
+        "is_periodic": false,
+        "zero_bins_count": 68
+      },
+      {
+        "mode": "(2,1)",
+        "periodicity_ratio": 1.263,
+        "peak_frequency": 0.284,
+        "estimated_period": 3.52,
+        "is_periodic": false,
+        "zero_bins_count": 72
+      },
+      {
+        "mode": "(1,2)",
+        "periodicity_ratio": 1.293,
+        "peak_frequency": 0.284,
+        "estimated_period": 3.52,
+        "is_periodic": false,
+        "zero_bins_count": 75
+      },
+      {
+        "mode": "(2,2)",
+        "periodicity_ratio": 1.243,
+        "peak_frequency": 0.2963,
+        "estimated_period": 3.38,
+        "is_periodic": false,
+        "zero_bins_count": 75
+      }
+    ]
+  },
+  "limitations": [
+    "Aligned double-JPEG analysis requires the primary and secondary compression grids to be strictly aligned (zero spatial crop/translation offset).",
+    "Very high initial quality factors (e.g. Q1 > 95) or subsequent heavy recompressions (Q2 << Q1) can attenuate periodic histogram peaks.",
+    "Smooth image regions lacking textured high-frequency detail provide sparse AC coefficient counts.",
+    "Observation of histogram periodicity is a mathematical property of successive quantizations and does not by itself prove malicious intent or forgery."
+  ]
+}

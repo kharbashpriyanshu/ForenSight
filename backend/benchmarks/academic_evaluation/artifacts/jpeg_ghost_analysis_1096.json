@@ -1,0 +1,157 @@
+{
+  "engine_id": "JPEG-GHOST",
+  "engine_version": "1.0.0",
+  "evidence_id": 1096,
+  "analysis_id": null,
+  "evidence_sha256": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+  "parameters": {
+    "quality_min": 40,
+    "quality_max": 95,
+    "quality_step": 5,
+    "block_size": 8,
+    "max_dimension": 1024,
+    "scale_factor_applied": 1.0
+  },
+  "provenance": {
+    "engine": "JPEG-GHOST",
+    "version": "1.0.0",
+    "algorithm": "Iterative JPEG Recompression Residual Sweep (Farid 2009)"
+  },
+  "results": {
+    "best_candidate_quality": 75,
+    "candidate_qualities": [
+      75
+    ],
+    "quality_curve": [
+      {
+        "quality": 40,
+        "mean_difference": 5.4032,
+        "std_deviation": 7.8679,
+        "min_difference": 0.0,
+        "max_difference": 100.2083
+      },
+      {
+        "quality": 45,
+        "mean_difference": 4.872,
+        "std_deviation": 7.6731,
+        "min_difference": 0.0,
+        "max_difference": 85.3385
+      },
+      {
+        "quality": 50,
+        "mean_difference": 4.7348,
+        "std_deviation": 7.6549,
+        "min_difference": 0.0,
+        "max_difference": 97.0052
+      },
+      {
+        "quality": 55,
+        "mean_difference": 3.6826,
+        "std_deviation": 4.8674,
+        "min_difference": 0.0,
+        "max_difference": 60.4062
+      },
+      {
+        "quality": 60,
+        "mean_difference": 2.7198,
+        "std_deviation": 3.4375,
+        "min_difference": 0.0,
+        "max_difference": 54.75
+      },
+      {
+        "quality": 65,
+        "mean_difference": 1.8552,
+        "std_deviation": 2.3696,
+        "min_difference": 0.0,
+        "max_difference": 31.4948
+      },
+      {
+        "quality": 70,
+        "mean_difference": 1.227,
+        "std_deviation": 1.8126,
+        "min_difference": 0.0,
+        "max_difference": 33.2344
+      },
+      {
+        "quality": 75,
+        "mean_difference": 0.229,
+        "std_deviation": 0.7332,
+        "min_difference": 0.0,
+        "max_difference": 9.5938
+      },
+      {
+        "quality": 80,
+        "mean_difference": 0.827,
+        "std_deviation": 1.2745,
+        "min_difference": 0.0,
+        "max_difference": 11.2031
+      },
+      {
+        "quality": 85,
+        "mean_difference": 0.6545,
+        "std_deviation": 1.1383,
+        "min_difference": 0.0,
+        "max_difference": 10.3021
+      },
+      {
+        "quality": 90,
+        "mean_difference": 0.5017,
+        "std_deviation": 1.0168,
+        "min_difference": 0.0,
+        "max_difference": 11.0156
+      },
+      {
+        "quality": 95,
+        "mean_difference": 0.3657,
+        "std_deviation": 0.9996,
+        "min_difference": 0.0,
+        "max_difference": 10.2708
+      }
+    ],
+    "global_statistics": {
+      "median_difference": 0.0,
+      "iqr": 0.001,
+      "min_mean_difference": 0.229,
+      "max_mean_difference": 5.4032
+    },
+    "candidate_regions_count": 3,
+    "candidate_regions": [
+      {
+        "region_id": 1,
+        "x": 45,
+        "y": 29,
+        "width": 73,
+        "height": 89,
+        "area_pixels": 4231,
+        "mean_residual": 0.6724,
+        "contrast_to_median": 0.6724
+      },
+      {
+        "region_id": 2,
+        "x": 109,
+        "y": 109,
+        "width": 104,
+        "height": 89,
+        "area_pixels": 6578,
+        "mean_residual": 1.7821,
+        "contrast_to_median": 1.7821
+      },
+      {
+        "region_id": 3,
+        "x": 125,
+        "y": 205,
+        "width": 25,
+        "height": 25,
+        "area_pixels": 594,
+        "mean_residual": 0.6602,
+        "contrast_to_median": 0.6602
+      }
+    ]
+  },
+  "limitations": [
+    "A localized JPEG Ghost response does NOT provide definitive proof of manipulation or intentional forgery.",
+    "Response curves are influenced by intrinsic scene content, high-contrast edges, fine textures, and smooth flat areas.",
+    "Images undergoing repeated whole-frame recompressions or non-standard color subsampling may yield ambiguous or multiple minima.",
+    "Method assumes spliced fragments were originally compressed at a different quality factor than the host image."
+  ]
+}

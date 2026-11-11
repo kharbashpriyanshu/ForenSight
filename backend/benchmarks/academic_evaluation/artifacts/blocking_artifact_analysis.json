@@ -1,0 +1,80 @@
+{
+  "engine": {
+    "id": "BLOCKING-ARTIFACT",
+    "name": "Blocking Artifact Inconsistency (BAG)",
+    "version": "1.0.0",
+    "category": "LOCAL_ANALYSIS"
+  },
+  "input_information": {
+    "original_dimensions": [
+      256,
+      256
+    ],
+    "analyzed_dimensions": [
+      256,
+      256
+    ],
+    "block_grid_dimensions": [
+      32,
+      32
+    ],
+    "total_blocks": 1024
+  },
+  "horizontal_boundary_statistics": {
+    "mean_discontinuity": 0.9897,
+    "median_discontinuity": 1.0,
+    "std_discontinuity": 1.9969,
+    "boundary_to_internal_ratio": 2.3302
+  },
+  "vertical_boundary_statistics": {
+    "mean_discontinuity": 1.192,
+    "median_discontinuity": 1.0,
+    "std_discontinuity": 4.4453,
+    "boundary_to_internal_ratio": 4.1748
+  },
+  "global_statistics": {
+    "global_blocking_strength": 0.8754,
+    "global_std_deviation": 1.5491,
+    "boundary_energy": 3.6361,
+    "grid_periodicity_strength": 3.9388,
+    "total_candidate_regions": 1
+  },
+  "candidate_regions": [
+    {
+      "region_id": 1,
+      "type": "elevated_discontinuity",
+      "block_count": 30,
+      "pixel_area": 1920,
+      "mean_z_score": 4.854,
+      "mean_blocking_strength": 8.3948,
+      "bounding_box_pixels": {
+        "x": 120,
+        "y": 120,
+        "width": 72,
+        "height": 72
+      },
+      "normalized_bounding_box": {
+        "x": 0.4688,
+        "y": 0.4688,
+        "width": 0.2812,
+        "height": 0.2812
+      },
+      "description": "Region 1: Elevated Discontinuity across 30 blocks (mean z-score: +4.85, local strength: 8.395)."
+    }
+  ],
+  "algorithm_parameters": {
+    "z_score_threshold": 2.2,
+    "min_cluster_blocks": 4,
+    "max_dimension": 4096
+  },
+  "reproducibility_metadata": {
+    "sha256_hash": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+    "execution_time_ms": null
+  },
+  "limitations": [
+    "JPEG 8x8 blocking artifacts are intrinsic to lossy Discrete Cosine Transform quantization and do NOT by themselves prove intentional manipulation.",
+    "Candidate regions exhibiting deviated blocking behavior may arise legitimately from smooth sky, uniform background, motion blur, or localized depth of field.",
+    "Images saved at high quality factors (Q >= 95) or subjected to post-processing deblocking filters may present attenuated boundary discontinuities.",
+    "Methodological inapplicability to non-JPEG containers is a technical constraint and must NOT be interpreted as evidence of authenticity or manipulation."
+  ]
+}
