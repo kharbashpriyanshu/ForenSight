@@ -167,15 +167,15 @@ const EvidenceLibrary: React.FC = () => {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
               <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
-                Evidence Registry & Batch OS
+                Evidence Repository
               </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {evidenceList.length} Registered Items
               </span>
             </div>
-            <h2 className="card-title" style={{ margin: 0 }}>Evidence Library & Ingestion</h2>
+            <h2 className="card-title" style={{ margin: 0 }}>Evidence Files & Intake</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Acquired forensic images with cryptographic SHA-256 integrity, batch orchestration, and pipeline status
+              Acquired evidence items with cryptographic SHA-256 integrity and examination status
             </div>
           </div>
 
@@ -207,7 +207,7 @@ const EvidenceLibrary: React.FC = () => {
               disabled={triggeringBatch || evidenceList.length === 0}
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
             >
-              {triggeringBatch ? 'Queueing Batch...' : '⚡ Run Multi-Engine Suite on All'}
+              {triggeringBatch ? 'Queueing Analyses...' : 'Run Analysis on All Evidence'}
             </button>
 
             <button 
@@ -215,7 +215,7 @@ const EvidenceLibrary: React.FC = () => {
               onClick={() => setShowBatchUpload(!showBatchUpload)}
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
             >
-              📁 Batch Ingest Files
+              Add Multiple Files
             </button>
 
             <button 
@@ -223,7 +223,7 @@ const EvidenceLibrary: React.FC = () => {
               onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
             >
-              + Single Upload
+              + Add Evidence File
             </button>
           </div>
         </div>
@@ -233,7 +233,7 @@ const EvidenceLibrary: React.FC = () => {
           <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.75rem 1rem', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', fontSize: '0.8rem' }}>
               <span>
-                <strong>Batch Pipeline Progress:</strong> {batchJobStatus.completed_count} completed, {batchJobStatus.running_count} running, {batchJobStatus.queued_count} queued
+                <strong>Analysis Pipeline Progress:</strong> {batchJobStatus.completed_count} completed, {batchJobStatus.running_count} running, {batchJobStatus.queued_count} queued
               </span>
               <span style={{ fontWeight: 700, color: batchJobStatus.progress_percentage === 100 ? '#10b981' : '#3b82f6' }}>
                 {batchJobStatus.progress_percentage}%
@@ -248,7 +248,7 @@ const EvidenceLibrary: React.FC = () => {
         {/* Batch Upload Modal/Box */}
         {showBatchUpload && (
           <form onSubmit={handleBatchUploadSubmit} style={{ background: 'var(--surface-color-light)', border: '2px dashed var(--primary-color)', borderRadius: '8px', padding: '1.25rem', marginBottom: '1.25rem' }}>
-            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>Batch Evidence Multi-File Ingestion</h4>
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>Multiple Evidence File Intake</h4>
             <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Select multiple JPEG, PNG, or TIFF image files to ingest simultaneously. Each file will be individually hashed with SHA-256 and registered into the case ledger.
             </p>
@@ -266,7 +266,7 @@ const EvidenceLibrary: React.FC = () => {
                 disabled={uploadingBatch || !batchFiles || batchFiles.length === 0}
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem' }}
               >
-                {uploadingBatch ? 'Ingesting Batch...' : `Upload ${batchFiles ? batchFiles.length : 0} Files`}
+                {uploadingBatch ? 'Uploading Files...' : `Upload ${batchFiles ? batchFiles.length : 0} Files`}
               </button>
               <button 
                 type="button" 
@@ -318,10 +318,10 @@ const EvidenceLibrary: React.FC = () => {
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <button className="primary-button" onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}>
-              + Ingest Evidence File
+              + Add Evidence File
             </button>
             <button className="secondary-button" onClick={() => setShowBatchUpload(true)}>
-              📁 Batch Ingest Files
+              Add Multiple Files
             </button>
           </div>
         </div>

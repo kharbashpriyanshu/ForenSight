@@ -87,11 +87,11 @@ const Workspace: React.FC = () => {
           </div>
         </div>
 
-        {/* THREE-PHASE CASE NAVIGATION */}
+        {/* CASE NAVIGATION */}
         <nav className="sidebar-nav" aria-label="Case Investigation Navigation">
-          {/* PHASE 1: DOSSIER & EVIDENCE */}
+          {/* INVESTIGATION DETAILS */}
           <div className="nav-phase-group">
-            <div className="nav-section-label">Phase 1 — Dossier & Evidence</div>
+            <div className="nav-section-label">Investigation Details</div>
             <NavLink 
               to={`/cases/${caseId}`} 
               end 
@@ -119,16 +119,16 @@ const Workspace: React.FC = () => {
             </NavLink>
           </div>
 
-          {/* PHASE 2: FORENSIC EXAMINATION */}
+          {/* FORENSIC ANALYSIS */}
           <div className="nav-phase-group">
-            <div className="nav-section-label">Phase 2 — Forensic Examination</div>
+            <div className="nav-section-label">Forensic Analysis</div>
             {activeEvidenceId && (
               <NavLink 
                 to={`/cases/${caseId}/evidence/${activeEvidenceId}`} 
                 className={({ isActive }) => `nav-item active-evidence-workbench ${isActive ? 'active' : ''}`}
               >
                 <Microscope size={16} aria-hidden="true" />
-                <span className="nav-item-text">Workbench: #{activeEvidenceId}</span>
+                <span className="nav-item-text">Examination: #{activeEvidenceId}</span>
               </NavLink>
             )}
             <NavLink 
@@ -164,9 +164,9 @@ const Workspace: React.FC = () => {
             </NavLink>
           </div>
 
-          {/* PHASE 3: INTEGRITY & FINDINGS */}
+          {/* EVIDENCE & FINDINGS */}
           <div className="nav-phase-group">
-            <div className="nav-section-label">Phase 3 — Integrity & Findings</div>
+            <div className="nav-section-label">Evidence & Findings</div>
             <NavLink 
               to={`/cases/${caseId}/assistant`} 
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -207,9 +207,9 @@ const Workspace: React.FC = () => {
             </NavLink>
           </div>
 
-          {/* STATION OPERATIONS */}
+          {/* OPERATIONS */}
           <div className="nav-phase-group">
-            <div className="nav-section-label">Station Operations</div>
+            <div className="nav-section-label">Operations</div>
             <NavLink 
               to="/benchmark" 
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
@@ -232,7 +232,7 @@ const Workspace: React.FC = () => {
           <div className="sidebar-footer-title">
             Scientific Freeze: <strong className="sidebar-footer-state">Enforced</strong>
           </div>
-          <div className="sidebar-footer-axiom">Observation != Proof</div>
+          <div className="sidebar-footer-axiom">Observation ≠ Proof</div>
         </div>
       </aside>
 

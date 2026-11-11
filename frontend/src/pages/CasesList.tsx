@@ -315,7 +315,7 @@ export default function CasesList() {
           <input type="text" placeholder="Reported location (if known)" value={reportedLocation} onChange={e => setReportedLocation(e.target.value)} disabled={creating} />
           <input type="url" placeholder="Source URL (optional)" value={sourceReferenceUrl} onChange={e => setSourceReferenceUrl(e.target.value)} disabled={creating} style={{ gridColumn: '1 / -1' }} />
           <button type="submit" className="btn btn-primary" disabled={!newCaseTitle.trim() || creating} style={{ gridColumn: '1 / -1' }}>
-            {creating ? 'Initializing...' : '+ Initialize Workspace'}
+            {creating ? 'Creating...' : '+ Create Investigation'}
           </button>
         </form>
       </div>
@@ -325,7 +325,7 @@ export default function CasesList() {
           Active Investigations ({filteredCases.length})
         </h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-          Select an investigation to enter its multi-phase workspace and forensic tooling.
+          Select an investigation to access evidence, forensic examinations, and chain-of-custody reports.
         </p>
       </div>
 

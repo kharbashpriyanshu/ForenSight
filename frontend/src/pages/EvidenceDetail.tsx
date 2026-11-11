@@ -560,7 +560,7 @@ export default function EvidenceDetail() {
             }}
           />
 
-          {/* Unified Forensic Results & Evidentiary Synthesis (Stage 2 Batch 3) */}
+          {/* Unified Forensic Results & Evidentiary Synthesis */}
           <UnifiedForensicResults
             evidence={uploadResult}
             caseId={caseId}
@@ -1098,7 +1098,7 @@ export default function EvidenceDetail() {
                       textTransform: 'uppercase' 
                     }}>
                       <Cpu size={12} style={{ color: '#2563eb' }} />
-                      Deterministic Fusion Engine (Rule 7B-v1)
+                      Deterministic Correlation Engine
                     </span>
 
                     {(normalizing || correlating) ? (
@@ -1190,46 +1190,24 @@ export default function EvidenceDetail() {
                   className="btn" 
                   onClick={handleOpenNormalizeModal}
                   style={{ 
-                    background: 'linear-gradient(135deg, #091428 0%, #172554 50%, #1e3a8a 100%)', 
-                    color: '#ffffff', 
-                    padding: '0.9rem 1.35rem', 
-                    borderRadius: '10px', 
-                    fontWeight: 700, 
-                    border: '1px solid rgba(255, 255, 255, 0.15)', 
+                    background: 'var(--surface-color-light)', 
+                    color: 'var(--text-main)', 
+                    padding: '0.8rem 1.25rem', 
+                    borderRadius: '8px', 
+                    fontWeight: 600, 
+                    border: '1px solid var(--border-color)', 
                     cursor: 'pointer', 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.65rem',
-                    boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease',
-                    letterSpacing: '-0.01em',
-                    position: 'relative'
+                    transition: 'border-color 0.15s ease, background-color 0.15s ease',
+                    letterSpacing: '-0.01em'
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px -2px rgba(15, 23, 42, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px -2px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2)';
-                  }}
-                  title="Open modal dialog to view normalized empirical observations"
+                  title="Open dialog to view complete normalized observations table across all completed examinations"
                 >
-                  <span style={{
-                    fontSize: '0.62rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.06em',
-                    color: '#93c5fd',
-                    background: 'rgba(37, 99, 235, 0.35)',
-                    padding: '0.15rem 0.45rem',
-                    borderRadius: '4px',
-                    textTransform: 'uppercase'
-                  }}>
-                    Step 01
-                  </span>
-                  <Table size={16} style={{ color: '#93c5fd' }} />
-                  <span style={{ fontSize: '0.95rem' }}>1. Normalize Observations</span>
+                  <Table size={16} style={{ color: 'var(--accent-color)' }} />
+                  <span style={{ fontSize: '0.92rem' }}>Normalize Observations</span>
                   {normalizing ? (
                     <span style={{ 
                       background: 'rgba(255, 255, 255, 0.2)', 
@@ -1262,49 +1240,23 @@ export default function EvidenceDetail() {
 
                 <button 
                   type="button"
-                  className="btn" 
+                  className="btn btn-primary" 
                   onClick={handleOpenCorrelateModal}
                   style={{ 
-                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 60%, #075985 100%)', 
-                    color: '#ffffff', 
-                    padding: '0.9rem 1.35rem', 
-                    borderRadius: '10px', 
-                    fontWeight: 700, 
-                    border: '1px solid rgba(255, 255, 255, 0.25)', 
+                    padding: '0.8rem 1.25rem', 
+                    borderRadius: '8px', 
+                    fontWeight: 600, 
                     cursor: 'pointer', 
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '0.65rem',
-                    boxShadow: '0 4px 16px -2px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease',
-                    letterSpacing: '-0.01em',
-                    position: 'relative'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                    e.currentTarget.style.boxShadow = '0 6px 20px -2px rgba(2, 132, 199, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px -2px rgba(2, 132, 199, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25)';
+                    letterSpacing: '-0.01em'
                   }}
                   title="Open dialog to view correlated forensic assessment and multi-modality matrix"
                 >
-                  <span style={{
-                    fontSize: '0.62rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.06em',
-                    color: '#bae6fd',
-                    background: 'rgba(255, 255, 255, 0.22)',
-                    padding: '0.15rem 0.45rem',
-                    borderRadius: '4px',
-                    textTransform: 'uppercase'
-                  }}>
-                    Step 02
-                  </span>
-                  <ShieldCheck size={16} style={{ color: '#bae6fd' }} />
-                  <span style={{ fontSize: '0.95rem' }}>2. Correlate & Assess</span>
+                  <ShieldCheck size={16} />
+                  <span style={{ fontSize: '0.92rem' }}>Correlate & Assess</span>
                   {correlating ? (
                     <span style={{ 
                       background: 'rgba(255, 255, 255, 0.2)', 
@@ -1424,7 +1376,7 @@ export default function EvidenceDetail() {
                             borderRadius: '4px',
                             border: '1px solid var(--border-color)' 
                           }}>
-                            Rule 7B-v1 Evaluation
+                            Correlation Rule Evaluation
                           </span>
                         </div>
                       </div>
@@ -1856,7 +1808,7 @@ export default function EvidenceDetail() {
                         gap: '0.25rem'
                       }}
                     >
-                      <span>Jump to Step 02: Correlation</span>
+                      <span>View Correlated Assessment</span>
                       <ArrowRight size={12} />
                     </button>
                   </div>
@@ -1925,7 +1877,7 @@ export default function EvidenceDetail() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#0284c7', background: 'rgba(2, 132, 199, 0.12)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
-                        Rule 7B-v1 Qualitative Fusion
+                        Correlated Evidence Assessment
                       </span>
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                         ISO/IEC 27037 Evidence Matrix
@@ -2067,7 +2019,7 @@ export default function EvidenceDetail() {
                               borderRadius: '4px',
                               border: '1px solid var(--border-color)' 
                             }}>
-                              Rule {results.correlate.assessment?.rule_version || '7B-v1'}
+                              Correlation Rule Engine
                             </span>
                           </div>
 
@@ -2293,7 +2245,7 @@ export default function EvidenceDetail() {
                       gap: '0.3rem'
                     }}
                   >
-                    <span>View Step 01: Normalized Metrics Table</span>
+                    <span>View Normalized Observations Table</span>
                     <ArrowRight size={13} />
                   </button>
 

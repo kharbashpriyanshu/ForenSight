@@ -319,7 +319,7 @@ export default function BenchmarkDashboard() {
                 borderRadius: '6px',
                 border: '1px solid #bfdbfe'
               }}>
-                STEP 10 &bull; BENCHMARK HARDENING v1.0.0
+                STANDARDIZED BENCHMARK HARNESS
               </span>
               <span style={{
                 background: '#f1f5f9',
@@ -330,7 +330,7 @@ export default function BenchmarkDashboard() {
                 borderRadius: '6px',
                 border: '1px solid #e2e8f0'
               }}>
-                16 PRODUCTION ENGINES
+                16 EVALUATION ENGINES
               </span>
             </div>
             <h1 style={{ fontSize: '1.65rem', fontWeight: 800, margin: '0 0 0.4rem 0', color: '#0f172a' }}>

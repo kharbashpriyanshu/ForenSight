@@ -60,7 +60,7 @@ function App() {
                 <Route path="/benchmark" element={<BenchmarkDashboard />} />
                 <Route path="/system" element={<SystemHealth />} />
 
-                {/* Case Workspace Sub-Shell with Three-Phase Navigation */}
+                {/* Case Workspace Navigation Sub-Shell */}
                 <Route path="/cases/:caseId" element={<Workspace />}>
                   <Route index element={<CaseOverview />} />
                   <Route path="evidence" element={<EvidenceLibrary />} />

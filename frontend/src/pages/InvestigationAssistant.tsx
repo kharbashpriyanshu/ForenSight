@@ -83,7 +83,7 @@ const InvestigationAssistant: React.FC = () => {
                 Forensic Decision Support
               </span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                Rule Engine V3.0
+                Automated Correlation & Triage
               </span>
             </div>
             <h1 style={{ fontSize: '1.5rem', margin: '0.25rem 0' }}>Investigation Assistant</h1>
@@ -93,20 +93,20 @@ const InvestigationAssistant: React.FC = () => {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button className="secondary-button" onClick={fetchAssistant} style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}>
-              🔄 Refresh Synthesis
+              Refresh Synthesis
             </button>
             <button className="primary-button" onClick={() => navigate(`/cases/${caseId}/analyst`)} style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}>
-              ✍️ Analyst Review ({data.pending_analyst_reviews_count})
+              Analyst Review ({data.pending_analyst_reviews_count})
             </button>
           </div>
         </div>
 
         {/* Non-negotiable scientific guardrail badge */}
         <div style={{ marginTop: '1rem', padding: '0.5rem 0.75rem', background: 'var(--surface-color-light)', border: '1px dashed var(--border-color)', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <div>⚖️ <strong>Observation != Proof</strong></div>
-          <div>🔍 <strong>Anomaly != Manipulation</strong></div>
-          <div>🚫 <strong>Absence of Evidence != Evidence of Absence</strong></div>
-          <div>🤖 <strong>Model Output != Forensic Conclusion</strong></div>
+          <div>⚖️ <strong>Observation ≠ Proof</strong></div>
+          <div>🔍 <strong>Anomaly ≠ Manipulation</strong></div>
+          <div>🚫 <strong>Absence of Evidence ≠ Evidence of Absence</strong></div>
+          <div>🤖 <strong>Model Output ≠ Forensic Conclusion</strong></div>
         </div>
       </div>
 

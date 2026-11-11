@@ -130,8 +130,8 @@ export default function ReportsInterface() {
               onChange={e => setFormatOption(e.target.value as 'pdf' | 'json')}
               style={{ padding: '0.55rem 0.75rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '0.85rem' }}
             >
-              <option value="pdf">Formal PDF Report (ReportLab)</option>
-              <option value="json">Raw Data Export (JSON)</option>
+              <option value="pdf">Formal Investigation Report (PDF)</option>
+              <option value="json">Forensic Case Archive (JSON)</option>
             </select>
 
             <button 
@@ -150,7 +150,7 @@ export default function ReportsInterface() {
         {exportError && <div role="alert" style={{ marginTop: '0.75rem', color: '#ef4444' }}>{exportError}</div>}
 
         <div style={{ marginTop: '1.25rem', background: 'rgba(59, 130, 246, 0.05)', borderLeft: '4px solid var(--primary-color)', padding: '0.75rem 1rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-          <strong>Publication Standard:</strong> Generated reports include Title Header, Case Registry, Ingested Evidence Hashes, Multi-Modality Observations (ELA, Noise, JPEG-DCT, Copy-Move, Metadata), Fusion 7B-v1 Assessment, Technical Chain of Custody, and Explicit Scientific Limitations.
+          <strong>Publication Standard:</strong> Generated reports include Title Header, Case Registry, Ingested Evidence Hashes, Multi-Modality Observations (ELA, Noise, JPEG-DCT, Copy-Move, Metadata), Correlated Forensic Assessment, Technical Chain of Custody, and Explicit Scientific Limitations.
         </div>
       </div>
 

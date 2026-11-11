@@ -46,7 +46,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             />
             <div className="topbar-brand-text">
               <span className="topbar-brand-title">ForenSight</span>
-              <span className="topbar-brand-subtitle">Evidence OS</span>
+              <span className="topbar-brand-subtitle">Digital Forensic Platform</span>
             </div>
           </Link>
 
@@ -59,7 +59,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="topbar-right">
           {/* Workspace Context Badge */}
           <span className={`context-pill ${isCaseWorkspace ? 'context-pill-case' : 'context-pill-station'}`}>
-            {isCaseWorkspace ? 'CASE WORKSPACE' : 'STATION DIRECTORY'}
+            {isCaseWorkspace ? 'INVESTIGATION WORKSPACE' : 'CASES DIRECTORY'}
           </span>
 
           {/* Theme Toggle (Light / Dark) */}
@@ -110,7 +110,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             )}
             <aside className={`sidebar station-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
               <nav className="sidebar-nav" aria-label="Station Navigation">
-                <div className="nav-section-label">Station</div>
+                <div className="nav-section-label">Directory</div>
                 <NavLink 
                   to="/cases" 
                   end 
@@ -147,7 +147,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
                 <div className="sidebar-footer-title">
                   Scientific Freeze: <strong className="sidebar-footer-state">Enforced</strong>
                 </div>
-                <div className="sidebar-footer-axiom">Observation != Proof</div>
+                <div className="sidebar-footer-axiom">Observation ≠ Proof</div>
               </div>
             </aside>
           </>

@@ -490,6 +490,7 @@ a:hover {
   overflow-y: auto;
 }
 
+.nav-group,
 .nav-phase-group {
   display: flex;
   flex-direction: column;

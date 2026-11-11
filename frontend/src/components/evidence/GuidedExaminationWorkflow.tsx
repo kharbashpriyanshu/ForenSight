@@ -624,7 +624,7 @@ export default function GuidedExaminationWorkflow({
               borderRadius: '4px',
               letterSpacing: '0.04em'
             }}>
-              PHASE 2 — FORENSIC EXAMINATION
+              FORENSIC EXAMINATION
             </span>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Target: Evidence #{evidence.id} ({rawFormat || 'IMAGE'})

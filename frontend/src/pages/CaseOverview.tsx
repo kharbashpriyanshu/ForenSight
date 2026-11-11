@@ -203,11 +203,11 @@ const CaseOverview: React.FC = () => {
 
   const assessmentDetails = getAssessmentDetails(stats.latest_assessment);
 
-  // Logical, sequential forensic lifecycle phases
-  const pipelinePhases = [
+  // Investigation workflow milestones
+  const workflowMilestones = [
     {
       id: 'intake',
-      step: '01',
+      icon: FileText,
       title: 'Intake & Claim Context',
       status: intake?.claim_summary ? 'Documented' : 'Optional',
       isComplete: Boolean(intake?.claim_summary),
@@ -216,7 +216,7 @@ const CaseOverview: React.FC = () => {
     },
     {
       id: 'evidence',
-      step: '02',
+      icon: FolderOpen,
       title: 'Evidence Preservation',
       status: stats.evidence_count > 0 ? `${stats.evidence_count} Registered` : 'Awaiting Files',
       isComplete: stats.evidence_count > 0,
@@ -225,7 +225,7 @@ const CaseOverview: React.FC = () => {
     },
     {
       id: 'analysis',
-      step: '03',
+      icon: Cpu,
       title: 'Automated Examination',
       status: stats.completed_analysis_count > 0 ? `${stats.completed_analysis_count} Executed` : 'Not Started',
       isComplete: stats.completed_analysis_count > 0,
@@ -234,7 +234,7 @@ const CaseOverview: React.FC = () => {
     },
     {
       id: 'adjudication',
-      step: '04',
+      icon: CheckCircle2,
       title: 'Analyst Findings',
       status: stats.findings_count > 0 ? `${stats.findings_count} Observations` : 'Pending Review',
       isComplete: stats.findings_count > 0,
@@ -243,7 +243,7 @@ const CaseOverview: React.FC = () => {
     },
     {
       id: 'reporting',
-      step: '05',
+      icon: ShieldCheck,
       title: 'Custody & Final Report',
       status: stats.audit_event_count > 0 ? 'Trail Sealed' : 'Ready',
       isComplete: stats.audit_event_count > 0,
@@ -546,70 +546,74 @@ const CaseOverview: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <div>
                 <h2 style={{ fontSize: '1.02rem', fontWeight: 700, margin: 0, fontFamily: 'var(--font-display)', color: 'var(--text-main)' }}>
-                  Investigation Lifecycle Progression
+                  Investigation Workflow
                 </h2>
                 <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Rigorous forensic pipeline from raw evidence intake to peer-reviewed export
+                  Structured forensic workflow from evidence intake to verified reporting
                 </p>
               </div>
               <span style={{ fontSize: '0.7rem', color: 'var(--accent-color)', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
-                PIPELINE STATUS
+                WORKFLOW STATUS
               </span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-              {pipelinePhases.map((phase) => (
-                <div
-                  key={phase.id}
-                  onClick={phase.action}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.75rem 0.95rem',
-                    borderRadius: '9px',
-                    background: phase.isComplete ? 'var(--surface-color-light)' : 'rgba(255, 255, 255, 0.4)',
-                    border: '1px solid var(--border-color-translucent)',
-                    cursor: 'pointer',
-                    transition: 'all 0.18s ease'
-                  }}
-                  className="hover:border-amber-400"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                    <span style={{ 
-                      fontSize: '0.7rem', 
-                      fontWeight: 800, 
-                      fontFamily: 'var(--font-mono)', 
-                      color: phase.isComplete ? '#15803d' : 'var(--text-muted)',
-                      background: phase.isComplete ? 'rgba(21, 128, 61, 0.08)' : 'rgba(0,0,0,0.04)',
-                      padding: '0.2rem 0.45rem',
-                      borderRadius: '5px'
-                    }}>
-                      {phase.step}
-                    </span>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
-                        {phase.title}
-                      </div>
-                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
-                        {phase.description}
+              {workflowMilestones.map((milestone) => {
+                const IconComponent = milestone.icon;
+                return (
+                  <div
+                    key={milestone.id}
+                    onClick={milestone.action}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 0.95rem',
+                      borderRadius: '9px',
+                      background: milestone.isComplete ? 'var(--surface-color-light)' : 'rgba(255, 255, 255, 0.4)',
+                      border: '1px solid var(--border-color-translucent)',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease'
+                    }}
+                    className="hover:border-amber-400"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                      <span style={{ 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '6px',
+                        color: milestone.isComplete ? '#15803d' : 'var(--text-muted)',
+                        background: milestone.isComplete ? 'rgba(21, 128, 61, 0.08)' : 'rgba(0,0,0,0.04)'
+                      }}>
+                        <IconComponent size={14} />
+                      </span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-main)' }}>
+                          {milestone.title}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.1rem' }}>
+                          {milestone.description}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <span style={{ 
-                      fontSize: '0.7rem', 
-                      fontWeight: 700, 
-                      color: phase.isComplete ? '#15803d' : 'var(--text-muted)',
-                      fontFamily: 'var(--font-tech)'
-                    }}>
-                      {phase.status}
-                    </span>
-                    <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        fontWeight: 700, 
+                        color: milestone.isComplete ? '#15803d' : 'var(--text-muted)',
+                        fontFamily: 'var(--font-tech)'
+                      }}>
+                        {milestone.status}
+                      </span>
+                      <ChevronRight size={14} style={{ color: 'var(--text-muted)' }} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
@@ -621,7 +625,7 @@ const CaseOverview: React.FC = () => {
                   Forensic Assessment & Engine State
                 </h3>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                  Framework: <strong style={{ color: 'var(--text-main)' }}>{stats.rule_version || 'Fusion 7B-v1'}</strong> (Scientifically Frozen)
+                  Framework: <strong style={{ color: 'var(--text-main)' }}>{stats.rule_version || 'Correlated Rule Engine'}</strong> (Scientifically Frozen)
                 </div>
               </div>
               <span style={{ 
