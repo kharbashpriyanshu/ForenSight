@@ -9,19 +9,19 @@ interface Crumb {
 }
 
 const ROUTE_LABELS: Record<string, string> = {
-  evidence: 'Evidence Files',
-  upload: 'Intake',
-  new: 'Intake',
-  compare: 'Compare Evidence',
+  evidence: 'Evidence Library',
+  upload: 'Evidence Intake',
+  new: 'Evidence Intake',
+  compare: 'Evidence Comparison',
   lineage: 'Image Lineage',
   'cross-correlation': 'Cross-Image Correlation',
   graph: 'Investigation Graph',
-  assistant: 'Investigative Assistant',
-  analyst: 'Analyst Review',
+  assistant: 'Investigation Assistant',
+  analyst: 'Analyst Workbench',
   custody: 'Chain of Custody',
   audit: 'Audit Timeline',
-  reports: 'Reports & Findings',
-  findings: 'Reports & Findings',
+  reports: 'Reports & Exports',
+  findings: 'Reports & Exports',
   history: 'Processing History',
   benchmark: 'Benchmark Suite',
   system: 'System Health',
@@ -42,38 +42,38 @@ export const Breadcrumbs: React.FC = () => {
     crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
     crumbs.push({ label: 'Evidence Intake', isCurrent: true });
   } else if (segments[0] === 'benchmark') {
-    crumbs.push({ label: 'Station', to: '/cases', isCurrent: false });
+    crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
     crumbs.push({ label: 'Benchmark Suite', isCurrent: true });
   } else if (segments[0] === 'system') {
-    crumbs.push({ label: 'Station', to: '/cases', isCurrent: false });
+    crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
     crumbs.push({ label: 'System Health', isCurrent: true });
   } else if (segments[0] === 'cases' && segments.length >= 2) {
     const caseId = segments[1];
-    crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
 
     // Case Overview (index)
     if (segments.length === 2) {
-      crumbs.push({ label: caseId, to: `/cases/${caseId}`, isCurrent: false });
-      crumbs.push({ label: 'Overview', isCurrent: true });
+      crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
+      crumbs.push({ label: caseId, isCurrent: true });
     } else {
+      // Concise case breadcrumb: Case Identifier > Page Label
       crumbs.push({ label: caseId, to: `/cases/${caseId}`, isCurrent: false });
       
       const subSegment = segments[2];
       
       if (subSegment === 'evidence') {
         if (segments.length === 3) {
-          crumbs.push({ label: 'Evidence Files', isCurrent: true });
+          crumbs.push({ label: 'Evidence Library', isCurrent: true });
         } else if (segments[3] === 'upload' || segments[3] === 'new') {
-          crumbs.push({ label: 'Evidence Files', to: `/cases/${caseId}/evidence`, isCurrent: false });
+          crumbs.push({ label: 'Evidence Library', to: `/cases/${caseId}/evidence`, isCurrent: false });
           crumbs.push({ label: 'Intake', isCurrent: true });
         } else {
           const evidenceId = segments[3];
           if (segments.length >= 5 && segments[4] === 'history') {
-            crumbs.push({ label: 'Evidence Files', to: `/cases/${caseId}/evidence`, isCurrent: false });
+            crumbs.push({ label: 'Evidence Library', to: `/cases/${caseId}/evidence`, isCurrent: false });
             crumbs.push({ label: `Evidence #${evidenceId}`, to: `/cases/${caseId}/evidence/${evidenceId}`, isCurrent: false });
             crumbs.push({ label: 'Processing History', isCurrent: true });
           } else {
-            crumbs.push({ label: 'Evidence Files', to: `/cases/${caseId}/evidence`, isCurrent: false });
+            crumbs.push({ label: 'Evidence Library', to: `/cases/${caseId}/evidence`, isCurrent: false });
             crumbs.push({ label: `Evidence #${evidenceId}`, isCurrent: true });
           }
         }
@@ -84,7 +84,7 @@ export const Breadcrumbs: React.FC = () => {
     }
   } else {
     // Fallback for any unexpected route
-    crumbs.push({ label: 'Station', to: '/cases', isCurrent: false });
+    crumbs.push({ label: 'Cases', to: '/cases', isCurrent: false });
     segments.forEach((seg, index) => {
       const isLast = index === segments.length - 1;
       crumbs.push({

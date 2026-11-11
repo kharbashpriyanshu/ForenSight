@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { FileText } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FileText, AlertCircle, ArrowRight } from 'lucide-react';
 import { fetchApi } from '../api';
 
 interface ReportItem {
@@ -16,7 +16,9 @@ interface ReportItem {
 
 export default function ReportsInterface() {
   const { caseId } = useParams<{ caseId: string }>();
+  const navigate = useNavigate();
   const [reports, setReports] = useState<ReportItem[]>([]);
+  const [evidenceCount, setEvidenceCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [formatOption, setFormatOption] = useState<'pdf' | 'json'>('pdf');
@@ -25,19 +27,43 @@ export default function ReportsInterface() {
   const [exportError, setExportError] = useState('');
 
   useEffect(() => {
-    fetchReports();
+    fetchInitialData();
   }, [caseId]);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const [reportsRes, overviewRes] = await Promise.all([
+        fetchApi(`/cases/${caseId}/reports`),
+        fetchApi(`/cases/${caseId}/overview`).catch(() => null)
+      ]);
+
+      if (reportsRes.ok) {
+        const reportsData = await reportsRes.json();
+        setReports(Array.isArray(reportsData) ? reportsData : []);
+      }
+
+      if (overviewRes && overviewRes.ok) {
+        const overviewData = await overviewRes.json();
+        if (typeof overviewData.evidence_count === 'number') {
+          setEvidenceCount(overviewData.evidence_count);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching initial reports data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchReports = () => {
     fetchApi(`/cases/${caseId}/reports`)
       .then(res => res.json())
       .then(data => {
         setReports(Array.isArray(data) ? data : []);
-        setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setLoading(false);
       });
   };
 
@@ -113,6 +139,8 @@ export default function ReportsInterface() {
 
   if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading reports...</div>;
 
+  const isZeroEvidence = evidenceCount === 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header and Generator Card */}
@@ -139,7 +167,9 @@ export default function ReportsInterface() {
               <button 
                 className="primary-button" 
                 onClick={handleGenerate} 
-                disabled={generating}
+                disabled={generating || isZeroEvidence}
+                title={isZeroEvidence ? 'Evidence acquisition and analysis passes required before compiling report' : undefined}
+                style={isZeroEvidence ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
               >
                 {generating ? 'Compiling Report...' : 'Compile Case Report'}
               </button>
@@ -152,6 +182,40 @@ export default function ReportsInterface() {
             </div>
           </div>
         </div>
+
+        {isZeroEvidence && (
+          <div 
+            role="note"
+            style={{ 
+              marginTop: '1rem', 
+              padding: '0.75rem 1rem', 
+              background: 'rgba(217, 119, 6, 0.08)', 
+              border: '1px solid rgba(217, 119, 6, 0.25)', 
+              borderRadius: '6px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap', 
+              gap: '0.75rem' 
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <AlertCircle size={18} style={{ color: 'var(--accent-color)', flexShrink: 0 }} />
+              <span style={{ fontSize: '0.825rem', color: 'var(--text-main)' }}>
+                <strong>Prerequisites Required:</strong> Evidence acquisition and forensic examination passes must be completed before compiling formal case reports.
+              </span>
+            </div>
+            <button 
+              type="button" 
+              className="primary-button"
+              onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}
+              style={{ fontSize: '0.78rem', padding: '0.35rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <span>Acquire Evidence File</span>
+              <ArrowRight size={14} />
+            </button>
+          </div>
+        )}
 
         {exportError && (
           <div role="alert" style={{ marginTop: '0.75rem', padding: '0.55rem 0.85rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '6px', color: '#ef4444', fontSize: '0.8rem' }}>
@@ -186,18 +250,53 @@ export default function ReportsInterface() {
             <h4 style={{ margin: '0 0 0.35rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
               No Case Reports Compiled Yet
             </h4>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.5, margin: '0 0 1rem' }}>
-              Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.5, margin: '0 0 1.25rem' }}>
+              {isZeroEvidence ? (
+                <>
+                  Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document. <strong>Primary source evidence acquisition and forensic analysis passes are required prerequisites before report compilation.</strong>
+                </>
+              ) : (
+                'Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document.'
+              )}
             </p>
-            <button 
-              type="button"
-              className="primary-button" 
-              onClick={handleGenerate} 
-              disabled={generating}
-              style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
-            >
-              {generating ? 'Compiling Report...' : `Compile ${formatOption.toUpperCase()} Report`}
-            </button>
+
+            {isZeroEvidence ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button 
+                    type="button" 
+                    className="primary-button"
+                    onClick={() => navigate(`/cases/${caseId}/evidence/upload`)}
+                    style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <span>Acquire Evidence File</span>
+                    <ArrowRight size={14} />
+                  </button>
+                  <button 
+                    type="button"
+                    className="secondary-button" 
+                    disabled={true}
+                    title="Evidence acquisition and analysis passes required before compiling report"
+                    style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', opacity: 0.5, cursor: 'not-allowed' }}
+                  >
+                    Compile {formatOption.toUpperCase()} Report
+                  </button>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Report compilation is disabled until evidence has been ingested and examined.
+                </span>
+              </div>
+            ) : (
+              <button 
+                type="button"
+                className="primary-button" 
+                onClick={handleGenerate} 
+                disabled={generating}
+                style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
+              >
+                {generating ? 'Compiling Report...' : `Compile ${formatOption.toUpperCase()} Report`}
+              </button>
+            )}
           </div>
         ) : (
           <table className="evidence-table">
