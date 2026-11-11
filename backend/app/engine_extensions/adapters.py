@@ -227,7 +227,11 @@ class LegacyNoiseAdapter(BaseForensicEngine):
             direction="informational",
             interpretation=f"Global noise residual variance: {res.global_statistics.variance:.4f}",
             limitations=self.limitations,
-            result_data={"variance": res.global_statistics.variance, "snr_db": res.global_statistics.snr_db},
+            result_data={
+                "variance": res.global_statistics.variance,
+                "full_scale_residual_db": res.global_statistics.full_scale_residual_db,
+                "snr_db": res.global_statistics.snr_db,
+            },
         )
 
         art = EngineArtifactMetadata(

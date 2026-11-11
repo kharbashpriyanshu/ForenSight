@@ -199,3 +199,76 @@ class TestEvidenceByteInvariance:
 
         assert orig_bytes == final_bytes
         assert orig_sha == final_sha
+
+
+class TestMetricNomenclatureAndCompatibility:
+    def test_full_scale_residual_db_and_snr_alias(self):
+        """Verify full_scale_residual_db calculation and snr_db backward compatibility alias."""
+        from app.forensics.noise.schemas import NoiseStatistics
+
+        stats = NoiseStatistics(
+            mean_residual=1.5,
+            median_residual=0.5,
+            max_residual=25.0,
+            std_residual=2.55,
+            percentiles={"90th": 3.0, "95th": 4.0, "99th": 6.0}
+        )
+
+        expected_db = 20.0 * np.log10(255.0 / (2.55 + 1e-6))
+        assert abs(stats.full_scale_residual_db - expected_db) < 1e-4
+        assert stats.snr_db == stats.full_scale_residual_db
+        assert abs(stats.variance - (2.55 ** 2)) < 1e-4
+
+    def test_fixture_007_confusion_matrix_reconciliation(self, temp_dir):
+        """
+        Independently verify that NoiseEngine.run on fixture_007 yields exact confusion matrix
+        and confirms production Gaussian FP = 336 and Median FP = 11 on 256x256 canvas.
+        """
+        fixtures_dir = os.path.join(os.path.dirname(__file__), "..", "datasets", "controlled", "v1")
+        f7_path = os.path.join(fixtures_dir, "fixture_007_noise_injection", "derived_noise_injected.png")
+        mask_path = os.path.join(fixtures_dir, "fixture_007_noise_injection", "ground_truth_mask.png")
+
+        if not os.path.exists(f7_path) or not os.path.exists(mask_path):
+            pytest.skip("Controlled fixture 007 not found in workspace.")
+
+        mask = np.array(Image.open(mask_path).convert('L')) > 128
+        total_pixels = mask.size
+        assert total_pixels == 65536, "fixture_007 canvas must be 256x256 = 65536 pixels"
+
+        gt_pos = int(np.sum(mask))
+        gt_neg = int(np.sum(~mask))
+        assert gt_pos == 6400, "Ground truth positive box must be 80x80 = 6400 pixels"
+        assert gt_neg == 59136, "Ground truth negative canvas must be 59136 pixels"
+
+        # Gaussian run
+        g_res = NoiseEngine.run(f7_path, os.path.join(temp_dir, "f7_g"), filter_method="Gaussian", kernel_size=5, sigma=1.0)
+        g_img = np.array(Image.open(g_res.residual_image_path).convert('L'))
+        g_thresh = float(np.mean(g_img) + 1.5 * np.std(g_img))
+        g_pred = g_img > g_thresh
+
+        tp_g = int(np.sum(g_pred & mask))
+        fp_g = int(np.sum(g_pred & ~mask))
+        fn_g = int(np.sum(~g_pred & mask))
+        tn_g = int(np.sum(~g_pred & ~mask))
+
+        assert tp_g + fp_g + fn_g + tn_g == 65536
+        assert fp_g == 336, f"Production float32 Gaussian convolution must produce exactly 336 FP, got {fp_g}"
+        fpr_g = fp_g / (fp_g + tn_g)
+        assert abs(fpr_g - (336 / 59136)) < 1e-6
+
+        # Median run
+        m_res = NoiseEngine.run(f7_path, os.path.join(temp_dir, "f7_m"), filter_method="Median", kernel_size=5)
+        m_img = np.array(Image.open(m_res.residual_image_path).convert('L'))
+        m_thresh = float(np.mean(m_img) + 1.5 * np.std(m_img))
+        m_pred = m_img > m_thresh
+
+        tp_m = int(np.sum(m_pred & mask))
+        fp_m = int(np.sum(m_pred & ~mask))
+        fn_m = int(np.sum(~m_pred & mask))
+        tn_m = int(np.sum(~m_pred & ~mask))
+
+        assert tp_m + fp_m + fn_m + tn_m == 65536
+        assert fp_m == 11, f"Median filter must produce exactly 11 FP, got {fp_m}"
+        fpr_m = fp_m / (fp_m + tn_m)
+        assert abs(fpr_m - (11 / 59136)) < 1e-6
+
