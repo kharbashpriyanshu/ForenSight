@@ -8,12 +8,12 @@ fidelity metrics:
 - Structural Similarity Index (SSIM)
 """
 
-from app.forensics.metrics.fidelity import (
+from app.metrics.fidelity import (
     calculate_mse,
     calculate_psnr,
     calculate_ssim,
 )
-from app.forensics.metrics.localization import (
+from app.metrics.localization import (
     calculate_confusion_matrix,
     calculate_iou,
     calculate_precision,

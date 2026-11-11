@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from app.forensics.metrics.localization import (
+from app.metrics.localization import (
     validate_mask_pair,
     binarize_masks,
     calculate_confusion_matrix,

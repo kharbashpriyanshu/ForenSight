@@ -46,6 +46,11 @@ Thumbs.db
 .env
 .env.local
 
+# Test artifacts
+.pytest_cache/
+.pytest-tmp/
+backend/.pytest-tmp/
+
 # Database and Storage
 forensight.db
 storage/

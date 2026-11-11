@@ -36,12 +36,12 @@ if str(BASE_DIR) not in sys.path:
 
 from app.engine_extensions.registry import engine_registry
 from app.engine_extensions.contract import ExecutionContext, EngineExecutionStatus
-from app.forensics.metrics.fidelity import (
+from app.metrics.fidelity import (
     calculate_mse,
     calculate_psnr,
     calculate_ssim,
 )
-from app.forensics.metrics.localization import (
+from app.metrics.localization import (
     calculate_all_localization_metrics,
     calculate_confusion_matrix,
     calculate_iou,

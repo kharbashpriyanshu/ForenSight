@@ -9,7 +9,9 @@ from app.db.database import Base, get_db, SessionLocal
 from app.models.domain import InvestigationCase, Evidence
 from app.main import app
 
-TEST_DB_PATH = os.path.join(tempfile.gettempdir(), f"forensight_test_{os.getpid()}.db")
+PYTEST_TMP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".pytest-tmp"))
+os.makedirs(PYTEST_TMP_DIR, exist_ok=True)
+TEST_DB_PATH = os.path.join(PYTEST_TMP_DIR, f"forensight_test_{os.getpid()}.db")
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{TEST_DB_PATH.replace(os.sep, '/')}"
 
 engine = create_engine(

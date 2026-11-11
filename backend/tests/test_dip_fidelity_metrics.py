@@ -12,7 +12,7 @@ import math
 import numpy as np
 import pytest
 
-from app.forensics.metrics.fidelity import (
+from app.metrics.fidelity import (
     calculate_mse,
     calculate_psnr,
     calculate_ssim,
