@@ -1,0 +1,127 @@
+{
+  "engine_id": "ADVANCED-NOISE",
+  "engine_version": "1.0.0",
+  "source_image_sha256": "e7ca97f027d38c3a7ce0ea436371a2c1c1c335c9ac795f8c4315b9382440eb49",
+  "dimensions": {
+    "original": [
+      256,
+      256
+    ],
+    "processed": [
+      256,
+      256
+    ],
+    "downsampled": false,
+    "scale_factor": 1.0
+  },
+  "parameters": {
+    "filter_kernel_size": 5,
+    "filter_sigma": 1.0,
+    "block_size": 32,
+    "z_score_threshold": 2.5,
+    "min_cluster_blocks": 2
+  },
+  "is_grayscale": false,
+  "global_metrics": {
+    "luminance": {
+      "mean": -0.00029,
+      "variance": 22.58076,
+      "std_dev": 4.75192,
+      "median": 0.0,
+      "mad": 0.14567,
+      "robust_noise_scale": 0.21597,
+      "residual_entropy": 4.0905,
+      "high_frequency_energy_ratio": 0.002478,
+      "percentiles": {
+        "p5": -2.2373,
+        "p25": -0.1461,
+        "p50": 0.0,
+        "p75": 0.1452,
+        "p95": 2.0572
+      }
+    },
+    "red": {
+      "mean": -0.00053,
+      "variance": 58.01802,
+      "std_dev": 7.61696,
+      "median": 0.0,
+      "mad": 0.2442,
+      "robust_noise_scale": 0.36205,
+      "residual_entropy": 3.5357,
+      "high_frequency_energy_ratio": 0.0051,
+      "percentiles": {
+        "p5": -4.6542,
+        "p25": -0.2442,
+        "p50": 0.0,
+        "p75": 0.2442,
+        "p95": 4.5018
+      }
+    },
+    "green": {
+      "mean": -5e-05,
+      "variance": 48.05532,
+      "std_dev": 6.93219,
+      "median": -1e-05,
+      "mad": 0.24716,
+      "robust_noise_scale": 0.36644,
+      "residual_entropy": 4.1899,
+      "high_frequency_energy_ratio": 0.005812,
+      "percentiles": {
+        "p5": -2.6373,
+        "p25": -0.2472,
+        "p50": -0.0,
+        "p75": 0.2455,
+        "p95": 2.6132
+      }
+    },
+    "blue": {
+      "mean": -0.00094,
+      "variance": 50.34576,
+      "std_dev": 7.09547,
+      "median": 0.0,
+      "mad": 0.24547,
+      "robust_noise_scale": 0.36393,
+      "residual_entropy": 3.9315,
+      "high_frequency_energy_ratio": 0.004762,
+      "percentiles": {
+        "p5": -3.5298,
+        "p25": -0.2455,
+        "p50": 0.0,
+        "p75": 0.2455,
+        "p95": 3.3929
+      }
+    }
+  },
+  "residual_frequency_decomposition": {
+    "low_band_ratio": 0.0034,
+    "mid_band_ratio": 0.2581,
+    "high_band_ratio": 0.7386
+  },
+  "local_consistency": {
+    "blocks_x": 8,
+    "blocks_y": 8,
+    "total_blocks": 64,
+    "baseline_variance_median": 0.03502,
+    "baseline_variance_mad": 0.00827,
+    "robust_scale": 0.01226,
+    "candidate_region_count": 1,
+    "candidate_regions": [
+      {
+        "region_id": "noise-inconsistency-1",
+        "bounding_box": [
+          32,
+          0,
+          192,
+          224
+        ],
+        "block_count": 22,
+        "mean_deviation_z": 5342.402,
+        "max_deviation_z": 18872.691,
+        "baseline_variance": 0.035,
+        "local_variance": 65.5514,
+        "classification": "candidate noise-inconsistency region"
+      }
+    ]
+  },
+  "scientific_limitations": "Noise inconsistency measurements are empirical indicators. Differences in local noise variance may arise naturally from scene texture, depth of field, optical vignetting, or localized illumination, and do not constitute definitive proof of manipulation."
+}

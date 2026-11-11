@@ -6,6 +6,8 @@ Non-invasive adapters that expose the existing frozen V3 forensic analyzers
 DOES NOT MODIFY backend/app/forensics/.
 """
 
+import os
+import hashlib
 import time
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
@@ -359,6 +361,10 @@ class LegacyCopyMoveAdapter(BaseForensicEngine):
         res = CopyMoveEngine.run(context.stored_path, context.storage_output_dir)
         t_ms = (time.perf_counter() - t0) * 1000
 
+        total_matches = res.matching_statistics.raw_matches
+        inliers = res.matching_statistics.geometric_inliers
+        cluster_count = 1 if (res.candidate_regions and res.candidate_regions.source_bounding_box) else 0
+
         obs = NormalizedObservation(
             evidence_id=context.evidence_id,
             analysis_id=context.analysis_id,
@@ -366,12 +372,32 @@ class LegacyCopyMoveAdapter(BaseForensicEngine):
             engine_version=self.engine_version,
             observation_type="GEOMETRIC_CLONING",
             metric_name="MATCH_COUNT",
-            raw_value=str(res.total_matches),
-            direction="elevated" if res.total_matches > 20 else "informational",
-            interpretation=f"Detected {res.total_matches} keypoint correspondence pairs across {len(res.clusters)} clusters.",
+            raw_value=str(total_matches),
+            direction="elevated" if inliers > 0 else "informational",
+            interpretation=f"Detected {total_matches} keypoint correspondence pairs ({inliers} geometric inliers).",
             limitations=self.limitations,
-            result_data={"total_matches": res.total_matches, "cluster_count": len(res.clusters)},
+            result_data={"total_matches": total_matches, "geometric_inliers": inliers, "cluster_count": cluster_count},
         )
+
+        artifacts = []
+        if res.visualization_artifact_path and os.path.exists(res.visualization_artifact_path):
+            vis_hash = hashlib.sha256(open(res.visualization_artifact_path, "rb").read()).hexdigest()
+            artifacts.append(
+                EngineArtifactMetadata(
+                    artifact_id=f"art_cm_{vis_hash[:8]}",
+                    evidence_id=context.evidence_id,
+                    analysis_id=context.analysis_id,
+                    engine_id=self.engine_id,
+                    engine_version=self.engine_version,
+                    artifact_type=ArtifactType.VISUALIZATION,
+                    storage_path=res.visualization_artifact_path,
+                    sha256_hash=vis_hash,
+                    mime_type="image/png",
+                    width=context.width,
+                    height=context.height,
+                    parameters_used=context.parameters,
+                )
+            )
 
         return EngineExecutionResult(
             engine_id=self.engine_id,
@@ -379,6 +405,7 @@ class LegacyCopyMoveAdapter(BaseForensicEngine):
             status=EngineExecutionStatus.APPLIED,
             summary="Copy-Move keypoint analysis completed successfully.",
             observations=[obs],
+            artifacts=artifacts,
             execution_time_ms=t_ms,
             limitations=self.limitations,
         )

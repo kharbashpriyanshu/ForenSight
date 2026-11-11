@@ -1,0 +1,1491 @@
+{
+  "metadata": {
+    "benchmark_title": "ForenSight Stage 3, Workstream 1, Batch 3 Validation Benchmark",
+    "execution_timestamp_utc": "2026-11-11T07:27:57.605240+00:00",
+    "duration_seconds": 4.16,
+    "dataset_id": "controlled-v1",
+    "dataset_version": "1.0.0",
+    "total_fixtures_evaluated": 11,
+    "total_engines_registered": 23,
+    "evidence_invariance_verified": true
+  },
+  "engine_capability_inventory": {
+    "METADATA": {
+      "engine_id": "METADATA",
+      "engine_name": "Container EXIF Metadata & Hardware Extractor",
+      "engine_version": "1.0.0",
+      "category": "FILE_ANALYSIS",
+      "description": "Extracts container metadata, EXIF tags, GPS coordinates, and camera firmware signatures.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        1,
+        1
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Metadata can be easily stripped or modified using external tools.",
+        "Absence of EXIF tags does not establish malicious alteration."
+      ],
+      "scientific_references_count": 1
+    },
+    "ELA": {
+      "engine_id": "ELA",
+      "engine_name": "Error Level Analysis (ELA)",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Measures pixel-wise error level variance upon intentional JPEG recompression.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        16,
+        16
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "JPEG only: lossless formats (PNG, WebP) are mathematically inapplicable.",
+        "High ELA variance naturally occurs along high-contrast object contours."
+      ],
+      "scientific_references_count": 1
+    },
+    "NOISE": {
+      "engine_id": "NOISE",
+      "engine_name": "Spatial Noise Residual Analysis",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Isolates high-frequency noise residual using median filtering and computes local SNR distributions.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Measures high-frequency residual energy; does not compute physical sensor PRNU.",
+        "Heavy denoising or aggressive social media compression alters high-frequency residual distribution."
+      ],
+      "scientific_references_count": 0
+    },
+    "JPEG_DCT": {
+      "engine_id": "JPEG_DCT",
+      "engine_name": "JPEG Discrete Cosine Transform (DCT) Block Analysis",
+      "engine_version": "1.0.0",
+      "category": "GLOBAL_ANALYSIS",
+      "description": "Examines 8x8 DCT block frequency distributions and quantization matrix consistency.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        16,
+        16
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "JPEG only: lossless formats (PNG, WebP) are mathematically inapplicable.",
+        "Multiple saves in authentic graphic software will trigger double-compression traces."
+      ],
+      "scientific_references_count": 0
+    },
+    "COPY_MOVE": {
+      "engine_id": "COPY_MOVE",
+      "engine_name": "Keypoint-Based Copy-Move Cloning Detection",
+      "engine_version": "1.0.0",
+      "category": "GEOMETRIC_ANALYSIS",
+      "description": "Detects cloned spatial regions using SIFT/ORB keypoints and spatial clustering.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Can flag natural periodic textures (e.g. brick patterns, ripples, leaf clusters).",
+        "Ineffective against clones with severe affine warping, heavy blur, or non-keypoint solid patches."
+      ],
+      "scientific_references_count": 0
+    },
+    "JPEG-STRUCTURE": {
+      "engine_id": "JPEG-STRUCTURE",
+      "engine_name": "JPEG Structure Analysis",
+      "engine_version": "1.0.0",
+      "category": "FILE_ANALYSIS",
+      "description": "Analyzes JPEG container marker sequence, byte offsets, segment lengths, sampling factors, and structural anomalies.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        1,
+        1
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "Operates strictly on JPEG container structure; does not decompress or analyze DCT coefficient distributions.",
+        "Structural anomalies indicate specification non-compliance, unusual encoder behavior, or file damage, and must not be used alone to conclude malicious image manipulation.",
+        "Non-standard APP marker placements may occur legitimately in various camera firmware and software encoders."
+      ],
+      "scientific_references_count": 2
+    },
+    "JPEG-QT": {
+      "engine_id": "JPEG-QT",
+      "engine_name": "JPEG Quantization Table Analysis",
+      "engine_version": "1.0.0",
+      "category": "FILE_ANALYSIS",
+      "description": "Extracts and analyzes raw 8x8 quantization tables (DQT), component mappings, statistical profiles, and table fingerprints.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        1,
+        1
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "Quantization tables reflect the most recent lossy compression cycle; earlier compression history cannot be directly observed from tables alone.",
+        "Identical quantization tables may be used across diverse camera models and software packages that share common compression libraries (e.g. libjpeg).",
+        "Quality factor estimation is valid only for encoders following the standard IJG scaling model; proprietary tables return NOT_ESTIMATED."
+      ],
+      "scientific_references_count": 2
+    },
+    "JPEG-HUFFMAN": {
+      "engine_id": "JPEG-HUFFMAN",
+      "engine_name": "JPEG Huffman Coding Analysis",
+      "engine_version": "1.0.0",
+      "category": "FILE_ANALYSIS",
+      "description": "Analyzes JPEG DHT segments, code-length distributions, DC/AC separation, scan mappings, and table fingerprints.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        1,
+        1
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "Huffman table analysis reveals entropy coding structure; it does not decode or verify the variable-length bitstream payload.",
+        "Custom or optimized Huffman tables are standard practice in encoders seeking optimal compression ratio (e.g. mozjpeg, Photoshop) and do not alone indicate illicit modification.",
+        "Arithmetic-coded JPEGs (which use DAC instead of DHT) are not supported by Huffman inspection."
+      ],
+      "scientific_references_count": 2
+    },
+    "JPEG-GHOST": {
+      "engine_id": "JPEG-GHOST",
+      "engine_name": "JPEG Ghost Detection",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Performs controlled JPEG recompression across a quality sweep to identify differential local error minima.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "A localized JPEG Ghost response does NOT provide definitive proof of manipulation or intentional forgery.",
+        "Response curves are influenced by intrinsic scene content, high-contrast edges, fine textures, and smooth flat areas.",
+        "Images undergoing repeated whole-frame recompressions or non-standard color subsampling may yield ambiguous or multiple minima.",
+        "Method assumes spliced fragments were originally compressed at a different quality factor than the host image."
+      ],
+      "scientific_references_count": 2
+    },
+    "ADJPEG": {
+      "engine_id": "ADJPEG",
+      "engine_name": "Aligned Double JPEG Compression Analysis",
+      "engine_version": "1.0.0",
+      "category": "GLOBAL_ANALYSIS",
+      "description": "Analyzes 8x8 block DCT coefficient histograms for periodic double-quantization (DQ) comb traces.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "Aligned double-JPEG analysis requires the primary and secondary compression grids to be strictly aligned (zero spatial crop/translation offset).",
+        "Very high initial quality factors (e.g. Q1 > 95) or subsequent heavy recompressions (Q2 << Q1) can attenuate periodic histogram peaks.",
+        "Smooth image regions lacking textured high-frequency detail provide sparse AC coefficient counts.",
+        "Observation of histogram periodicity is a mathematical property of successive quantizations and does not by itself prove malicious intent or forgery."
+      ],
+      "scientific_references_count": 2
+    },
+    "NADJPEG": {
+      "engine_id": "NADJPEG",
+      "engine_name": "Non-Aligned Double JPEG Compression Analysis",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Evaluates 64-phase spatial boundary gradient metrics to detect double-compression across shifted or cropped 8x8 grids.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "Non-aligned grid analysis detects crop or translation shifts; if the recompression is aligned at (0,0), use ADJPEG instead.",
+        "High-frequency image textures and natural geometric grid lines (e.g. brick walls, textiles) can generate non-compression boundary energy peaks.",
+        "Very weak primary compression (e.g. Q1 near 100) leaves faint boundary steps that may fall below detection thresholds after second compression.",
+        "Candidate shift detections require contextual analyst review and do not alone prove fraudulent intent."
+      ],
+      "scientific_references_count": 2
+    },
+    "BLOCKING-ARTIFACT": {
+      "engine_id": "BLOCKING-ARTIFACT",
+      "engine_name": "Blocking Artifact Inconsistency (BAG)",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Measures 8x8 DCT block boundary discontinuities and identifies localized spatial blocking discrepancies.",
+      "supported_formats": [
+        "JPEG",
+        "JPG"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": true,
+      "limitations": [
+        "JPEG 8x8 blocking artifacts are intrinsic to lossy Discrete Cosine Transform quantization and do NOT by themselves prove intentional manipulation.",
+        "Candidate regions exhibiting deviated blocking behavior may arise legitimately from smooth sky, uniform background, motion blur, or localized depth of field.",
+        "Images saved at high quality factors (Q >= 95) or subjected to post-processing deblocking filters may present attenuated boundary discontinuities.",
+        "Methodological inapplicability to non-JPEG containers is a technical constraint and must NOT be interpreted as evidence of authenticity or manipulation."
+      ],
+      "scientific_references_count": 3
+    },
+    "HISTOGRAM": {
+      "engine_id": "HISTOGRAM",
+      "engine_name": "Color Histogram & Dynamic Range Analysis",
+      "engine_version": "1.0.0",
+      "category": "GLOBAL_ANALYSIS",
+      "description": "Measures multi-channel intensity distributions, Shannon entropy, dynamic range spread, clipping, and comb-like gaps.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        16,
+        16
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Histogram distributions are governed primarily by scene illumination, lighting geometry, camera exposure, and surface reflectances.",
+        "Comb-like histogram gaps and clipping occur routinely through in-camera auto-exposure, gamma correction, tone mapping, and legitimate creative grading.",
+        "A histogram distribution anomaly does NOT by itself establish deceptive manipulation or localized tampering.",
+        "Uncompressed or raw imagery can exhibit distinct discretization profiles compared to lossy compressed files without implying forgery."
+      ],
+      "scientific_references_count": 3
+    },
+    "COLOR-CHANNEL": {
+      "engine_id": "COLOR-CHANNEL",
+      "engine_name": "Color Channel Discrepancy Analysis",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Measures spatial inter-channel correlation, difference maps, local chromaticity deviation, and candidate regions.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Natural scenes with vivid, saturated objects (e.g. red flowers, green foliage, blue sky) naturally produce high localized channel differences.",
+        "Monochromatic or heavily desaturated images exhibit near-identical channels and cannot yield chromatic divergence measurements.",
+        "Camera optical vignetting and lateral chromatic aberration cause natural radial shifts between color channels toward image boundaries.",
+        "Candidate regions indicate statistical deviation in channel relationship relative to the image host; they do NOT prove intentional forgery."
+      ],
+      "scientific_references_count": 3
+    },
+    "FOURIER": {
+      "engine_id": "FOURIER",
+      "engine_name": "Fourier 2D Frequency Spectrum Analysis",
+      "engine_version": "1.0.0",
+      "category": "GLOBAL_ANALYSIS",
+      "description": "Computes 2D FFT magnitude spectrum, radial frequency band energies, and detects periodic harmonic peaks.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Periodic frequency components arise routinely from natural textures, textiles, halftone printing screens, repetitive architectural facades, and regular geometric patterns.",
+        "JPEG lossy compression generates characteristic 8x8 block grid harmonics along Cartesian horizontal and vertical frequency axes.",
+        "Spectral peaks indicate spatial periodicity in the luminance signal; they do NOT by themselves constitute proof of forgery or tampering.",
+        "Image resizing before FFT analysis can introduce or attenuate high-frequency harmonics depending on the interpolation kernel."
+      ],
+      "scientific_references_count": 3
+    },
+    "ADVANCED-NOISE": {
+      "engine_id": "ADVANCED-NOISE",
+      "engine_name": "Advanced Noise Residual Analysis",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Extracts high-frequency noise residuals, measures global moments and robust MAD scale, and evaluates spatial block-level noise consistency.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        16,
+        16
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [],
+      "scientific_references_count": 3
+    },
+    "RESAMPLING": {
+      "engine_id": "RESAMPLING",
+      "engine_name": "Resampling & Interpolation Analysis",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Detects periodic interpolation signatures and directional derivative periodicity resulting from image scaling, rotation, or geometric transformation.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        16,
+        16
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [],
+      "scientific_references_count": 3
+    },
+    "CLONE-BLOCK": {
+      "engine_id": "CLONE-BLOCK",
+      "engine_name": "Block-Based Clone Detection",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Detects candidate duplicated regions via sliding-window block decomposition, normalized 2D DCT feature vectors, and displacement vector clustering.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Dense sliding window block comparison across high-resolution imagery requires downscaling or higher stride for computational feasibility.",
+        "Translation displacement vector clustering assumes near-zero rotation and uniform scale; rotated clones are evaluated by CLONE-KEYPOINT.",
+        "Repetitive scene textures (e.g. brick facades, textile patterns) naturally generate high inter-block correlations, filtered via displacement clustering.",
+        "Heavy post-processing recompression (JPEG Q < 50) or Gaussian blurring attenuates high-frequency DCT descriptors."
+      ],
+      "scientific_references_count": 3
+    },
+    "CLONE-KEYPOINT": {
+      "engine_id": "CLONE-KEYPOINT",
+      "engine_name": "Keypoint-Based Clone Detection",
+      "engine_version": "1.0.0",
+      "category": "LOCAL_ANALYSIS",
+      "description": "Detects candidate duplicated regions via independent ORB keypoint extraction, Hamming distance self-matching, spatial exclusion constraints, and affine RANSAC.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Smooth, featureless regions (e.g., clear skies, uniform surfaces) lack sufficient keypoints for analysis.",
+        "Heavy compression artifacts or aggressive downsampling may degrade keypoint descriptor repeatability.",
+        "Geometric estimation models planar affine transformations (rotation, uniform scale, translation); complex non-rigid warping may escape detection.",
+        "Naturally repetitive textures (e.g., architectural grids, fabric patterns) may produce dense candidate pairings, filtered by geometric consensus."
+      ],
+      "scientific_references_count": 3
+    },
+    "PRNU": {
+      "engine_id": "PRNU",
+      "engine_name": "Photo-Response Non-Uniformity Analysis",
+      "engine_version": "1.0.0",
+      "category": "CAMERA_IDENTIFICATION",
+      "description": "Extracts camera sensor pattern noise residuals, evaluates suitability metrics, and measures correlation against investigator-provided reference fingerprints.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "PRNU extraction is empirical and does not constitute absolute proof of camera source without validated reference fingerprints.",
+        "Sensor pattern noise is degraded or eliminated by severe lossy recompression (JPEG Q < 60), resizing, social media re-encoding, and spatial denoising.",
+        "Saturated pixels (pure black shadows or clipped specular highlights) destroy multiplicative sensor pattern noise in affected regions.",
+        "Cropped, rotated, or geometrically warped images alter sensor spatial grid correspondence, requiring alignment before comparison."
+      ],
+      "scientific_references_count": 3
+    },
+    "CAMERA-ID": {
+      "engine_id": "CAMERA-ID",
+      "engine_name": "Camera Hardware Identification",
+      "engine_version": "1.0.0",
+      "category": "CAMERA_IDENTIFICATION",
+      "description": "Compares extracted PRNU sensor noise residual against case-scoped camera reference fingerprints using 2D FFT cross-correlation surfaces and Peak-to-Correlation Energy (PCE).",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        32,
+        32
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [
+        "Geometric Spatial Misalignment: PRNU matching assumes native sensor pixel grid alignment; scaling, rotation, or digital zoom misaligns coordinates unless exhaustively searched.",
+        "Scene Content and Dynamic Range Sensitivity: Severely underexposed, overexposed, or heavily saturated image regions do not capture photo-response variation.",
+        "Heavy Lossy Compression Suppression: Aggressive JPEG or WebP compression quantization zeros out weak high-frequency sensor noise residuals.",
+        "Reference Fingerprint Quality Requirement: Reliable attribution requires high-fidelity reference fingerprints generated from multiple calibration images from the suspect sensor."
+      ],
+      "scientific_references_count": 3
+    },
+    "GEOMETRY-PERSPECTIVE": {
+      "engine_id": "GEOMETRY-PERSPECTIVE",
+      "engine_name": "Perspective & Vanishing Point Analysis",
+      "engine_version": "1.0.0",
+      "category": "GEOMETRIC_ANALYSIS",
+      "description": "Evaluates 3D linear perspective geometry, identifies vanishing points and horizon line, and detects composite splicing where inserted objects violate the scene's projective convergence.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        64,
+        64
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [],
+      "scientific_references_count": 0
+    },
+    "PHYSICS-LIGHTING": {
+      "engine_id": "PHYSICS-LIGHTING",
+      "engine_name": "Illumination & Solar Physics Analysis",
+      "engine_version": "1.0.0",
+      "category": "GEOMETRIC_ANALYSIS",
+      "description": "Estimates 2D light source direction vectors across scene quadrants, evaluates shadow ray convergence, and cross-references observed shadows against NOAA astronomical solar ephemeris.",
+      "supported_formats": [
+        "JPEG",
+        "JPG",
+        "PNG",
+        "WEBP",
+        "TIFF"
+      ],
+      "min_dimensions": [
+        64,
+        64
+      ],
+      "requires_lossy_compression": false,
+      "limitations": [],
+      "scientific_references_count": 0
+    }
+  },
+  "evidence_preflight_postflight": {
+    "img_001_authentic_base": {
+      "preflight_hash": "67c894be9a750ea636f153a911b497d75d6a399e1b649e4e5c2dd3f55a8b62c5",
+      "postflight_hash": "67c894be9a750ea636f153a911b497d75d6a399e1b649e4e5c2dd3f55a8b62c5",
+      "invariant": true
+    },
+    "img_comp_q95": {
+      "preflight_hash": "b21965c0ff135fe32fba83474cd1ee3603b8f7143fbcee6c08d77ec60a733c8a",
+      "postflight_hash": "b21965c0ff135fe32fba83474cd1ee3603b8f7143fbcee6c08d77ec60a733c8a",
+      "invariant": true
+    },
+    "img_comp_q75": {
+      "preflight_hash": "098a0d2d901229ae6da0d3d980001e8e9f933a6e06e296e1a16bbe81d809fc00",
+      "postflight_hash": "098a0d2d901229ae6da0d3d980001e8e9f933a6e06e296e1a16bbe81d809fc00",
+      "invariant": true
+    },
+    "img_comp_q50": {
+      "preflight_hash": "f5be7efe1759d7145e0254103a7a333f5014f957a5cb8ac35c4d72ff859e99e0",
+      "postflight_hash": "f5be7efe1759d7145e0254103a7a333f5014f957a5cb8ac35c4d72ff859e99e0",
+      "invariant": true
+    },
+    "img_jpeg_double_q95_q75": {
+      "preflight_hash": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+      "postflight_hash": "e84bff05e81e3f56cab27524a715a018f74e0eb654acb096d441ecf5e20a5ed9",
+      "invariant": true
+    },
+    "img_geom_resample_bicubic": {
+      "preflight_hash": "76344b17bf670c3edfc108bc339c8260b3a80b9ba7e813a98af853bfb56a6b80",
+      "postflight_hash": "76344b17bf670c3edfc108bc339c8260b3a80b9ba7e813a98af853bfb56a6b80",
+      "invariant": true
+    },
+    "img_copymove_translated": {
+      "preflight_hash": "2d6c4240aaa4600958e2abb9e1dc9ab749fb1dd837f211ec7a4f1a05bb55f40e",
+      "postflight_hash": "2d6c4240aaa4600958e2abb9e1dc9ab749fb1dd837f211ec7a4f1a05bb55f40e",
+      "invariant": true
+    },
+    "img_splicing_donor": {
+      "preflight_hash": "778cc4b60dca1c99558d23454472811494bd0180f806cb1d79b509203dd6e7bb",
+      "postflight_hash": "778cc4b60dca1c99558d23454472811494bd0180f806cb1d79b509203dd6e7bb",
+      "invariant": true
+    },
+    "img_noise_gaussian_localized": {
+      "preflight_hash": "e7ca97f027d38c3a7ce0ea436371a2c1c1c335c9ac795f8c4315b9382440eb49",
+      "postflight_hash": "e7ca97f027d38c3a7ce0ea436371a2c1c1c335c9ac795f8c4315b9382440eb49",
+      "invariant": true
+    },
+    "img_color_channel_shift": {
+      "preflight_hash": "07e3c4a54eb76e03cb3f4545ac076f0d5770c22034d853d4e13d93216861b82b",
+      "postflight_hash": "07e3c4a54eb76e03cb3f4545ac076f0d5770c22034d853d4e13d93216861b82b",
+      "invariant": true
+    },
+    "img_false_positive_texture": {
+      "preflight_hash": "ee291af48b81dca4b32439c5fda5c55367f7ebd41614d75e9cc882d4adc57e44",
+      "postflight_hash": "ee291af48b81dca4b32439c5fda5c55367f7ebd41614d75e9cc882d4adc57e44",
+      "invariant": true
+    }
+  },
+  "ela_validation": {
+    "img_comp_q95": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "MEAN_ERROR",
+          "raw_value": "0.2351",
+          "normalized_value": 0.004702250162760417
+        }
+      ],
+      "fidelity_metrics": {
+        "mse": 0.6691,
+        "psnr_db": 49.876,
+        "ssim": 0.9995
+      },
+      "dynamic_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 3.6323089599609375,
+        "std_intensity": 12.275886069006107,
+        "min_intensity": 0,
+        "max_intensity": 255,
+        "saturation_percentage": 0.0010172526041666665
+      },
+      "fixed20_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 4.7011566162109375,
+        "std_intensity": 15.65005583130348,
+        "min_intensity": 0,
+        "max_intensity": 255,
+        "saturation_percentage": 0.005594889322916666
+      }
+    },
+    "img_comp_q75": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "MEAN_ERROR",
+          "raw_value": "0.2051",
+          "normalized_value": 0.00410125732421875
+        }
+      ],
+      "fidelity_metrics": {
+        "mse": 0.5506,
+        "psnr_db": 50.7227,
+        "ssim": 0.9998
+      },
+      "dynamic_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 4.7191162109375,
+        "std_intensity": 16.425519820804166,
+        "min_intensity": 0,
+        "max_intensity": 255,
+        "saturation_percentage": 0.0010172526041666665
+      },
+      "fixed20_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 4.10125732421875,
+        "std_intensity": 14.262002125809115,
+        "min_intensity": 0,
+        "max_intensity": 220,
+        "saturation_percentage": 0.0
+      }
+    },
+    "img_comp_q50": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "MEAN_ERROR",
+          "raw_value": "0.199",
+          "normalized_value": 0.003980204264322917
+        }
+      ],
+      "fidelity_metrics": {
+        "mse": 0.5254,
+        "psnr_db": 50.926,
+        "ssim": 0.9999
+      },
+      "dynamic_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 4.580088297526042,
+        "std_intensity": 16.05561745356186,
+        "min_intensity": 0,
+        "max_intensity": 255,
+        "saturation_percentage": 0.0005086263020833333
+      },
+      "fixed20_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 3.9802042643229165,
+        "std_intensity": 13.939590722437202,
+        "min_intensity": 0,
+        "max_intensity": 220,
+        "saturation_percentage": 0.0
+      }
+    },
+    "img_jpeg_double_q95_q75": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "MEAN_ERROR",
+          "raw_value": "0.1677",
+          "normalized_value": 0.0033531697591145833
+        }
+      ],
+      "fidelity_metrics": {
+        "mse": 0.3658,
+        "psnr_db": 52.4989,
+        "ssim": 0.9998
+      },
+      "dynamic_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 4.7077280680338545,
+        "std_intensity": 16.351334210470757,
+        "min_intensity": 0,
+        "max_intensity": 255,
+        "saturation_percentage": 0.0005086263020833333
+      },
+      "fixed20_artifact_metrics": {
+        "shape": [
+          256,
+          256,
+          3
+        ],
+        "mean_intensity": 3.3531697591145835,
+        "std_intensity": 11.621512664150815,
+        "min_intensity": 0,
+        "max_intensity": 180,
+        "saturation_percentage": 0.0
+      }
+    },
+    "img_001_authentic_base_inapplicable": {
+      "status": "NOT_APPLICABLE",
+      "summary": "Container format 'PNG' is not supported by Error Level Analysis (ELA).",
+      "inapplicability_data": {
+        "reason": "Container format 'PNG' is not supported by Error Level Analysis (ELA).",
+        "notice": "CRITICAL FORENSIC NOTICE: Method inapplicability is NOT negative evidence. The target image container or structure does not meet the mathematical requirements of this forensic filter. The absence of findings under this method MUST NOT be cited as evidence of image authenticity or absence of manipulation."
+      }
+    }
+  },
+  "noise_validation": {
+    "img_noise_gaussian_localized": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "GLOBAL_VARIANCE",
+          "raw_value": "20.5336"
+        }
+      ],
+      "residual_fidelity_gaussian_vs_median": {
+        "mse": 77.7117,
+        "psnr_db": 29.2259,
+        "ssim": 0.8958
+      },
+      "threshold_evaluations": {
+        "th_32": {
+          "gaussian": {
+            "true_positives": 4162,
+            "false_positives": 425,
+            "false_negatives": 2238,
+            "true_negatives": 58711,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.609817,
+            "precision": 0.907347,
+            "recall": 0.650312,
+            "f1_score": 0.757623,
+            "false_positive_rate": 0.007187,
+            "specificity": 0.992813,
+            "overall_pixel_accuracy": 0.959366
+          },
+          "median": {
+            "true_positives": 3748,
+            "false_positives": 11,
+            "false_negatives": 2652,
+            "true_negatives": 59125,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.58462,
+            "precision": 0.997074,
+            "recall": 0.585625,
+            "f1_score": 0.737868,
+            "false_positive_rate": 0.000186,
+            "specificity": 0.999814,
+            "overall_pixel_accuracy": 0.959366
+          }
+        },
+        "th_64": {
+          "gaussian": {
+            "true_positives": 2471,
+            "false_positives": 237,
+            "false_negatives": 3929,
+            "true_negatives": 58899,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.372307,
+            "precision": 0.912482,
+            "recall": 0.386094,
+            "f1_score": 0.5426,
+            "false_positive_rate": 0.004008,
+            "specificity": 0.995992,
+            "overall_pixel_accuracy": 0.936432
+          },
+          "median": {
+            "true_positives": 1881,
+            "false_positives": 11,
+            "false_negatives": 4519,
+            "true_negatives": 59125,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.293402,
+            "precision": 0.994186,
+            "recall": 0.293906,
+            "f1_score": 0.45369,
+            "false_positive_rate": 0.000186,
+            "specificity": 0.999814,
+            "overall_pixel_accuracy": 0.930878
+          }
+        },
+        "th_128": {
+          "gaussian": {
+            "true_positives": 495,
+            "false_positives": 2,
+            "false_negatives": 5905,
+            "true_negatives": 59134,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.07732,
+            "precision": 0.995976,
+            "recall": 0.077344,
+            "f1_score": 0.143541,
+            "false_positive_rate": 3.4e-05,
+            "specificity": 0.999966,
+            "overall_pixel_accuracy": 0.909866
+          },
+          "median": {
+            "true_positives": 252,
+            "false_positives": 6,
+            "false_negatives": 6148,
+            "true_negatives": 59130,
+            "total_pixels": 65536,
+            "ground_truth_positives": 6400,
+            "ground_truth_negatives": 59136,
+            "iou": 0.039338,
+            "precision": 0.976744,
+            "recall": 0.039375,
+            "f1_score": 0.075698,
+            "false_positive_rate": 0.000101,
+            "specificity": 0.999899,
+            "overall_pixel_accuracy": 0.906097
+          }
+        }
+      }
+    },
+    "img_false_positive_texture": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "GLOBAL_VARIANCE",
+          "raw_value": "548.6585"
+        }
+      ],
+      "residual_fidelity_gaussian_vs_median": {
+        "mse": 5128.8851,
+        "psnr_db": 11.0306,
+        "ssim": 0.4756
+      },
+      "threshold_evaluations": {
+        "th_32": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 23040,
+            "false_negatives": 0,
+            "true_negatives": 42496,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.351562,
+            "specificity": 0.648438,
+            "overall_pixel_accuracy": 0.648438
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 10626,
+            "false_negatives": 0,
+            "true_negatives": 54910,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.16214,
+            "specificity": 0.83786,
+            "overall_pixel_accuracy": 0.83786
+          }
+        },
+        "th_64": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 22528,
+            "false_negatives": 0,
+            "true_negatives": 43008,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.34375,
+            "specificity": 0.65625,
+            "overall_pixel_accuracy": 0.65625
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 10626,
+            "false_negatives": 0,
+            "true_negatives": 54910,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.16214,
+            "specificity": 0.83786,
+            "overall_pixel_accuracy": 0.83786
+          }
+        },
+        "th_128": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 11778,
+            "false_negatives": 0,
+            "true_negatives": 53758,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.179718,
+            "specificity": 0.820282,
+            "overall_pixel_accuracy": 0.820282
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 10626,
+            "false_negatives": 0,
+            "true_negatives": 54910,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.16214,
+            "specificity": 0.83786,
+            "overall_pixel_accuracy": 0.83786
+          }
+        }
+      }
+    },
+    "img_001_authentic_base": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "GLOBAL_VARIANCE",
+          "raw_value": "1.8483"
+        }
+      ],
+      "residual_fidelity_gaussian_vs_median": {
+        "mse": 95.7746,
+        "psnr_db": 28.3183,
+        "ssim": 0.8087
+      },
+      "threshold_evaluations": {
+        "th_32": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 677,
+            "false_negatives": 0,
+            "true_negatives": 64859,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.01033,
+            "specificity": 0.98967,
+            "overall_pixel_accuracy": 0.98967
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 14,
+            "false_negatives": 0,
+            "true_negatives": 65522,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.000214,
+            "specificity": 0.999786,
+            "overall_pixel_accuracy": 0.999786
+          }
+        },
+        "th_64": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 393,
+            "false_negatives": 0,
+            "true_negatives": 65143,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.005997,
+            "specificity": 0.994003,
+            "overall_pixel_accuracy": 0.994003
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 11,
+            "false_negatives": 0,
+            "true_negatives": 65525,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.000168,
+            "specificity": 0.999832,
+            "overall_pixel_accuracy": 0.999832
+          }
+        },
+        "th_128": {
+          "gaussian": {
+            "true_positives": 0,
+            "false_positives": 161,
+            "false_negatives": 0,
+            "true_negatives": 65375,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 0.002457,
+            "specificity": 0.997543,
+            "overall_pixel_accuracy": 0.997543
+          },
+          "median": {
+            "true_positives": 0,
+            "false_positives": 6,
+            "false_negatives": 0,
+            "true_negatives": 65530,
+            "total_pixels": 65536,
+            "ground_truth_positives": 0,
+            "ground_truth_negatives": 65536,
+            "iou": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1_score": 0.0,
+            "false_positive_rate": 9.2e-05,
+            "specificity": 0.999908,
+            "overall_pixel_accuracy": 0.999908
+          }
+        }
+      }
+    }
+  },
+  "jpeg_dct_validation": {
+    "img_001_authentic_base": {
+      "status": "NOT_APPLICABLE",
+      "observations": [],
+      "artifact_count": 0
+    },
+    "img_comp_q95": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "TOTAL_BLOCKS",
+          "raw_value": "1024",
+          "direction": "informational",
+          "interpretation": "Evaluated 1024 8x8 frequency blocks."
+        }
+      ],
+      "artifact_count": 0
+    },
+    "img_comp_q75": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "TOTAL_BLOCKS",
+          "raw_value": "1024",
+          "direction": "informational",
+          "interpretation": "Evaluated 1024 8x8 frequency blocks."
+        }
+      ],
+      "artifact_count": 0
+    },
+    "img_jpeg_double_q95_q75": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric_name": "TOTAL_BLOCKS",
+          "raw_value": "1024",
+          "direction": "informational",
+          "interpretation": "Evaluated 1024 8x8 frequency blocks."
+        }
+      ],
+      "artifact_count": 0
+    }
+  },
+  "copy_move_validation": {
+    "img_copymove_translated": {
+      "COPY_MOVE": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "MATCH_COUNT",
+            "raw_value": "13",
+            "interpretation": "Detected 13 keypoint correspondence pairs (0 geometric inliers)."
+          }
+        ],
+        "artifacts_count": 1
+      },
+      "CLONE-BLOCK": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "BLOCK_MATCH_COUNT",
+            "raw_value": "10353",
+            "interpretation": "Identified 10353 block pairs satisfying similarity >= 0.96 and spatial separation >= 32.0px."
+          },
+          {
+            "metric_name": "MATCH_CLUSTER_COUNT",
+            "raw_value": "490",
+            "interpretation": "Clustered matched blocks into 490 candidate displacement groups with >= 3 supporting pairs."
+          },
+          {
+            "metric_name": "MAX_CLUSTER_SIZE",
+            "raw_value": "152",
+            "interpretation": "Largest candidate displacement cluster contains 152 supporting block pairs."
+          },
+          {
+            "metric_name": "DISPLACEMENT_CONSISTENCY",
+            "raw_value": "0.0147",
+            "interpretation": "Displacement consistency fraction of dominant cluster is 0.015."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "490",
+            "interpretation": "Localized 490 candidate duplicated regions."
+          }
+        ],
+        "artifacts_count": 3
+      },
+      "CLONE-KEYPOINT": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "KEYPOINT_COUNT",
+            "raw_value": "77",
+            "interpretation": "Detected 77 deterministic ORB keypoints across active spatial gradient regions."
+          },
+          {
+            "metric_name": "RAW_MATCH_COUNT",
+            "raw_value": "28",
+            "interpretation": "Identified 28 spatial keypoint neighbor candidates satisfying distance >= 30.0px."
+          },
+          {
+            "metric_name": "FILTERED_MATCH_COUNT",
+            "raw_value": "6",
+            "interpretation": "6 candidate matches passed Lowe's ratio test (ratio <= 0.75)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_COUNT",
+            "raw_value": "5",
+            "interpretation": "5 keypoint pairs confirmed under RANSAC affine transformation consensus (threshold <= 5.0px)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_RATIO",
+            "raw_value": "0.8333",
+            "interpretation": "Geometric consensus ratio of 83.33% among filtered candidate pairings."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "1",
+            "interpretation": "Localized 1 candidate cloned region pair(s) through geometric consensus."
+          }
+        ],
+        "artifacts_count": 3
+      }
+    },
+    "img_false_positive_texture": {
+      "COPY_MOVE": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "MATCH_COUNT",
+            "raw_value": "641",
+            "interpretation": "Detected 641 keypoint correspondence pairs (0 geometric inliers)."
+          }
+        ],
+        "artifacts_count": 1
+      },
+      "CLONE-BLOCK": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "BLOCK_MATCH_COUNT",
+            "raw_value": "11893",
+            "interpretation": "Identified 11893 block pairs satisfying similarity >= 0.96 and spatial separation >= 32.0px."
+          },
+          {
+            "metric_name": "MATCH_CLUSTER_COUNT",
+            "raw_value": "46",
+            "interpretation": "Clustered matched blocks into 46 candidate displacement groups with >= 3 supporting pairs."
+          },
+          {
+            "metric_name": "MAX_CLUSTER_SIZE",
+            "raw_value": "837",
+            "interpretation": "Largest candidate displacement cluster contains 837 supporting block pairs."
+          },
+          {
+            "metric_name": "DISPLACEMENT_CONSISTENCY",
+            "raw_value": "0.0704",
+            "interpretation": "Displacement consistency fraction of dominant cluster is 0.070."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "46",
+            "interpretation": "Localized 46 candidate duplicated regions."
+          }
+        ],
+        "artifacts_count": 3
+      },
+      "CLONE-KEYPOINT": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "KEYPOINT_COUNT",
+            "raw_value": "1180",
+            "interpretation": "Detected 1180 deterministic ORB keypoints across active spatial gradient regions."
+          },
+          {
+            "metric_name": "RAW_MATCH_COUNT",
+            "raw_value": "1180",
+            "interpretation": "Identified 1180 spatial keypoint neighbor candidates satisfying distance >= 30.0px."
+          },
+          {
+            "metric_name": "FILTERED_MATCH_COUNT",
+            "raw_value": "235",
+            "interpretation": "235 candidate matches passed Lowe's ratio test (ratio <= 0.75)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_COUNT",
+            "raw_value": "24",
+            "interpretation": "24 keypoint pairs confirmed under RANSAC affine transformation consensus (threshold <= 5.0px)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_RATIO",
+            "raw_value": "0.1021",
+            "interpretation": "Geometric consensus ratio of 10.21% among filtered candidate pairings."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "1",
+            "interpretation": "Localized 1 candidate cloned region pair(s) through geometric consensus."
+          }
+        ],
+        "artifacts_count": 3
+      }
+    },
+    "img_001_authentic_base": {
+      "COPY_MOVE": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "MATCH_COUNT",
+            "raw_value": "0",
+            "interpretation": "Detected 0 keypoint correspondence pairs (0 geometric inliers)."
+          }
+        ],
+        "artifacts_count": 1
+      },
+      "CLONE-BLOCK": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "BLOCK_MATCH_COUNT",
+            "raw_value": "10394",
+            "interpretation": "Identified 10394 block pairs satisfying similarity >= 0.96 and spatial separation >= 32.0px."
+          },
+          {
+            "metric_name": "MATCH_CLUSTER_COUNT",
+            "raw_value": "485",
+            "interpretation": "Clustered matched blocks into 485 candidate displacement groups with >= 3 supporting pairs."
+          },
+          {
+            "metric_name": "MAX_CLUSTER_SIZE",
+            "raw_value": "165",
+            "interpretation": "Largest candidate displacement cluster contains 165 supporting block pairs."
+          },
+          {
+            "metric_name": "DISPLACEMENT_CONSISTENCY",
+            "raw_value": "0.0159",
+            "interpretation": "Displacement consistency fraction of dominant cluster is 0.016."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "485",
+            "interpretation": "Localized 485 candidate duplicated regions."
+          }
+        ],
+        "artifacts_count": 3
+      },
+      "CLONE-KEYPOINT": {
+        "status": "APPLIED",
+        "observations": [
+          {
+            "metric_name": "KEYPOINT_COUNT",
+            "raw_value": "39",
+            "interpretation": "Detected 39 deterministic ORB keypoints across active spatial gradient regions."
+          },
+          {
+            "metric_name": "RAW_MATCH_COUNT",
+            "raw_value": "14",
+            "interpretation": "Identified 14 spatial keypoint neighbor candidates satisfying distance >= 30.0px."
+          },
+          {
+            "metric_name": "FILTERED_MATCH_COUNT",
+            "raw_value": "2",
+            "interpretation": "2 candidate matches passed Lowe's ratio test (ratio <= 0.75)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_COUNT",
+            "raw_value": "0",
+            "interpretation": "0 keypoint pairs confirmed under RANSAC affine transformation consensus (threshold <= 5.0px)."
+          },
+          {
+            "metric_name": "GEOMETRIC_INLIER_RATIO",
+            "raw_value": "0.0",
+            "interpretation": "Geometric consensus ratio of 0.00% among filtered candidate pairings."
+          },
+          {
+            "metric_name": "CANDIDATE_REGION_COUNT",
+            "raw_value": "0",
+            "interpretation": "Localized 0 candidate cloned region pair(s) through geometric consensus."
+          }
+        ],
+        "artifacts_count": 3
+      }
+    }
+  },
+  "specialized_validation": {
+    "ADVANCED-NOISE": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric": "GLOBAL_NOISE_VARIANCE",
+          "val": "22.58076"
+        },
+        {
+          "metric": "GLOBAL_NOISE_MAD",
+          "val": "0.14567"
+        },
+        {
+          "metric": "GLOBAL_NOISE_ENTROPY",
+          "val": "4.0905"
+        },
+        {
+          "metric": "HIGH_FREQUENCY_NOISE_ENERGY",
+          "val": "0.002478"
+        },
+        {
+          "metric": "NOISE_INCONSISTENCY_REGION_COUNT",
+          "val": "1"
+        },
+        {
+          "metric": "MAX_LOCAL_NOISE_DEVIATION",
+          "val": "18872.691"
+        }
+      ]
+    },
+    "RESAMPLING": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric": "HORIZONTAL_PERIODICITY",
+          "val": "5.689"
+        },
+        {
+          "metric": "VERTICAL_PERIODICITY",
+          "val": "2.016"
+        },
+        {
+          "metric": "DOMINANT_PERIOD",
+          "val": "2.016"
+        },
+        {
+          "metric": "PERIODICITY_PEAK_STRENGTH",
+          "val": "5.604"
+        },
+        {
+          "metric": "RESAMPLING_CANDIDATE_REGION_COUNT",
+          "val": "4"
+        }
+      ]
+    },
+    "PRNU": {
+      "status": "APPLIED",
+      "observations": [
+        {
+          "metric": "PRNU_RESIDUAL_VARIANCE",
+          "val": "0.116403"
+        },
+        {
+          "metric": "PRNU_RESIDUAL_ENERGY",
+          "val": "0.116403"
+        },
+        {
+          "metric": "PRNU_SUITABILITY_INDEX",
+          "val": "0.8466"
+        },
+        {
+          "metric": "PRNU_MATCH_STATUS",
+          "val": "NOT_ESTIMATED"
+        }
+      ]
+    }
+  }
+}
