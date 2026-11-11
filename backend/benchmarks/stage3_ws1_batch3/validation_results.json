@@ -1,8 +1,8 @@
 {
   "metadata": {
     "benchmark_title": "ForenSight Stage 3, Workstream 1, Batch 3 Validation Benchmark",
-    "execution_timestamp_utc": "2026-11-11T07:27:57.605240+00:00",
-    "duration_seconds": 4.16,
+    "execution_timestamp_utc": "2026-11-11T07:57:53.388652+00:00",
+    "duration_seconds": 1.789,
     "dataset_id": "controlled-v1",
     "dataset_version": "1.0.0",
     "total_fixtures_evaluated": 11,
@@ -1180,7 +1180,7 @@
             "interpretation": "Detected 13 keypoint correspondence pairs (0 geometric inliers)."
           }
         ],
-        "artifacts_count": 1
+        "artifacts_count": 2
       },
       "CLONE-BLOCK": {
         "status": "APPLIED",
@@ -1260,7 +1260,7 @@
             "interpretation": "Detected 641 keypoint correspondence pairs (0 geometric inliers)."
           }
         ],
-        "artifacts_count": 1
+        "artifacts_count": 2
       },
       "CLONE-BLOCK": {
         "status": "APPLIED",
@@ -1340,7 +1340,7 @@
             "interpretation": "Detected 0 keypoint correspondence pairs (0 geometric inliers)."
           }
         ],
-        "artifacts_count": 1
+        "artifacts_count": 2
       },
       "CLONE-BLOCK": {
         "status": "APPLIED",

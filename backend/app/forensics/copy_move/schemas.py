@@ -44,3 +44,4 @@ class CopyMoveResult(BaseModel):
     geometry: Geometry
     candidate_regions: CandidateRegions
     visualization_artifact_path: str
+    side_by_side_artifact_path: Optional[str] = None

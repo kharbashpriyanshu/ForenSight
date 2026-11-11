@@ -399,6 +399,25 @@ class LegacyCopyMoveAdapter(BaseForensicEngine):
                 )
             )
 
+        if getattr(res, "side_by_side_artifact_path", None) and os.path.exists(res.side_by_side_artifact_path):
+            sbs_hash = hashlib.sha256(open(res.side_by_side_artifact_path, "rb").read()).hexdigest()
+            artifacts.append(
+                EngineArtifactMetadata(
+                    artifact_id=f"art_cm_sbs_{sbs_hash[:8]}",
+                    evidence_id=context.evidence_id,
+                    analysis_id=context.analysis_id,
+                    engine_id=self.engine_id,
+                    engine_version=self.engine_version,
+                    artifact_type=ArtifactType.VISUALIZATION,
+                    storage_path=res.side_by_side_artifact_path,
+                    sha256_hash=sbs_hash,
+                    mime_type="image/png",
+                    width=context.width * 2,
+                    height=context.height,
+                    parameters_used=context.parameters,
+                )
+            )
+
         return EngineExecutionResult(
             engine_id=self.engine_id,
             engine_version=self.engine_version,

@@ -167,8 +167,10 @@ class TestManifestIntegrity:
 class TestExistingFreezeInvariant:
     """Verifies that the repository's production manifest and files match 100%."""
 
-    RECONCILED_EIGHT_FILES = {
-        "app/forensics/copy_move/engine.py": "b87352ca9c4bb7a14b28ddfcbeb7bbe7efaa6d2b632862dd17619b017fb32ef2",
+    RECONCILED_FILES = {
+        "app/forensics/copy_move/analyzer.py": "2e7e5aa7fc6b90980f30e3c339b68b3c98f3df959a79e0e33c698080e185fb44",
+        "app/forensics/copy_move/engine.py": "6411b46d62735c77435b499bf156309b01310808d1aece276a3998709a2baf1e",
+        "app/forensics/copy_move/schemas.py": "ff2e6bb8a8853378d917ab9b067322fbebbebb5e51f28086cdb06654304a6f55",
         "app/forensics/ela/analyzer.py": "29c625548e02f3f890fcf485cd40b60168b81dfbc1290bd86d12d566f3a79959",
         "app/forensics/ela/engine.py": "34b49d76076f648492f27c37f277cfada569986cb9eed8d1cb6de73877233baf",
         "app/forensics/ela/schemas.py": "19c8f6eefa3e5afe832d6600b5b7ec83e8d43c190e39595e6d4d9a7c15161f34",
@@ -188,26 +190,26 @@ class TestExistingFreezeInvariant:
         discrepancies = verify_freeze_integrity(current, committed, EXPECTED_PROTECTED_FILES)
         assert len(discrepancies) == 0, f"Expected zero discrepancies, got:\n" + "\n".join(discrepancies)
 
-    def test_eight_reconciled_hashes_verified(self):
+    def test_reconciled_hashes_verified(self):
         committed = load_manifest_with_duplicate_check(MANIFEST_FILE)
         current = scan_forensics_directory()
 
-        for path, expected_hash in self.RECONCILED_EIGHT_FILES.items():
+        for path, expected_hash in self.RECONCILED_FILES.items():
             assert committed[path] == expected_hash, f"Manifest hash mismatch for reconciled {path}"
             assert current[path] == expected_hash, f"Current file hash mismatch for reconciled {path}"
 
-    def test_thirty_unmodified_hashes_preserved(self):
+    def test_unmodified_hashes_preserved(self):
         committed = load_manifest_with_duplicate_check(MANIFEST_FILE)
         current = scan_forensics_directory()
 
         unmodified_count = 0
         for path in EXPECTED_PROTECTED_FILES:
-            if path in self.RECONCILED_EIGHT_FILES:
+            if path in self.RECONCILED_FILES:
                 continue
             assert committed[path] == current[path], f"Unmodified file {path} should match manifest"
             unmodified_count += 1
 
-        assert unmodified_count == 30, f"Expected exactly 30 unmodified files, got {unmodified_count}"
+        assert unmodified_count == 28, f"Expected exactly 28 unmodified files, got {unmodified_count}"
 
     def test_unauthorized_modification_fails_verification(self):
         committed = load_manifest_with_duplicate_check(MANIFEST_FILE)

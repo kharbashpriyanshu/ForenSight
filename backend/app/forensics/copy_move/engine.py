@@ -1,5 +1,7 @@
 import os
 import uuid
+import math
+from typing import List, Optional
 import cv2
 import numpy as np
 from .schemas import (
@@ -121,18 +123,31 @@ class CopyMoveEngine:
             inlier_ratio = len(inlier_matches) / len(unique_matches) if unique_matches else 0.0
 
             # 5. Visualization
-            # Draw the lines connecting the duplicated regions within the same image
-            vis_img = cv2.drawMatches(
+            # Primary diagnostic artifact: Single-frame coordinate overlay on native image dimensions (W x H)
+            vis_overlay = CopyMoveEngine._render_single_frame_overlay(
+                img=img,
+                keypoints=keypoints,
+                inlier_matches=inlier_matches,
+                src_bbox=src_bbox,
+                dst_bbox=dst_bbox,
+                src_centroid=src_centroid,
+                dst_centroid=dst_centroid,
+            )
+
+            run_id = uuid.uuid4().hex[:8]
+            os.makedirs(output_dir, exist_ok=True)
+            vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.png")
+            cv2.imwrite(vis_path, vis_overlay)
+
+            # Secondary diagnostic artifact: Side-by-side match visualization for debugging (2W x H)
+            vis_sbs = cv2.drawMatches(
                 img, keypoints, img, keypoints, inlier_matches, None,
                 matchColor=(0, 255, 0), singlePointColor=(0, 0, 255),
                 flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS
             )
-            
-            run_id = uuid.uuid4().hex[:8]
-            os.makedirs(output_dir, exist_ok=True)
-            vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.png")
-            cv2.imwrite(vis_path, vis_img)
-            
+            vis_sbs_path = os.path.join(output_dir, f"copymove_side_by_side_{run_id}.png")
+            cv2.imwrite(vis_sbs_path, vis_sbs)
+
             return CopyMoveResult(
                 config=DetectionConfig(
                     detector="SIFT",
@@ -166,7 +181,8 @@ class CopyMoveEngine:
                     destination_bounding_box=dst_bbox,
                     supporting_matches=len(inlier_matches)
                 ),
-                visualization_artifact_path=vis_path
+                visualization_artifact_path=vis_path,
+                side_by_side_artifact_path=vis_sbs_path
             )
             
         except ImageProcessingError:
@@ -175,13 +191,91 @@ class CopyMoveEngine:
             raise ImageProcessingError(f"Copy-Move processing failed: {str(e)}")
 
     @staticmethod
+    def _render_single_frame_overlay(
+        img: np.ndarray,
+        keypoints: List[cv2.KeyPoint],
+        inlier_matches: List[cv2.DMatch],
+        src_bbox: Optional[List[float]],
+        dst_bbox: Optional[List[float]],
+        src_centroid: Optional[List[float]],
+        dst_centroid: Optional[List[float]],
+    ) -> np.ndarray:
+        """
+        Renders a single-frame coordinate overlay on native image dimensions (W x H).
+        Plots source and destination bounding boxes, inlier correspondences, and
+        directional displacement arrow without modifying original image bytes or resizing.
+        """
+        overlay = img.copy()
+        h, w = overlay.shape[:2]
+
+        if not inlier_matches or src_bbox is None or dst_bbox is None:
+            return overlay
+
+        # 1. Draw inlier keypoint correspondences (subtle connection lines and markers)
+        for m in inlier_matches:
+            x1 = int(round(np.clip(keypoints[m.queryIdx].pt[0], 0, w - 1)))
+            y1 = int(round(np.clip(keypoints[m.queryIdx].pt[1], 0, h - 1)))
+            x2 = int(round(np.clip(keypoints[m.trainIdx].pt[0], 0, w - 1)))
+            y2 = int(round(np.clip(keypoints[m.trainIdx].pt[1], 0, h - 1)))
+
+            cv2.line(overlay, (x1, y1), (x2, y2), (180, 180, 180), 1, cv2.LINE_AA)
+            cv2.circle(overlay, (x1, y1), 3, (255, 180, 0), -1, cv2.LINE_AA)
+            cv2.circle(overlay, (x2, y2), 3, (0, 80, 255), -1, cv2.LINE_AA)
+
+        # 2. Draw Source Bounding Box (Cyan/Blue: (255, 180, 0) BGR)
+        sx, sy, sw, sh = src_bbox
+        x1_s = int(round(np.clip(sx, 0, w - 1)))
+        y1_s = int(round(np.clip(sy, 0, h - 1)))
+        x2_s = int(round(np.clip(sx + sw, 0, w - 1)))
+        y2_s = int(round(np.clip(sy + sh, 0, h - 1)))
+
+        if x2_s > x1_s and y2_s > y1_s:
+            cv2.rectangle(overlay, (x1_s, y1_s), (x2_s, y2_s), (255, 180, 0), 2, cv2.LINE_AA)
+            s_label = "SRC"
+            (lw, lh), _ = cv2.getTextSize(s_label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+            by1 = max(0, y1_s - lh - 4)
+            cv2.rectangle(overlay, (x1_s, by1), (x1_s + lw + 4, y1_s), (255, 180, 0), -1)
+            cv2.putText(overlay, s_label, (x1_s + 2, y1_s - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+
+        # 3. Draw Destination Bounding Box (Orange/Red: (0, 80, 255) BGR)
+        dx, dy, dw, dh = dst_bbox
+        x1_d = int(round(np.clip(dx, 0, w - 1)))
+        y1_d = int(round(np.clip(dy, 0, h - 1)))
+        x2_d = int(round(np.clip(dx + dw, 0, w - 1)))
+        y2_d = int(round(np.clip(dy + dh, 0, h - 1)))
+
+        if x2_d > x1_d and y2_d > y1_d:
+            cv2.rectangle(overlay, (x1_d, y1_d), (x2_d, y2_d), (0, 80, 255), 2, cv2.LINE_AA)
+            d_label = "CLONE"
+            (dlw, dlh), _ = cv2.getTextSize(d_label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+            d_by1 = max(0, y1_d - dlh - 4)
+            cv2.rectangle(overlay, (x1_d, d_by1), (x1_d + dlw + 4, y1_d), (0, 80, 255), -1)
+            cv2.putText(overlay, d_label, (x1_d + 2, y1_d - 2), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # 4. Draw Directional Displacement Arrow connecting centroids
+        if src_centroid is not None and dst_centroid is not None:
+            c1 = (int(round(np.clip(src_centroid[0], 0, w - 1))), int(round(np.clip(src_centroid[1], 0, h - 1))))
+            c2 = (int(round(np.clip(dst_centroid[0], 0, w - 1))), int(round(np.clip(dst_centroid[1], 0, h - 1))))
+            cv2.drawMarker(overlay, c1, (255, 200, 0), cv2.MARKER_CROSS, 8, 2, cv2.LINE_AA)
+            cv2.drawMarker(overlay, c2, (0, 80, 255), cv2.MARKER_CROSS, 8, 2, cv2.LINE_AA)
+            disp_dist = math.hypot(c2[0] - c1[0], c2[1] - c1[1])
+            if disp_dist > 5.0:
+                cv2.arrowedLine(overlay, c1, c2, (0, 255, 0), 2, cv2.LINE_AA, tipLength=min(0.25, 20.0 / disp_dist))
+
+        return overlay
+
+    @staticmethod
     def _empty_result(img, output_dir, ratio_thresh, spatial_dist, ransac_thresh):
         h, w = img.shape[:2]
         
         run_id = uuid.uuid4().hex[:8]
         os.makedirs(output_dir, exist_ok=True)
         vis_path = os.path.join(output_dir, f"copymove_map_{run_id}.png")
-        cv2.imwrite(vis_path, img) # Just save original as map since no matches
+        cv2.imwrite(vis_path, img) # Single-frame clean image
+        
+        vis_sbs_path = os.path.join(output_dir, f"copymove_side_by_side_{run_id}.png")
+        sbs_empty = np.hstack([img, img])
+        cv2.imwrite(vis_sbs_path, sbs_empty)
         
         return CopyMoveResult(
             config=DetectionConfig(
@@ -205,5 +299,6 @@ class CopyMoveEngine:
             candidate_regions=CandidateRegions(
                 source_bounding_box=None, destination_bounding_box=None, supporting_matches=0
             ),
-            visualization_artifact_path=vis_path
+            visualization_artifact_path=vis_path,
+            side_by_side_artifact_path=vis_sbs_path
         )

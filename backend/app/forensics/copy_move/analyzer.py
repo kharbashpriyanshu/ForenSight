@@ -34,7 +34,16 @@ class CopyMoveAnalyzer:
             analysis.summary = "Classical Copy-Move Analysis completed successfully."
             
             map_relative = os.path.relpath(res.visualization_artifact_path, start=settings.STORAGE_DIR).replace("\\", "/")
-            
+            sbs_relative = (
+                os.path.relpath(res.side_by_side_artifact_path, start=settings.STORAGE_DIR).replace("\\", "/")
+                if res.side_by_side_artifact_path and os.path.exists(res.side_by_side_artifact_path)
+                else None
+            )
+
+            artifacts_payload = {"copymove_map": map_relative}
+            if sbs_relative:
+                artifacts_payload["side_by_side_map"] = sbs_relative
+
             analysis.structured_findings = {
                 "config": res.config.model_dump() if hasattr(res.config, 'model_dump') else res.config.dict(),
                 "image_info": res.image_info.model_dump() if hasattr(res.image_info, 'model_dump') else res.image_info.dict(),
@@ -42,9 +51,7 @@ class CopyMoveAnalyzer:
                 "matching_statistics": res.matching_statistics.model_dump() if hasattr(res.matching_statistics, 'model_dump') else res.matching_statistics.dict(),
                 "geometry": res.geometry.model_dump() if hasattr(res.geometry, 'model_dump') else res.geometry.dict(),
                 "candidate_regions": res.candidate_regions.model_dump() if hasattr(res.candidate_regions, 'model_dump') else res.candidate_regions.dict(),
-                "artifacts": {
-                    "copymove_map": map_relative
-                }
+                "artifacts": artifacts_payload
             }
             
             analysis.completed_at = datetime.datetime.utcnow()

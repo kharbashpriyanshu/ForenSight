@@ -243,7 +243,7 @@ This document establishes the verified capability inventory for all 23 engines. 
 #### 19. COPY_MOVE (`COPY_MOVE`)
 - **Mathematical Operation:** Legacy adapter interface executing multi-stage feature extraction, keypoint matching, and affine RANSAC verification.
 - **Input Requirements:** Container agnostic; min dimensions $32 \times 32$.
-- **Output:** Match count, geometric inlier count, candidate region bounding boxes, visualization overlay.
+- **Output:** Match count, geometric inlier count, candidate region bounding boxes, primary single-frame coordinate overlay ($W \times H$), secondary side-by-side match artifact ($2W \times H$).
 - **Localization Feasibility:** **CONDITIONAL.** Yields candidate bounding boxes, not dense pixel masks.
 - **Legitimate Metrics:** Inlier count, inlier ratio, candidate bounding box IoU vs ground-truth bounding box.
 - **Limitations & Non-Claims:** Fails on featureless duplicated patches; prone to false positives on repetitive textures.
