@@ -560,15 +560,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       </div>
 
       {/* Control Console (Tabs & Mode Selectors) */}
-      <div style={{ 
-        background: 'var(--surface-color-light)', 
-        border: '1px solid var(--border-color)', 
-        borderRadius: '10px', 
-        padding: '0.85rem 1rem', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '0.85rem' 
-      }}>
+      <div className="microscopy-control-console">
         {/* Mode Selector Buttons */}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginRight: '0.3rem' }}>
@@ -588,21 +580,9 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             return (
               <button
                 key={m.id}
+                type="button"
                 onClick={() => setFilterMode(m.id as FilterMode)}
-                style={{
-                  padding: '0.32rem 0.7rem',
-                  fontSize: '0.75rem',
-                  fontWeight: isSel ? 700 : 500,
-                  borderRadius: '6px',
-                  border: isSel ? '1px solid var(--accent-color)' : '1px solid var(--border-color)',
-                  background: isSel ? 'var(--accent-gradient)' : 'rgba(255, 255, 255, 0.75)',
-                  color: isSel ? '#fff9ee' : 'var(--text-body)',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  transition: 'all 0.15s ease'
-                }}
+                className={`microscopy-btn ${isSel ? 'active' : ''}`}
               >
                 <Icon size={13} /> {m.label}
               </button>
@@ -614,13 +594,13 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
         {filterMode === 'level_sweep' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.4rem', borderTop: '1px dashed var(--border-color)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-              <span style={{ fontWeight: 600 }}>Tonal Range:</span>
-              <code style={{ background: '#f5efe4', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>Tonal Range:</span>
+              <code className="microscopy-code-badge">
                 [{levelMin} — {levelMax}] / 255
               </code>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }}>
-              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Min:</label>
+              <label style={{ fontWeight: 600, color: 'var(--text-body)' }}>Min:</label>
               <input 
                 type="range" 
                 min="0" 
@@ -631,12 +611,12 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                   // Min is clamped to levelMax so it never increases or mutates levelMax
                   setLevelMin(Math.min(val, levelMax));
                 }}
-                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
+                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--accent-color)' }}
               />
-              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600 }}>{levelMin}</span>
+              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-main)' }}>{levelMin}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }}>
-              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Max:</label>
+              <label style={{ fontWeight: 600, color: 'var(--text-body)' }}>Max:</label>
               <input 
                 type="range" 
                 min="0" 
@@ -647,12 +627,12 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                   // Max is clamped to levelMin so it never decreases or mutates levelMin
                   setLevelMax(Math.max(val, levelMin));
                 }}
-                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--primary-color)' }}
+                style={{ width: '95px', cursor: 'pointer', accentColor: 'var(--accent-color)' }}
               />
-              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600 }}>{levelMax}</span>
+              <span style={{ minWidth: '24px', fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-main)' }}>{levelMax}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem' }}>
-              <label style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Tint:</label>
+              <label style={{ fontWeight: 600, color: 'var(--text-body)' }}>Tint:</label>
               <input 
                 type="color" 
                 value={levelHighlightColor} 
@@ -700,6 +680,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
               </button>
             </div>
             <button 
+              type="button"
               className="btn btn-secondary"
               onClick={() => setAutoSweepActive(a => !a)}
               style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', gap: '0.35rem' }}
@@ -712,21 +693,13 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
         {filterMode === 'bit_plane' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Active Bit Plane:</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Active Bit Plane:</span>
             {[0, 1, 2, 3, 4, 5, 6, 7].map(b => (
               <button
                 key={b}
+                type="button"
                 onClick={() => setBitPlane(b)}
-                style={{
-                  padding: '0.2rem 0.55rem',
-                  fontSize: '0.75rem',
-                  fontWeight: bitPlane === b ? 700 : 500,
-                  borderRadius: '4px',
-                  background: bitPlane === b ? 'var(--primary-color)' : '#fff',
-                  color: bitPlane === b ? '#fff' : 'var(--text-main)',
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer'
-                }}
+                className={`microscopy-chip-btn ${bitPlane === b ? 'active' : ''}`}
               >
                 Bit {b} {b === 0 ? '(LSB)' : b === 7 ? '(MSB)' : ''}
               </button>
@@ -739,7 +712,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
         {filterMode === 'color_channel' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Channel Decomposition:</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Channel Decomposition:</span>
             {[
               { id: 'blue', label: 'Blue Channel' },
               { id: 'green', label: 'Green Channel' },
@@ -751,17 +724,9 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             ].map(c => (
               <button
                 key={c.id}
+                type="button"
                 onClick={() => setSelectedChannel(c.id as ColorChannel)}
-                style={{
-                  padding: '0.22rem 0.6rem',
-                  fontSize: '0.74rem',
-                  fontWeight: selectedChannel === c.id ? 700 : 500,
-                  borderRadius: '4px',
-                  background: selectedChannel === c.id ? 'var(--primary-color)' : '#fff',
-                  color: selectedChannel === c.id ? '#fff' : 'var(--text-main)',
-                  border: '1px solid var(--border-color)',
-                  cursor: 'pointer'
-                }}
+                className={`microscopy-chip-btn ${selectedChannel === c.id ? 'active' : ''}`}
               >
                 {c.label}
               </button>
@@ -771,13 +736,13 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
         {filterMode === 'gradient_sobel' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Sobel Noise Gate:</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Sobel Noise Gate:</span>
             <input 
               type="range" min="0" max="150" value={sobelThreshold} 
               onChange={e => setSobelThreshold(parseInt(e.target.value))}
-              style={{ width: '120px' }}
+              style={{ width: '120px', accentColor: 'var(--accent-color)' }}
             />
-            <code style={{ fontSize: '0.75rem' }}>Threshold: {sobelThreshold}</code>
+            <code className="microscopy-code-badge">Threshold: {sobelThreshold}</code>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
               Displays image gradients; strong edges are common in authentic imagery and need independent corroboration.
             </span>
@@ -786,13 +751,13 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
         {filterMode === 'clahe_contrast' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Gamma Adjustment:</span>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Gamma Adjustment:</span>
             <input 
               type="range" min="0.5" max="5.0" step="0.1" value={contrastBoost} 
               onChange={e => setContrastBoost(parseFloat(e.target.value))}
-              style={{ width: '120px' }}
+              style={{ width: '120px', accentColor: 'var(--accent-color)' }}
             />
-            <code style={{ fontSize: '0.75rem' }}>{contrastBoost.toFixed(1)}x</code>
+            <code className="microscopy-code-badge">{contrastBoost.toFixed(1)}x</code>
             <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
               Applies a global gamma curve for visual inspection; this is not local contrast equalization or evidence of manipulation.
             </span>
@@ -800,10 +765,10 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
         )}
 
         {/* Viewport Secondary Controls: Split Curtain & Loupe Toggles */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.3rem', borderTop: '1px solid var(--border-color)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
           {/* Split Wipe Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+            <label className="microscopy-checkbox-label">
               <input 
                 type="checkbox" 
                 checked={splitWipeActive} 
@@ -812,11 +777,11 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
               <Split size={14} /> Split Curtain Wipe
             </label>
             {splitWipeActive && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-main)' }}>
                 <input 
                   type="range" min="5" max="95" value={splitPosition} 
                   onChange={e => setSplitPosition(parseInt(e.target.value))} 
-                  style={{ width: '100px' }}
+                  style={{ width: '100px', accentColor: 'var(--accent-color)' }}
                 />
                 <span>{splitPosition}% (Original | Filtered)</span>
               </div>
@@ -825,7 +790,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
 
           {/* Loupe Magnifier Toggle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+            <label className="microscopy-checkbox-label">
               <input 
                 type="checkbox" 
                 checked={loupeActive} 
@@ -835,50 +800,36 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             </label>
 
             {loupeActive && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
-                <span>Power:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-main)' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Power:</span>
                 {[2, 4, 8, 16].map(p => (
                   <button
                     key={p}
+                    type="button"
                     onClick={() => setLoupePower(p)}
-                    style={{
-                      padding: '0.15rem 0.4rem',
-                      fontSize: '0.72rem',
-                      borderRadius: '3px',
-                      background: loupePower === p ? 'var(--primary-color)' : '#fff',
-                      color: loupePower === p ? '#fff' : '#000',
-                      border: '1px solid var(--border-color)',
-                      cursor: 'pointer'
-                    }}
+                    className={`microscopy-chip-btn ${loupePower === p ? 'active' : ''}`}
                   >
                     {p}x
                   </button>
                 ))}
 
-                <span style={{ marginLeft: '0.4rem' }}>Size:</span>
+                <span style={{ marginLeft: '0.4rem', color: 'var(--text-muted)' }}>Size:</span>
                 {[160, 220, 300].map(s => (
                   <button
                     key={s}
+                    type="button"
                     onClick={() => setLoupeSize(s)}
-                    style={{
-                      padding: '0.15rem 0.4rem',
-                      fontSize: '0.72rem',
-                      borderRadius: '3px',
-                      background: loupeSize === s ? 'var(--primary-color)' : '#fff',
-                      color: loupeSize === s ? '#fff' : '#000',
-                      border: '1px solid var(--border-color)',
-                      cursor: 'pointer'
-                    }}
+                    className={`microscopy-chip-btn ${loupeSize === s ? 'active' : ''}`}
                   >
                     {s}px
                   </button>
                 ))}
 
-                <span style={{ marginLeft: '0.4rem' }}>Loupe Filter:</span>
+                <span style={{ marginLeft: '0.4rem', color: 'var(--text-muted)' }}>Loupe Filter:</span>
                 <select 
                   value={loupeFilter} 
                   onChange={e => setLoupeFilter(e.target.value as FilterMode)}
-                  style={{ fontSize: '0.72rem', padding: '0.15rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}
+                  className="microscopy-select"
                 >
                   <option value="original">Raw Pixels</option>
                   <option value="level_sweep">Level Sweep</option>
@@ -1005,16 +956,8 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       </div>
 
       {/* Forensic Examination Guide */}
-      <div style={{
-        background: 'rgba(184, 135, 42, 0.05)',
-        border: '1px solid rgba(184, 135, 42, 0.22)',
-        borderRadius: '8px',
-        padding: '0.85rem 1.1rem',
-        fontSize: '0.8rem',
-        lineHeight: 1.5,
-        color: 'var(--text-body)'
-      }}>
-        <strong style={{ color: '#92560a' }}>Forensic Examiner Inspection Guidelines:</strong>
+      <div className="microscopy-guideline-box">
+        <strong className="microscopy-guideline-title">Forensic Examiner Inspection Guidelines:</strong>
         <ul style={{ margin: '0.4rem 0 0 1.25rem', padding: 0 }}>
           <li><strong>Level Sweep:</strong> Highlights pixels within a selected luminance range. Compression, lighting, and scene content can all create visible boundaries; inspect the original and corroborate with independent methods.</li>
           <li><strong>Bit Plane:</strong> Displays selected least- or most-significant channel bits. Demosaicing, compression, editing, and encoding can all affect these patterns; a bit-plane view alone cannot identify sensor noise, steganography, or manipulation.</li>

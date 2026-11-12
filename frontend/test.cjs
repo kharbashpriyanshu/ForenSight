@@ -945,7 +945,109 @@ async function main() {
   assert.ok(tabScrollResult.afterCoreScroll >= 300, `Core DIP tab switch must not jump scrollTop to 0 (got ${tabScrollResult.afterCoreScroll})`);
   assert.equal(tabScrollResult.coreGridAlignItems, 'start', 'Core DIP Engines grid must use align-items: start to avoid blank card stretching');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation');
+  // 14: Investigation Workbench Dark-Mode Visibility & Top-Level Navigation Continuity
+  await page.evaluate(() => {
+    localStorage.setItem('forensight-theme', 'dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  });
+
+  // 14a: Top-level navigation strip sequence & horizontal scroll preservation
+  const navStability = await page.evaluate(async () => {
+    const pc = document.querySelector('.page-container');
+    const nav = document.getElementById('workbench-nav');
+    pc.scrollTop = 550;
+    nav.scrollLeft = 40;
+    const initialNavScrollLeft = nav.scrollLeft;
+
+    const findTab = (name) => Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes(name));
+
+    // Sequence: Microscopy -> Physics -> Core DIP -> Microscopy -> Overview
+    findTab('Microscopy').click();
+    await new Promise((r) => setTimeout(r, 100));
+    const s1 = pc.scrollTop;
+
+    findTab('Physics & Geometry').click();
+    await new Promise((r) => setTimeout(r, 100));
+    const s2 = pc.scrollTop;
+
+    findTab('Core DIP Engines').click();
+    await new Promise((r) => setTimeout(r, 100));
+    const s3 = pc.scrollTop;
+
+    findTab('Microscopy').click();
+    await new Promise((r) => setTimeout(r, 100));
+    const s4 = pc.scrollTop;
+
+    findTab('Overview').click();
+    await new Promise((r) => setTimeout(r, 100));
+    const s5 = pc.scrollTop;
+
+    // Check active tab styling in dark mode
+    const activeTab = nav.querySelector('.workbench-nav-tab.active');
+    const activeStyles = activeTab ? getComputedStyle(activeTab) : null;
+    const activeBadge = activeTab ? activeTab.querySelector('.workbench-nav-badge') : null;
+    const badgeStyles = activeBadge ? getComputedStyle(activeBadge) : null;
+
+    return {
+      initialNavScrollLeft,
+      finalNavScrollLeft: nav.scrollLeft,
+      scrollPositions: [s1, s2, s3, s4, s5],
+      activeTabHasClass: Boolean(activeTab),
+      activeTabColor: activeStyles?.color,
+      badgeColor: badgeStyles?.color,
+    };
+  });
+
+  assert.ok(navStability.activeTabHasClass, 'Active investigation tab must carry .workbench-nav-tab.active');
+  assert.ok(
+    navStability.scrollPositions.every((s) => s >= 400),
+    `Investigation tab navigation sequence must preserve scroll position without reset to top: ${JSON.stringify(navStability.scrollPositions)}`,
+  );
+
+  // 14b: Interactive Microscopy dark-mode controls visibility & contrast
+  await page.evaluate(() => {
+    const nav = document.getElementById('workbench-nav');
+    Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes('Microscopy')).click();
+  });
+  await page.waitForSelector('.microscopy-control-console');
+
+  const microscopyDarkMetrics = await page.evaluate(async () => {
+    const sweepBtn = Array.from(document.querySelectorAll('.microscopy-btn')).find((b) => (b.textContent || '').includes('Level Sweep'));
+    if (sweepBtn) sweepBtn.click();
+
+    const checkboxes = Array.from(document.querySelectorAll('.microscopy-checkbox-label input[type="checkbox"]'));
+    checkboxes.forEach((cb) => { if (!cb.checked) cb.click(); });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const activeFilterBtn = document.querySelector('.microscopy-btn.active');
+    const inactiveFilterBtn = Array.from(document.querySelectorAll('.microscopy-btn')).find((b) => !b.classList.contains('active'));
+    const activeChip = document.querySelector('.microscopy-chip-btn.active');
+    const inactiveChip = Array.from(document.querySelectorAll('.microscopy-chip-btn')).find((b) => !b.classList.contains('active'));
+    const checkboxLabel = document.querySelector('.microscopy-checkbox-label');
+    const codeBadge = document.querySelector('.microscopy-code-badge');
+    const selectControl = document.querySelector('.microscopy-select');
+
+    return {
+      activeFilterColor: activeFilterBtn ? getComputedStyle(activeFilterBtn).color : null,
+      inactiveFilterColor: inactiveFilterBtn ? getComputedStyle(inactiveFilterBtn).color : null,
+      activeChipColor: activeChip ? getComputedStyle(activeChip).color : null,
+      inactiveChipColor: inactiveChip ? getComputedStyle(inactiveChip).color : null,
+      checkboxLabelColor: checkboxLabel ? getComputedStyle(checkboxLabel).color : null,
+      codeBadgeBg: codeBadge ? getComputedStyle(codeBadge).backgroundColor : null,
+      codeBadgeColor: codeBadge ? getComputedStyle(codeBadge).color : null,
+      selectBg: selectControl ? getComputedStyle(selectControl).backgroundColor : null,
+      selectColor: selectControl ? getComputedStyle(selectControl).color : null,
+    };
+  });
+
+  assert.ok(microscopyDarkMetrics.activeFilterColor, 'Active filter button must have computed color');
+  assert.ok(microscopyDarkMetrics.inactiveFilterColor, 'Inactive filter button must have computed color');
+  assert.notEqual(microscopyDarkMetrics.inactiveFilterColor, 'rgb(0, 0, 0)', 'Inactive filter button must not be pure black in dark mode');
+  assert.notEqual(microscopyDarkMetrics.checkboxLabelColor, 'rgb(0, 0, 0)', 'Checkbox label must not be pure black in dark mode');
+  assert.ok(microscopyDarkMetrics.codeBadgeColor, 'Code badge must have visible color in dark mode');
+  assert.ok(microscopyDarkMetrics.selectBg, 'Select control must have styled dark background');
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation → workbench dark mode');
 }
 
 main()

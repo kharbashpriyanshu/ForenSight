@@ -571,21 +571,7 @@ export default function EvidenceDetail() {
           />
 
           {/* Categorized Forensic Workbench Navigation */}
-          <div id="workbench-nav" style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 90,
-            background: 'var(--surface-color-solid, #faf7f1)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '10px',
-            padding: '0.45rem 0.65rem',
-            margin: '0 0 0.5rem 0',
-            display: 'flex',
-            gap: '0.45rem',
-            overflowX: 'auto',
-            boxShadow: '0 4px 16px -2px rgba(26, 22, 16, 0.12), 0 2px 6px -1px rgba(26, 22, 16, 0.08)',
-            alignItems: 'center'
-          }}>
+          <div id="workbench-nav" className="workbench-nav-container">
             {workbenchTabs.map(t => {
               const isActive = workbenchTab === t.id;
               return (
@@ -593,32 +579,11 @@ export default function EvidenceDetail() {
                   key={t.id}
                   type="button"
                   onClick={() => setWorkbenchTab(t.id as any)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    padding: '0.4rem 0.75rem',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    border: isActive ? '1px solid var(--primary-border)' : '1px solid transparent',
-                    background: isActive ? 'var(--primary-light)' : 'transparent',
-                    color: isActive ? 'var(--primary-color)' : 'var(--text-muted)',
-                    transition: 'all 0.15s ease'
-                  }}
+                  className={`workbench-nav-tab ${isActive ? 'active' : ''}`}
                 >
                   <span>{t.icon}</span>
                   <span>{t.label}</span>
-                  <span style={{
-                    fontSize: '0.68rem',
-                    padding: '0.1rem 0.4rem',
-                    borderRadius: '9999px',
-                    background: isActive ? 'var(--primary-color)' : 'var(--surface-color-light)',
-                    color: isActive ? '#ffffff' : 'var(--text-muted)',
-                    fontWeight: 700
-                  }}>
+                  <span className="workbench-nav-badge">
                     {t.count}
                   </span>
                 </button>
