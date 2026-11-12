@@ -1,9 +1,24 @@
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Iterator, Optional
 from urllib.parse import urlparse
 import base64
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+_storage_dir_override: ContextVar[Optional[str]] = ContextVar("storage_dir_override", default=None)
+
+
+@contextmanager
+def storage_dir_override(path: str) -> Iterator[str]:
+    """Temporarily override `settings.STORAGE_DIR` for the current execution context only."""
+    token = _storage_dir_override.set(path)
+    try:
+        yield path
+    finally:
+        _storage_dir_override.reset(token)
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "ForenSight"
@@ -37,6 +52,17 @@ class Settings(BaseSettings):
     CASE_EXPORT_SIGNING_PRIVATE_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    def configured_storage_dir(self) -> str:
+        """Return the underlying configured STORAGE_DIR ignoring any context-local override."""
+        return super().__getattribute__("STORAGE_DIR")
+
+    def __getattribute__(self, name: str):
+        if name == "STORAGE_DIR":
+            override = _storage_dir_override.get()
+            if override is not None:
+                return override
+        return super().__getattribute__(name)
 
 settings = Settings()
 

@@ -4,13 +4,12 @@ import hashlib
 import os
 import shutil
 import tempfile
-import threading
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, Optional
 
-from app.core.config import settings
+from app.core.config import settings, storage_dir_override
 
 
 class StorageObjectNotFound(FileNotFoundError):
@@ -437,7 +436,7 @@ _cached_signature: Optional[tuple] = None
 def _settings_signature() -> tuple:
     return (
         (settings.STORAGE_BACKEND or "local").strip().lower(),
-        settings.STORAGE_DIR,
+        settings.configured_storage_dir(),
         settings.S3_BUCKET,
         settings.S3_ENDPOINT_URL,
         settings.S3_REGION,
@@ -473,14 +472,11 @@ def get_storage_backend() -> StorageBackend:
             addressing_style=settings.S3_ADDRESSING_STYLE,
         )
     else:
-        backend = LocalStorageBackend(root_dir=settings.STORAGE_DIR)
+        backend = LocalStorageBackend(root_dir=settings.configured_storage_dir())
 
     _cached_backend = backend
     _cached_signature = sig
     return backend
-
-
-_legacy_storage_dir_lock = threading.Lock()
 
 
 class _LocalEvidenceProxy:
@@ -557,13 +553,8 @@ def run_legacy_analyzer_with_storage(
     with storage.local_file_path(evidence.stored_path) as local_ev_path:
         with tempfile.TemporaryDirectory(prefix=f"forensight-{slug}-") as tmp_dir:
             session_proxy = _LegacySessionProxy(db, Evidence, str(local_ev_path))
-            with _legacy_storage_dir_lock:
-                prev_storage_dir = settings.STORAGE_DIR
-                settings.STORAGE_DIR = tmp_dir
-                try:
-                    analysis = analyzer_cls.run_analysis(session_proxy, evidence_id, **kwargs)
-                finally:
-                    settings.STORAGE_DIR = prev_storage_dir
+            with storage_dir_override(tmp_dir):
+                analysis = analyzer_cls.run_analysis(session_proxy, evidence_id, **kwargs)
 
             if slug != "metadata":
                 out_subdir = os.path.join(tmp_dir, "analyses", slug)

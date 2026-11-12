@@ -398,3 +398,200 @@ def test_s3_end_to_end_evidence_custody_analysis_report_export_and_health(s3_e2e
     custody_tamper = CustodyService.verify_evidence_integrity(db, ev_row, verifier="s3_investigator")
     assert custody_tamper.integrity_intact is False
     assert custody_tamper.status == "TAMPER_OR_BITROT_DETECTED"
+
+
+def test_storage_dir_override_isolation_nesting_exceptions_and_cancellation(tmp_path: Path):
+    import asyncio
+    import contextvars
+    import threading
+    from app.core.config import storage_dir_override
+
+    original = settings.STORAGE_DIR
+    dir_a = str(tmp_path / "ctx_a")
+    dir_b = str(tmp_path / "ctx_b")
+
+    # 1. Override changes settings.STORAGE_DIR only inside its context
+    assert settings.STORAGE_DIR == original
+    with storage_dir_override(dir_a):
+        assert settings.STORAGE_DIR == dir_a
+        assert settings.configured_storage_dir() == original
+
+        # 4. Nested overrides restore the correct previous value
+        with storage_dir_override(dir_b):
+            assert settings.STORAGE_DIR == dir_b
+        assert settings.STORAGE_DIR == dir_a
+    assert settings.STORAGE_DIR == original
+
+    # 5. Exceptions restore the context correctly
+    with pytest.raises(RuntimeError, match="boom"):
+        with storage_dir_override(dir_a):
+            assert settings.STORAGE_DIR == dir_a
+            raise RuntimeError("boom")
+    assert settings.STORAGE_DIR == original
+
+    # 6. Cancellation (BaseException) does not leak the override
+    with pytest.raises(asyncio.CancelledError):
+        with storage_dir_override(dir_a):
+            assert settings.STORAGE_DIR == dir_a
+            raise asyncio.CancelledError()
+    assert settings.STORAGE_DIR == original
+
+    # 2 & 7. Independent thread sees original; explicit copy_context() propagates override
+    entered = threading.Event()
+    release = threading.Event()
+    observed_independent = []
+    observed_propagated = []
+
+    def _independent_reader():
+        entered.wait(timeout=5)
+        observed_independent.append(settings.STORAGE_DIR)
+        release.set()
+
+    with storage_dir_override(dir_a):
+        t_indep = threading.Thread(target=_independent_reader)
+        t_indep.start()
+        entered.set()
+        release.wait(timeout=5)
+        t_indep.join(timeout=5)
+
+        ctx = contextvars.copy_context()
+        t_prop = threading.Thread(target=ctx.run, args=(lambda: observed_propagated.append(settings.STORAGE_DIR),))
+        t_prop.start()
+        t_prop.join(timeout=5)
+
+    assert observed_independent == [original]
+    assert observed_propagated == [dir_a]
+    assert settings.STORAGE_DIR == original
+
+
+def test_storage_backend_caching_unaffected_by_override(tmp_path: Path, monkeypatch):
+    from app.core.config import storage_dir_override
+
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "local")
+    monkeypatch.setattr(settings, "STORAGE_DIR", str(tmp_path / "configured_root"))
+    reset_storage_backend_cache()
+    try:
+        baseline_backend = get_storage_backend()
+        with storage_dir_override(str(tmp_path / "temp_override")):
+            assert settings.STORAGE_DIR == str(tmp_path / "temp_override")
+            during_backend = get_storage_backend()
+            assert during_backend is baseline_backend
+        after_backend = get_storage_backend()
+        assert after_backend is baseline_backend
+    finally:
+        reset_storage_backend_cache()
+
+
+def test_concurrent_legacy_analyzers_use_distinct_temp_dirs_without_global_lock(tmp_path: Path, monkeypatch):
+    import threading
+    from types import SimpleNamespace
+    from app.services.storage import run_legacy_analyzer_with_storage
+    import app.services.storage as storage_mod
+
+    fake_client = FakeS3Client()
+    s3_backend = S3StorageBackend(bucket="concurrent-bucket", client=fake_client)
+    s3_backend.put_bytes("evidence/a.jpg", _make_jpeg_bytes(color=(10, 20, 30)), content_type="image/jpeg")
+    s3_backend.put_bytes("evidence/b.jpg", _make_jpeg_bytes(color=(40, 50, 60)), content_type="image/jpeg")
+
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "s3")
+    monkeypatch.setattr(settings, "STORAGE_DIR", str(tmp_path / "configured_root"))
+    monkeypatch.setattr(storage_mod, "get_storage_backend", lambda: s3_backend)
+
+    # Barrier(2) proves both legacy analyzers run concurrently in parallel (no global lock)
+    both_entered = threading.Barrier(2, timeout=5)
+    observed_dirs: dict[int, str] = {}
+    observed_paths: dict[int, str] = {}
+
+    class _MockAnalyzer:
+        @staticmethod
+        def run_analysis(db_proxy, evidence_id: int):
+            ev = db_proxy.query(Evidence).filter(Evidence.id == evidence_id).first()
+            observed_paths[evidence_id] = ev.stored_path
+            observed_dirs[evidence_id] = settings.STORAGE_DIR
+            out_dir = Path(settings.STORAGE_DIR) / "analyses" / "ela"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / f"map_{evidence_id}.png").write_bytes(b"png")
+            both_entered.wait()
+            return SimpleNamespace(id=evidence_id, status="completed")
+
+    from app.models.domain import Evidence
+
+    class _FakeQuery:
+        def __init__(self, row):
+            self._row = row
+
+        def filter(self, *args, **kwargs):
+            return self
+
+        def first(self):
+            return self._row
+
+    class _FakeDB:
+        def __init__(self, ev_id: int, stored_path: str):
+            self._row = SimpleNamespace(id=ev_id, stored_path=stored_path)
+
+        def query(self, model):
+            assert model is Evidence
+            return _FakeQuery(self._row)
+
+    results = {}
+    errors = []
+
+    def _worker(ev_id: int, key: str):
+        try:
+            results[ev_id] = run_legacy_analyzer_with_storage(_FakeDB(ev_id, key), ev_id, _MockAnalyzer, "ela")
+        except Exception as exc:
+            errors.append(exc)
+
+    t1 = threading.Thread(target=_worker, args=(1, "evidence/a.jpg"))
+    t2 = threading.Thread(target=_worker, args=(2, "evidence/b.jpg"))
+    t1.start()
+    t2.start()
+    t1.join(timeout=10)
+    t2.join(timeout=10)
+
+    assert not errors
+    assert len(results) == 2
+    assert observed_dirs[1] != observed_dirs[2]
+    assert observed_dirs[1] != str(tmp_path / "configured_root")
+    assert observed_paths[1] != observed_paths[2]
+    assert settings.STORAGE_DIR == str(tmp_path / "configured_root")
+    assert s3_backend.exists("analyses/ela/map_1.png")
+    assert s3_backend.exists("analyses/ela/map_2.png")
+
+
+def test_repeated_celery_style_tasks_do_not_leak_storage_context(tmp_path: Path, monkeypatch):
+    from types import SimpleNamespace
+    from app.services.storage import run_legacy_analyzer_with_storage
+    import app.services.storage as storage_mod
+
+    fake_client = FakeS3Client()
+    s3_backend = S3StorageBackend(bucket="celery-bucket", client=fake_client)
+    s3_backend.put_bytes("evidence/t1.jpg", _make_jpeg_bytes(), content_type="image/jpeg")
+
+    configured = str(tmp_path / "configured_root")
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "s3")
+    monkeypatch.setattr(settings, "STORAGE_DIR", configured)
+    monkeypatch.setattr(storage_mod, "get_storage_backend", lambda: s3_backend)
+
+    from app.models.domain import Evidence
+
+    class _FakeDB:
+        def query(self, model):
+            return SimpleNamespace(
+                filter=lambda *a, **k: SimpleNamespace(
+                    first=lambda: SimpleNamespace(id=1, stored_path="evidence/t1.jpg")
+                )
+            )
+
+    class _FailingAnalyzer:
+        @staticmethod
+        def run_analysis(db_proxy, evidence_id: int):
+            assert settings.STORAGE_DIR != configured
+            raise RuntimeError("task 1 failed")
+
+    with pytest.raises(RuntimeError, match="task 1 failed"):
+        run_legacy_analyzer_with_storage(_FakeDB(), 1, _FailingAnalyzer, "ela")
+
+    # Task 2 must see the clean configured directory
+    assert settings.STORAGE_DIR == configured
