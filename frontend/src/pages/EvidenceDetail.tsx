@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, lazy } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { fetchApi } from '../api';
@@ -591,6 +591,7 @@ export default function EvidenceDetail() {
               return (
                 <button
                   key={t.id}
+                  type="button"
                   onClick={() => setWorkbenchTab(t.id as any)}
                   style={{
                     display: 'inline-flex',
@@ -625,6 +626,23 @@ export default function EvidenceDetail() {
             })}
           </div>
 
+          <Suspense
+            fallback={
+              <div
+                className="card"
+                role="status"
+                style={{
+                  minHeight: '420px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Loading forensic analysis module...
+              </div>
+            }
+          >
           {/* TAB 1: OVERVIEW & MULTI-MODALITY HEATMAP */}
           {(workbenchTab === 'overview' || workbenchTab === 'all') && heatmap && (
             <div className="card">
@@ -811,7 +829,7 @@ export default function EvidenceDetail() {
                 </h2>
               </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+              <div data-testid="core-dip-engines-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem', alignItems: 'start' }}>
                 <AnalysisJobCard job={jobs['metadata']} analysisType="Metadata" result={results['metadata']} onRun={() => runAsyncJob('metadata')} disabled={false} />
                 <AnalysisJobCard job={jobs['ela']} analysisType="Error Level Analysis" result={results['ela']} onRun={() => runAsyncJob('ela')} disabled={false} />
                 <AnalysisJobCard job={jobs['noise']} analysisType="Noise Residual" result={results['noise']} onRun={() => runAsyncJob('noise')} disabled={false} />
@@ -1062,7 +1080,8 @@ export default function EvidenceDetail() {
               </div>
             </div>
             )}
-                     {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
+          </Suspense>
+          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
           {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
           {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
             <div className="card" style={{ 

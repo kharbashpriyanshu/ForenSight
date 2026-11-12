@@ -113,7 +113,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
     const csrf = readCsrfCookie();
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
-  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+  if (!isGet && method !== 'HEAD' && !headers.has('Content-Type') && options.body !== undefined && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
 

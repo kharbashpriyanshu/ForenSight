@@ -2,6 +2,22 @@ import { useEffect, useState } from 'react';
 import { fetchApi } from '../api';
 
 
+let activeHealthPromise: Promise<any> | null = null;
+
+function requestSystemHealth(): Promise<any> {
+  if (!activeHealthPromise) {
+    activeHealthPromise = fetchApi('/health', { cache: 'no-store' })
+      .then(async res => {
+        if (!res.ok) throw new Error(`Health check failed (${res.status}).`);
+        return res.json();
+      })
+      .finally(() => {
+        activeHealthPromise = null;
+      });
+  }
+  return activeHealthPromise;
+}
+
 export default function SystemHealth() {
   const [health, setHealth] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -10,43 +26,38 @@ export default function SystemHealth() {
 
   useEffect(() => {
     let active = true;
-    const controller = new AbortController();
 
-    fetchApi('/health', { signal: controller.signal, cache: 'no-store' })
-      .then(async res => {
-        if (!res.ok) throw new Error(`Health check failed (${res.status}).`);
-        return res.json();
-      })
+    requestSystemHealth()
       .then(data => {
         if (active) {
           setHealth(data);
+          setError('');
           setLoading(false);
         }
       })
       .catch((err: Error) => {
-        if (active) {
-          setHealth({
-            status: 'unhealthy',
-            api_gateway: 'unavailable',
-            platform_mode: 'unavailable',
-            background_execution: 'unavailable',
-            database: 'unavailable',
-            redis: 'unavailable',
-            celery_worker: 'unavailable',
-            storage: 'unavailable',
-          });
-          setError(err.message || 'Could not reach the health service.');
-          setLoading(false);
-        }
+        if (!active || err?.name === 'AbortError') return;
+        setHealth({
+          status: 'unhealthy',
+          api_gateway: 'unavailable',
+          platform_mode: 'unavailable',
+          background_execution: 'unavailable',
+          database: 'unavailable',
+          redis: 'unavailable',
+          celery_worker: 'unavailable',
+          storage: 'unavailable',
+        });
+        setError(err.message || 'Could not reach the health service.');
+        setLoading(false);
       });
 
     return () => {
       active = false;
-      controller.abort();
     };
   }, [retryKey]);
 
   const retryHealthCheck = () => {
+    if (loading) return;
     setLoading(true);
     setError('');
     setRetryKey(key => key + 1);

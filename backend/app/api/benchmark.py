@@ -116,7 +116,11 @@ def get_latest_report(current_user: User = Depends(get_current_user)) -> Dict[st
     """Retrieves the latest generated benchmark_results.json."""
     results_p = os.path.join(BENCHMARK_OUTPUT_DIR, "benchmark_results.json")
     if not os.path.exists(results_p):
-        raise HTTPException(status_code=404, detail="No benchmark report has been generated yet.")
+        return {
+            "available": False,
+            "status": "NOT_GENERATED",
+            "detail": "No benchmark report has been generated yet.",
+        }
 
     import json
     with open(results_p, "r", encoding="utf-8") as f:
@@ -229,7 +233,11 @@ def get_latest_external_report(current_user: User = Depends(get_current_user)) -
     """Retrieves the latest external_benchmark_results.json."""
     results_p = os.path.join(BENCHMARK_OUTPUT_DIR, "external", "external_benchmark_results.json")
     if not os.path.exists(results_p):
-        raise HTTPException(status_code=404, detail="No external benchmark report has been generated yet.")
+        return {
+            "available": False,
+            "status": "NOT_GENERATED",
+            "detail": "No external benchmark report has been generated yet.",
+        }
 
     import json
     with open(results_p, "r", encoding="utf-8") as f:
@@ -302,7 +310,11 @@ def execute_transformation_stress(
 def get_latest_transformation_stress(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     report_path = os.path.join(BENCHMARK_OUTPUT_DIR, "transformation-stress", "latest.json")
     if not os.path.isfile(report_path):
-        raise HTTPException(status_code=404, detail="No transformation stress report has been generated yet")
+        return {
+            "available": False,
+            "status": "NOT_GENERATED",
+            "detail": "No transformation stress report has been generated yet.",
+        }
     import json
     with open(report_path, "r", encoding="utf-8") as source:
         return json.load(source)

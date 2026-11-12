@@ -621,3 +621,34 @@ def test_frozen_core_integrity():
                             h.update(chunk)
                     current[rel_p] = h.hexdigest()
         assert current == expected, "Cryptographic manifest mismatch on forensics core files!"
+
+
+def test_benchmark_latest_endpoints_return_structured_empty_state(tmp_path, monkeypatch):
+    """Optional /latest benchmark endpoints return 200 available=False when no report exists."""
+    from fastapi.testclient import TestClient
+    from app.api import benchmark as benchmark_api
+    from app.api.deps import get_current_user
+    from app.main import app
+
+    class DummyUser:
+        id = 1
+        username = "benchmark_tester"
+        role = "admin"
+        is_active = True
+
+    monkeypatch.setattr(benchmark_api, "BENCHMARK_OUTPUT_DIR", str(tmp_path))
+    app.dependency_overrides[get_current_user] = lambda: DummyUser()
+    try:
+        client = TestClient(app)
+        for path in (
+            "/api/benchmark/reports/latest",
+            "/api/benchmark/reports/external/latest",
+            "/api/benchmark/transformation-stress/latest",
+        ):
+            res = client.get(path)
+            assert res.status_code == 200, f"Expected 200 for {path}, got {res.status_code}"
+            body = res.json()
+            assert body.get("available") is False
+            assert body.get("status") == "NOT_GENERATED"
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

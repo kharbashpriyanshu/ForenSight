@@ -27,8 +27,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  // Determine if currently in a case workspace route
-  const isCaseWorkspace = Boolean(location.pathname.match(/^\/cases\/[^/]+/));
+  // Determine if currently in a case workspace route (excluding global /cases/intake)
+  const isCaseWorkspace = Boolean(
+    location.pathname.match(/^\/cases\/[^/]+/) && !location.pathname.match(/^\/cases\/intake(?:\/|$)/)
+  );
 
   return (
     <div className="app-container">

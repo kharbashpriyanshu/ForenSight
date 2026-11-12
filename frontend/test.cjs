@@ -386,6 +386,17 @@ async function mockApiRequest(request) {
     return jsonResponse([]);
   }
   if (url.pathname === `/api/evidence/${evidenceData.id}/heatmap`) return jsonResponse(heatmapData);
+  if (url.pathname === '/api/benchmark/datasets' && request.method() === 'GET') {
+    return jsonResponse([]);
+  }
+  if (
+    (url.pathname === '/api/benchmark/reports/latest'
+      || url.pathname === '/api/benchmark/reports/external/latest'
+      || url.pathname === '/api/benchmark/transformation-stress/latest')
+    && request.method() === 'GET'
+  ) {
+    return jsonResponse({ available: false, status: 'NOT_GENERATED', detail: 'No report generated yet.' });
+  }
   if (url.pathname === `/api/jobs/analysis/${evidenceData.id}/metadata` && request.method() === 'POST') {
     state.jobQueued = true;
     return jsonResponse({
@@ -848,7 +859,93 @@ async function main() {
   await page.waitForFunction(() => window.location.pathname === '/login');
   assert.ok(state.seenCsrfTokens.includes('POST /api/auth/logout:e2e-csrf-token-123'), 'Logout must transmit X-CSRF-Token from fs_csrf cookie');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth');
+  // 13: Stability & navigation regressions (health dedup, benchmark latest 200, intake scroll, workbench tab scroll stability)
+  // Re-login to test authenticated stability paths
+  await page.waitForSelector('[data-testid="fill-demo-credentials"]');
+  await clickButton(page, 'Use Instructor Demo Credentials');
+  await clickButton(page, 'Sign In');
+  await page.waitForFunction(() => window.location.pathname === '/cases');
+
+  // 13a: Benchmark /latest endpoints return 200 empty-state without 404 errors
+  const benchmarkLatestStatuses = [];
+  const onBenchRes = (res) => {
+    if (res.url().includes('/api/benchmark/') && res.url().includes('/latest')) {
+      benchmarkLatestStatuses.push({ url: res.url(), status: res.status() });
+    }
+  };
+  page.on('response', onBenchRes);
+  await page.goto(`${baseUrl}/benchmark`, { waitUntil: 'networkidle0' });
+  page.off('response', onBenchRes);
+  assert.equal(benchmarkLatestStatuses.length, 3, 'Benchmark page should query all 3 /latest endpoints');
+  assert.ok(benchmarkLatestStatuses.every((r) => r.status === 200), 'All /latest benchmark endpoints must return 200 without 404s');
+
+  // 13b: SystemHealth fires single non-overlapping /health request and shows genuine failures
+  let healthRequests = 0;
+  let healthFailed = 0;
+  const onHealthReq = (req) => {
+    if (req.url().includes('/api/health')) healthRequests += 1;
+  };
+  const onHealthFail = (req) => {
+    if (req.url().includes('/api/health')) healthFailed += 1;
+  };
+  page.on('request', onHealthReq);
+  page.on('requestfailed', onHealthFail);
+  await page.goto(`${baseUrl}/system`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="health-card-gateway"]');
+  page.off('request', onHealthReq);
+  page.off('requestfailed', onHealthFail);
+  assert.equal(healthRequests, 1, 'SystemHealth must issue exactly 1 /api/health request on mount without overlapping duplicates');
+  assert.equal(healthFailed, 0, 'SystemHealth must not cancel its own /api/health request on StrictMode mount');
+
+  // 13c: Evidence Intake (/cases/intake) wraps content in scrollable .page-container
+  await page.goto(`${baseUrl}/cases/intake`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('form');
+  const intakeScrollMetrics = await page.evaluate(() => {
+    const pc = document.querySelector('.page-container');
+    if (!pc) return null;
+    pc.scrollTop = 250;
+    return {
+      overflowY: getComputedStyle(pc).overflowY,
+      scrollHeight: pc.scrollHeight,
+      clientHeight: pc.clientHeight,
+      scrollTop: pc.scrollTop,
+    };
+  });
+  assert.ok(intakeScrollMetrics, 'Evidence Intake must render inside .page-container');
+  assert.equal(intakeScrollMetrics.overflowY, 'auto', '.page-container must have overflow-y: auto');
+  assert.ok(intakeScrollMetrics.scrollHeight > intakeScrollMetrics.clientHeight, 'Evidence Intake must be taller than viewport to scroll');
+  assert.ok(intakeScrollMetrics.scrollTop > 0, 'Evidence Intake .page-container must scroll vertically');
+
+  // 13d: EvidenceDetail tab switching preserves scroll position and avoids remounting
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/evidence/${demoEvidenceData.id}`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('#workbench-nav');
+  const tabScrollResult = await page.evaluate(async () => {
+    const pc = document.querySelector('.page-container');
+    pc.scrollTop = 450;
+    const beforeScroll = pc.scrollTop;
+    const btns = Array.from(document.querySelectorAll('#workbench-nav button'));
+    const compBtn = btns.find((b) => (b.textContent || '').includes('Container & Compression'));
+    compBtn.click();
+    await new Promise((r) => setTimeout(r, 150));
+    const duringOrAfterScroll = pc.scrollTop;
+    const coreBtn = Array.from(document.querySelectorAll('#workbench-nav button')).find((b) => (b.textContent || '').includes('Core DIP Engines'));
+    coreBtn.click();
+    await new Promise((r) => setTimeout(r, 100));
+    const coreGrid = document.querySelector('[data-testid="core-dip-engines-grid"]');
+    return {
+      beforeScroll,
+      duringOrAfterScroll,
+      afterCoreScroll: pc.scrollTop,
+      hasWorkbenchNav: Boolean(document.querySelector('#workbench-nav')),
+      coreGridAlignItems: coreGrid ? getComputedStyle(coreGrid).alignItems : null,
+    };
+  });
+  assert.ok(tabScrollResult.hasWorkbenchNav, '#workbench-nav must remain mounted across tab switches');
+  assert.ok(tabScrollResult.duringOrAfterScroll >= 300, `Lazy tab switch must not jump scrollTop to 0 (got ${tabScrollResult.duringOrAfterScroll})`);
+  assert.ok(tabScrollResult.afterCoreScroll >= 300, `Core DIP tab switch must not jump scrollTop to 0 (got ${tabScrollResult.afterCoreScroll})`);
+  assert.equal(tabScrollResult.coreGridAlignItems, 'start', 'Core DIP Engines grid must use align-items: start to avoid blank card stretching');
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation');
 }
 
 main()

@@ -115,7 +115,9 @@ export default function BenchmarkDashboard() {
       const resControlled = await fetchApi('/benchmark/reports/latest');
       if (resControlled.ok) {
         const data = await resControlled.json();
-        setSummary(data);
+        if (data && data.available !== false) {
+          setSummary(data);
+        }
       }
     } catch (err) {
       // ignore
@@ -125,7 +127,9 @@ export default function BenchmarkDashboard() {
       const resExternal = await fetchApi('/benchmark/reports/external/latest');
       if (resExternal.ok) {
         const data = await resExternal.json();
-        setExternalSummary(data);
+        if (data && data.available !== false) {
+          setExternalSummary(data);
+        }
       }
     } catch (err) {
       // ignore
@@ -135,7 +139,9 @@ export default function BenchmarkDashboard() {
       const resStress = await fetchApi('/benchmark/transformation-stress/latest');
       if (resStress.ok) {
         const data = await resStress.json();
-        setStressReport(data);
+        if (data && data.available !== false) {
+          setStressReport(data);
+        }
       }
     } catch (err) {
       // No stress report exists until the first run.
