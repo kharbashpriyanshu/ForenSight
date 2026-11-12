@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 264 72" fill="none">
   
     <defs>
       <!-- Squircle Rim Glow -->
@@ -66,7 +66,7 @@
       </linearGradient>
     </defs>
   
-  <g transform="translate(6, 12) scale(0.48)">
+  <g transform="translate(-8, 0) scale(0.70)">
     
     <!-- 1. Bottom-Left Under Bevel / Shelf (Warm Amber Gold 3D Foot) -->
     <path d="M 24 64 L 32.5 73.5 C 33 74 33.7 74 34.5 74 H 43.5 V 66.5 H 32 Z" fill="url(#shelf-grad_lockup_l)" />
@@ -135,6 +135,6 @@
     <rect x="73.5" y="28.5" width="6.2" height="6.2" rx="1.4" fill="url(#pixel-grad_lockup_l)" />
   
   </g>
-  <text x="64" y="39" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="800" font-size="26" letter-spacing="-0.03em" fill="#1c2b3a">ForenSight</text>
-  <text x="66" y="53" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="8" letter-spacing="0.12em" fill="#b8872a">DIGITAL FORENSIC PLATFORM</text>
+  <text x="60" y="39" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="800" font-size="26" letter-spacing="-0.03em" fill="#1c2b3a">ForenSight</text>
+  <text x="62" y="53" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="8" letter-spacing="0.12em" fill="#b8872a">DIGITAL FORENSIC PLATFORM</text>
 </svg>

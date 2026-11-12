@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface InitializationScreenProps {
   /** Short contextual status message during genuine bootstrap or session restoration */
@@ -11,6 +12,7 @@ export const InitializationScreen: React.FC<InitializationScreenProps> = ({
   statusMessage = 'Initializing investigation environment',
   progress,
 }) => {
+  const { isDark } = useTheme();
   const hasDeterminateProgress = typeof progress === 'number' && Number.isFinite(progress) && progress >= 0 && progress <= 100;
 
   return (
@@ -25,10 +27,10 @@ export const InitializationScreen: React.FC<InitializationScreenProps> = ({
         <div className="fs-init-emblem-wrap" aria-hidden="true">
           <div className="fs-init-scan-ring" />
           <img
-            src="/forensight-icon.svg"
+            src={isDark ? '/forensight-icon-dark.svg' : '/forensight-icon-light.svg'}
             alt=""
-            width={72}
-            height={72}
+            width={52}
+            height={52}
             className="fs-init-icon"
           />
         </div>

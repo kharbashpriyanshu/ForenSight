@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BrandHeaderProps {
   /** Whether to hide the subtitle on narrow viewports (topbar mode) */
@@ -6,17 +7,19 @@ interface BrandHeaderProps {
 }
 
 /**
- * Shared ForenSight header branding lockup (30x30 reference-inspired icon + wordmark).
+ * Shared ForenSight header branding lockup (36x36 emblem container -> ~33.4px visible mark + wordmark).
  * Used identically across the authenticated topbar and the public login header.
  */
 export const BrandHeader: React.FC<BrandHeaderProps> = ({ responsiveSubtitle = true }) => {
+  const { isDark } = useTheme();
+
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '11px', flexShrink: 0 }}>
       <img
-        src="/forensight-icon.svg"
+        src={isDark ? '/forensight-icon-dark.svg' : '/forensight-icon-light.svg'}
         alt="ForenSight Emblem"
-        width={30}
-        height={30}
+        width={36}
+        height={36}
         className="topbar-logo"
       />
       <div className="topbar-brand-text">
