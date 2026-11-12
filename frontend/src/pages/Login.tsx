@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/layout/ThemeToggle';
+import BrandHeader from '../components/layout/BrandHeader';
 
 
 export default function Login() {
@@ -88,26 +89,7 @@ export default function Login() {
           zIndex: 10,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <img 
-            src={isDark ? "/forensight-icon-dark.svg" : "/forensight-icon-light.svg"} 
-            alt="ForenSight Evidence Trace Emblem" 
-            style={{ 
-              height: '32px', 
-              width: '32px', 
-              objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
-            }} 
-          />
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>
-              ForenSight
-            </div>
-            <div style={{ fontSize: '0.62rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)' }}>
-              Digital Forensic Platform
-            </div>
-          </div>
-        </div>
+        <BrandHeader responsiveSubtitle={false} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <ThemeToggle />

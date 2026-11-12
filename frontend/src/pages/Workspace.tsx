@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { NavLink, Outlet, useParams, useLocation, Link, useOutletContext } from 'react-router-dom';
+import { PageShellSkeleton } from '../components/common/LoadingStates';
 import { 
   ArrowLeft,
   Check,
@@ -238,7 +239,9 @@ const Workspace: React.FC = () => {
 
       {/* CASE WORKSPACE CONTENT REGION */}
       <main className="page-container" id="case-content">
-        <Outlet />
+        <Suspense fallback={<PageShellSkeleton />}>
+          <Outlet />
+        </Suspense>
       </main>
     </>
   );

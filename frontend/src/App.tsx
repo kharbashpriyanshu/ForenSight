@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
+import InitializationScreen from './components/layout/InitializationScreen';
 
 const Login = lazy(() => import('./pages/Login'));
 const Workspace = lazy(() => import('./pages/Workspace'));
@@ -41,7 +42,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={<div className="route-loading" role="status">Loading investigation view…</div>}>
+          <Suspense fallback={<InitializationScreen statusMessage="Initializing investigation environment" />}>
             <Routes>
               {/* Public Authentication Route */}
               <Route path="/login" element={<Login />} />

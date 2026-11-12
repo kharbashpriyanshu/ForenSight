@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
+import { GraphWorkspaceSkeleton } from '../components/common/LoadingStates';
 import { 
   GitMerge, 
   Camera, 
@@ -122,17 +123,7 @@ const CrossImageCorrelation: React.FC = () => {
   }, [showMatrixModal, selectedMatch, selectedCluster, selectedTimelineItem]);
 
   if (loading) {
-    return (
-      <div style={{ padding: '3.5rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.85rem' }}>
-        <RefreshCw size={28} className="spin-animate" style={{ color: '#2563eb' }} />
-        <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-main)', fontFamily: "'Plus Jakarta Sans', var(--font-sans)" }}>
-          Analyzing Multi-Evidence Correlations Across Case Corpus...
-        </div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Computing shared camera hardware fingerprints, temporal sequences, and descriptor keypoint clusters
-        </div>
-      </div>
-    );
+    return <GraphWorkspaceSkeleton />;
   }
 
   if (error) {

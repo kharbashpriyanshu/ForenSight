@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi, prefetchApi } from '../api';
+import { EvidenceLibrarySkeleton, ErrorState, RefreshBanner } from '../components/common/LoadingStates';
 
 interface EvidenceItemEnriched {
   id: number;
@@ -51,6 +52,7 @@ const EvidenceLibrary: React.FC = () => {
 
   const fetchEvidence = () => {
     setLoading(true);
+    setError('');
     let url = `/cases/${caseId}/evidence`;
     const params = new URLSearchParams();
     if (searchQuery.trim()) params.append('q', searchQuery.trim());
@@ -305,10 +307,19 @@ const EvidenceLibrary: React.FC = () => {
       </div>
 
       {/* Grid of Evidence Cards */}
-      {loading ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading case evidence library...</div>
-      ) : error ? (
-        <div className="error-banner">{error}</div>
+      {loading && evidenceList.length > 0 && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <RefreshBanner label="Updating evidence library…" />
+        </div>
+      )}
+      {loading && evidenceList.length === 0 ? (
+        <EvidenceLibrarySkeleton />
+      ) : error && evidenceList.length === 0 ? (
+        <ErrorState
+          title="Unable to load evidence library"
+          message={error}
+          onRetry={fetchEvidence}
+        />
       ) : evidenceList.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
           <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗄️</div>

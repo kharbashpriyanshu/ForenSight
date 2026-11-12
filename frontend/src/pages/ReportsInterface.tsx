@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FileText, AlertCircle, ArrowRight } from 'lucide-react';
 import { fetchApi } from '../api';
+import { ReportsSkeleton, RefreshBanner } from '../components/common/LoadingStates';
 
 interface ReportItem {
   id: number;
@@ -144,13 +145,16 @@ export default function ReportsInterface() {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>Loading reports...</div>;
+  if (loading && reports.length === 0 && evidenceCount === null) {
+    return <ReportsSkeleton />;
+  }
 
   const isZeroEvidence = evidenceCount === 0;
   const isCompilationBlocked = isZeroEvidence || Boolean(overviewError) || evidenceCount === null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div aria-busy={loading} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {loading && <RefreshBanner label="Refreshing reports…" />}
       {/* Header and Generator Card */}
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>

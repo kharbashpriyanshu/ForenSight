@@ -22,9 +22,16 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
     const [showArtifact, setShowArtifact] = useState(true);
     const [showRaw, setShowRaw] = useState(false);
 
-    const isRunning = job?.status === 'QUEUED' || job?.status === 'RUNNING' || job?.status === 'RETRYING';
-    const isCompleted = job?.status === 'COMPLETED';
-    const isFailed = job?.status === 'FAILED';
+    const rawStatus = String(job?.status || '').toUpperCase();
+    const isRunning = rawStatus === 'QUEUED' || rawStatus === 'INITIALIZING' || rawStatus === 'RUNNING' || rawStatus === 'PROCESSING' || rawStatus === 'RETRYING';
+    const isCompleted = rawStatus === 'COMPLETED';
+    const isFailed = rawStatus === 'FAILED';
+    const isCancelled = rawStatus === 'CANCELLED';
+
+    const hasNumericProgress = (rawStatus === 'RUNNING' || rawStatus === 'PROCESSING')
+        && typeof job?.progress_percent === 'number'
+        && Number.isFinite(job.progress_percent)
+        && job.progress_percent > 0;
 
     let durationText = '';
     if (job?.started_at && job?.completed_at) {
@@ -64,11 +71,11 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
                         fontSize: '0.75rem', 
                         padding: '0.2rem 0.5rem', 
                         borderRadius: '3px',
-                        background: isFailed ? 'rgba(239, 68, 68, 0.15)' : isCompleted ? 'rgba(16, 185, 129, 0.15)' : isRunning ? 'rgba(59, 130, 246, 0.15)' : 'rgba(156, 163, 175, 0.15)',
-                        color: isFailed ? '#ef4444' : isCompleted ? '#10b981' : isRunning ? '#3b82f6' : 'var(--text-muted)', 
+                        background: isFailed ? 'var(--status-anomalous-bg)' : isCompleted ? 'var(--status-nominal-bg)' : isRunning ? 'var(--status-info-bg)' : isCancelled ? 'var(--status-warning-bg)' : 'rgba(156, 163, 175, 0.15)',
+                        color: isFailed ? 'var(--status-anomalous)' : isCompleted ? 'var(--status-nominal)' : isRunning ? 'var(--status-info)' : isCancelled ? 'var(--status-warning)' : 'var(--text-muted)', 
                         fontWeight: 700 
                     }}>
-                        {job ? job.status : 'NOT RUN'}
+                        {rawStatus || 'NOT RUN'}
                     </span>
                     {durationText && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({durationText})</span>}
                 </div>
@@ -84,27 +91,64 @@ export default function AnalysisJobCard({ job, analysisType, result, onRun, disa
                         fontSize: '0.85rem' 
                     }}
                 >
-                    {isRunning ? 'Running...' : isCompleted ? 'Completed' : 'Queue Analysis'}
+                    {isRunning ? (rawStatus === 'QUEUED' ? 'Queued…' : rawStatus === 'RETRYING' ? 'Retrying…' : 'Processing…') : isCompleted ? 'Completed' : isFailed ? 'Retry Analysis' : isCancelled ? 'Re-queue Analysis' : 'Queue Analysis'}
                 </button>
             </div>
             
             {/* Failed notification */}
             {isFailed && (
-                <div style={{ fontSize: '0.85rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '0.25rem' }}>
+                <div role="alert" style={{ fontSize: '0.85rem', color: 'var(--status-anomalous)', background: 'var(--status-anomalous-bg)', border: '1px solid var(--status-anomalous-border)', padding: '0.75rem', borderRadius: '6px' }}>
                     <strong>Job {job?.job_identifier || ''} Failed:</strong> {job?.safe_error_message || 'Analysis could not be completed.'}
                 </div>
             )}
+
+            {/* Cancelled notification */}
+            {isCancelled && (
+                <div role="status" style={{ fontSize: '0.85rem', color: 'var(--status-warning)', background: 'var(--status-warning-bg)', border: '1px solid var(--status-warning-border)', padding: '0.75rem', borderRadius: '6px' }}>
+                    <strong>Job {job?.job_identifier || ''} Cancelled:</strong> {job?.progress_message || 'Analysis run was cancelled before completion.'}
+                </div>
+            )}
             
-            {/* Running status */}
+            {/* Running / Queued / Initializing / Retrying status */}
             {isRunning && (
-                <div style={{ fontSize: '0.85rem', color: '#3b82f6' }}>
-                    <div>{job?.progress_message || (job?.status === 'QUEUED' ? 'Waiting for an analysis worker…' : job?.status === 'RETRYING' ? 'Retry is scheduled…' : 'Analysis is running…')}</div>
+                <div role="status" aria-live="polite" aria-busy="true" style={{ fontSize: '0.85rem', color: 'var(--status-info)' }}>
+                    <div style={{ fontWeight: 600 }}>
+                        {job?.progress_message || (
+                            rawStatus === 'QUEUED'
+                                ? 'Queued — waiting for analysis worker…'
+                                : rawStatus === 'INITIALIZING'
+                                ? 'Initializing forensic engine…'
+                                : rawStatus === 'RETRYING'
+                                ? 'Temporary error — retry scheduled…'
+                                : 'Processing forensic analysis…'
+                        )}
+                    </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginTop: '0.45rem' }}>
-                        <progress value={job?.progress_percent || 0} max={100} aria-label={`${analysisType} progress`} style={{ flex: 1, height: '0.55rem' }} />
-                        <strong>{job?.progress_percent || 0}%</strong>
+                        <div
+                            className="fs-progress-track"
+                            role="progressbar"
+                            aria-label={`${analysisType} progress`}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={hasNumericProgress ? Math.round(job.progress_percent) : undefined}
+                        >
+                            {hasNumericProgress ? (
+                                <div
+                                    className="fs-progress-fill-determinate"
+                                    style={{ width: `${Math.min(100, Math.round(job.progress_percent))}%` }}
+                                />
+                            ) : (
+                                <div className="fs-progress-fill-indeterminate" />
+                            )}
+                        </div>
+                        {hasNumericProgress && (
+                            <strong style={{ fontVariantNumeric: 'tabular-nums', minWidth: '2.5rem', textAlign: 'right' }}>
+                                {Math.round(job.progress_percent)}%
+                            </strong>
+                        )}
                     </div>
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                        Job {job?.job_identifier} · attempt {job?.attempt_count || 0}
+                        Job {job?.job_identifier} · status: {rawStatus} · attempt {job?.attempt_count || 0}
                     </div>
                 </div>
             )}

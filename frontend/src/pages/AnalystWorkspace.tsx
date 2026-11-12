@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
+import { GraphWorkspaceSkeleton, ReportsSkeleton } from '../components/common/LoadingStates';
 import { 
   Network, 
   ZoomIn, 
   ZoomOut, 
   RotateCcw, 
   Search, 
-  RefreshCw, 
   X, 
   ArrowRight, 
   Grid, 
@@ -787,7 +787,7 @@ const AnalystWorkspace: React.FC = () => {
           </div>
 
           {loadingFindings ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading findings...</div>
+            <ReportsSkeleton />
           ) : findings.length === 0 ? (
             <div className="card" style={{ padding: '2.5rem 1.5rem', textAlign: 'center', maxWidth: '680px', margin: '0 auto' }}>
               <div style={{ 
@@ -1017,10 +1017,7 @@ const AnalystWorkspace: React.FC = () => {
             </div>
 
             {loadingGraph ? (
-              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <RefreshCw size={24} className="spin-animate" style={{ color: '#06b6d4', marginBottom: '0.5rem', display: 'inline-block' }} />
-                <div>Loading observation graph and provenance relationships...</div>
-              </div>
+              <GraphWorkspaceSkeleton />
             ) : graphMode === 'graph' && graphData ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 {/* Graph Toolbar */}

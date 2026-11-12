@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { Activity, FolderOpen, FlaskConical, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 import ThemeToggle from './ThemeToggle';
 import Breadcrumbs from './Breadcrumbs';
+import BrandHeader from './BrandHeader';
+import { PageShellSkeleton } from '../common/LoadingStates';
 
 interface AppLayoutProps {
   children?: React.ReactNode;
@@ -18,7 +19,6 @@ export interface AppLayoutContext {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
-  const { isDark } = useTheme();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -41,15 +41,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       <header className="topbar">
         <div className="topbar-left">
           <Link to="/cases" className="topbar-brand" title="ForenSight Station Directory">
-            <img 
-              src={isDark ? "/forensight-icon-dark.svg" : "/forensight-icon-light.svg"} 
-              alt="ForenSight Evidence Trace Emblem" 
-              className="topbar-logo"
-            />
-            <div className="topbar-brand-text">
-              <span className="topbar-brand-title">ForenSight</span>
-              <span className="topbar-brand-subtitle">Digital Forensic Platform</span>
-            </div>
+            <BrandHeader />
           </Link>
 
           <div className="topbar-divider" aria-hidden="true" />
@@ -158,10 +150,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         {/* Content Region: If station route, wrapped in page-container; if case route, Workspace manages it */}
         {!isCaseWorkspace ? (
           <main className="page-container" id="main-content">
-            {children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />}
+            <Suspense fallback={<PageShellSkeleton />}>
+              {children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />}
+            </Suspense>
           </main>
         ) : (
-          children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />
+          <Suspense fallback={<PageShellSkeleton />}>
+            {children ?? <Outlet context={{ mobileNavOpen, setMobileNavOpen }} />}
+          </Suspense>
         )}
       </div>
     </div>

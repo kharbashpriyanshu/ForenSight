@@ -7,6 +7,7 @@ import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
 import GuidedExaminationWorkflow from '../components/evidence/GuidedExaminationWorkflow';
 import UnifiedForensicResults from '../components/evidence/UnifiedForensicResults';
+import { EvidenceDetailSkeleton } from '../components/common/LoadingStates';
 const AdvancedJpegViewer = lazy(() => import('../components/evidence/AdvancedJpegViewer'));
 const CompressionHistoryViewer = lazy(() => import('../components/evidence/CompressionHistoryViewer'));
 const BlockingArtifactViewer = lazy(() => import('../components/evidence/BlockingArtifactViewer'));
@@ -453,13 +454,7 @@ export default function EvidenceDetail() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
       {!uploadResult && (
-        <div className="card" style={{ padding: '3.5rem 1.5rem', textAlign: 'center' }}>
-          <RefreshCw size={24} className="spin" style={{ margin: '0 auto 1rem auto', color: 'var(--accent-color)' }} />
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>Loading Evidence Record…</div>
-          <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', marginTop: '0.35rem', maxWidth: '420px', marginInline: 'auto' }}>
-            Retrieving SHA-256 integrity digest, container metadata, and analytical hypotheses for evidence #{evidenceId}.
-          </p>
-        </div>
+        <EvidenceDetailSkeleton />
       )}
 
       {uploadResult && (

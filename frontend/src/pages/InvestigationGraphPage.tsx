@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
+import { GraphWorkspaceSkeleton } from '../components/common/LoadingStates';
 import { 
   Network, 
   ZoomIn, 
@@ -788,17 +789,7 @@ const InvestigationGraphPage: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div style={{ padding: '4rem 1.5rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.85rem' }}>
-        <RefreshCw size={30} className="spin-animate" style={{ color: 'var(--accent-color)' }} />
-        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
-          Computing Forensic Provenance Graph...
-        </div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          Aligning causal chain: Case &rarr; Evidence &rarr; Findings &rarr; Report
-        </div>
-      </div>
-    );
+    return <GraphWorkspaceSkeleton />;
   }
 
   if (error) {

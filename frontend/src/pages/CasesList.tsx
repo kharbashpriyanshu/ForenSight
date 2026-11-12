@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileUp, FolderArchive, FolderPlus, ArrowRight, ChevronDown } from 'lucide-react';
 import { fetchApi, prefetchApi } from '../api';
+import { CasesListSkeleton, EmptyState, ErrorState, RefreshBanner } from '../components/common/LoadingStates';
 
 const PAGE_SIZE = 100;
 
@@ -321,25 +322,48 @@ export default function CasesList() {
         </form>
       </div>
 
-      <div id="investigations-directory-heading" style={{ marginBottom: '0.75rem' }}>
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.2rem 0' }}>
-          Active Investigations ({filteredCases.length})
-        </h3>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
-          Select an investigation to access evidence, forensic examinations, and chain-of-custody reports.
-        </p>
+      <div id="investigations-directory-heading" style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: '0 0 0.2rem 0' }}>
+            Active Investigations ({filteredCases.length})
+          </h3>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+            Select an investigation to access evidence, forensic examinations, and chain-of-custody reports.
+          </p>
+        </div>
+        {loading && cases.length > 0 && <RefreshBanner label="Updating directory…" />}
       </div>
 
-      {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
-          {[1, 2, 3].map(n => (
-            <div key={n} className="card" style={{ minHeight: '160px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading dossier records...</div>
-            </div>
-          ))}
-        </div>
+      {loading && cases.length === 0 ? (
+        <CasesListSkeleton />
+      ) : error && cases.length === 0 ? (
+        <ErrorState
+          title="Unable to load investigation directory"
+          message={error}
+          onRetry={() => fetchCases(0, false)}
+        />
+      ) : filteredCases.length === 0 ? (
+        <EmptyState
+          title={searchQuery ? 'No Matching Investigations' : 'No Active Investigations'}
+          description={
+            searchQuery
+              ? 'No dossier records match the current search filter.'
+              : 'Initialize a new case dossier above or upload an image directly to start a forensic investigation.'
+          }
+          action={
+            searchQuery ? (
+              <button type="button" className="btn btn-secondary" onClick={() => setSearchQuery('')}>
+                Clear Search
+              </button>
+            ) : (
+              <button type="button" className="btn btn-primary" onClick={() => navigate('/cases/intake')}>
+                Start with an Image
+              </button>
+            )
+          }
+        />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+        <div aria-busy={loading} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
           {filteredCases.map((c: any) => (
             <Link 
               key={c.id} 
@@ -386,17 +410,6 @@ export default function CasesList() {
               </div>
             </Link>
           ))}
-          {filteredCases.length === 0 && (
-            <div className="card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3.5rem 1rem', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🔍</div>
-              <div style={{ fontWeight: 600, fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>
-                {searchQuery ? 'No Matching Cases Found' : 'No Active Investigations Found'}
-              </div>
-              <p style={{ fontSize: '0.85rem' }}>
-                {searchQuery ? 'Try adjusting your search query.' : 'Initialize a new case dossier above to begin forensic acquisition and analysis.'}
-              </p>
-            </div>
-          )}
         </div>
       )}
 

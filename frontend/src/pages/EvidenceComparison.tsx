@@ -3,6 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ChevronsLeftRight, Layers, Columns2 } from 'lucide-react';
 import { fetchApi } from '../api';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
+import { GraphWorkspaceSkeleton } from '../components/common/LoadingStates';
 
 interface EvidenceOption {
   id: number;
@@ -288,7 +289,7 @@ const EvidenceComparison: React.FC = () => {
         </div>
       </div>
 
-      {loading && <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Executing comparative correlation analysis...</div>}
+      {loading && <GraphWorkspaceSkeleton />}
       {error && <div className="error-banner">{error}</div>}
 
       {comparisonData && !loading && (

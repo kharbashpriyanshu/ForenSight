@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchApi } from '../api';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
+import { GraphWorkspaceSkeleton } from '../components/common/LoadingStates';
 
 interface EvidenceSummary {
   id: number;
@@ -123,7 +124,7 @@ export default function ImageLineagePage() {
         Candidate rules are transparent but not calibrated forensic error rates. Similarity can be missed after heavy crops or falsely suggested by repeated textures. Review each link and choose a parent only when the case record supports that direction.
       </div>
 
-      {loading ? <div className="card">Loading image links…</div> : relations.length === 0 ? (
+      {loading ? <GraphWorkspaceSkeleton /> : relations.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
           <h2 style={{ marginTop: 0 }}>No candidate links yet</h2>
           <p style={{ color: 'var(--text-muted)' }}>Add two or more received image versions, then run a comparison. Existing source files are preserved unchanged.</p>

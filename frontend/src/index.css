@@ -646,16 +646,17 @@ a:hover {
 .topbar-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 11px;
   text-decoration: none;
   flex-shrink: 0;
 }
 
 .topbar-logo {
   height: 30px;
-  width: auto;
+  width: 30px;
+  flex-shrink: 0;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.14));
 }
 
 .topbar-brand-text {
@@ -1382,4 +1383,270 @@ hr {
   .topbar .status-badge { display: none; }
   .breadcrumb-item:not(:last-child):not(:first-child) { display: none; }
   .page-container { padding: 1rem; }
+}
+
+/* ==========================================================================
+   LOADING EXPERIENCE: INITIALIZATION, SKELETONS, PROGRESS & EMPTY/ERROR STATES
+   ========================================================================== */
+
+@keyframes fs-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fs-pulse-subtle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.95; }
+}
+
+@keyframes fs-scan-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fs-indeterminate-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+/* Branded Initialization Screen */
+.fs-init-screen {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--bg-color);
+  color: var(--text-main);
+  position: relative;
+  overflow: hidden;
+}
+
+.fs-init-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  z-index: 1;
+}
+
+.fs-init-emblem-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.fs-init-scan-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  border: 1.5px solid var(--accent-border);
+  background: radial-gradient(circle at center, rgba(184, 135, 42, 0.08) 0%, transparent 72%);
+  pointer-events: none;
+}
+
+.fs-init-scan-ring::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 28px;
+  border: 1.5px solid transparent;
+  border-top-color: var(--accent-color);
+  border-right-color: rgba(184, 135, 42, 0.35);
+  animation: fs-scan-sweep 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.fs-init-icon {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.18));
+}
+
+.fs-init-wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.65rem;
+  letter-spacing: -0.025em;
+  color: var(--text-main);
+  line-height: 1.15;
+}
+
+.fs-init-tagline {
+  font-family: var(--font-tech);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  margin-top: 0.25rem;
+}
+
+.fs-init-progress-track {
+  width: 220px;
+  height: 3px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-top: 1.75rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.fs-init-progress-bar-determinate {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-full);
+  transition: width 260ms var(--ease-smooth);
+}
+
+.fs-init-progress-bar-indeterminate {
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  border-radius: var(--radius-full);
+  animation: fs-indeterminate-slide 1.5s var(--ease-smooth) infinite;
+}
+
+.fs-init-status {
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+/* Skeleton Primitives */
+.fs-skeleton {
+  display: block;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 25%,
+    var(--surface-raised) 50%,
+    var(--surface-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: fs-shimmer 1.6s ease-in-out infinite;
+  border: 1px solid var(--border-subtle);
+}
+
+.fs-skeleton-text {
+  height: 0.875rem;
+  border-radius: var(--radius-sm);
+}
+
+.fs-skeleton-title {
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.fs-skeleton-pill {
+  height: 1.35rem;
+  border-radius: var(--radius-full);
+}
+
+/* Indeterminate Forensic Job Progress */
+.fs-progress-track {
+  width: 100%;
+  height: 7px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.fs-progress-fill-determinate {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color), #d4a043);
+  border-radius: var(--radius-full);
+  transition: width 240ms var(--ease-smooth);
+}
+
+.fs-progress-fill-indeterminate {
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+  border-radius: var(--radius-full);
+  animation: fs-indeterminate-slide 1.4s var(--ease-smooth) infinite;
+}
+
+/* Stale Data Refresh Banner */
+.fs-refresh-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-full);
+}
+
+.fs-refresh-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  animation: fs-pulse-subtle 1.2s ease-in-out infinite;
+}
+
+/* Empty & Error State Cards */
+.fs-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2.75rem 2rem;
+  border-radius: var(--radius-lg);
+  background: var(--surface-color-solid);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.fs-state-card-error {
+  border-color: var(--status-anomalous-border);
+  background: var(--status-anomalous-bg);
+}
+
+.fs-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+/* Respect Reduced Motion Accessibility Preference */
+@media (prefers-reduced-motion: reduce) {
+  .fs-init-scan-ring::after,
+  .fs-init-progress-bar-indeterminate,
+  .fs-skeleton,
+  .fs-progress-fill-indeterminate,
+  .fs-refresh-dot {
+    animation: none !important;
+  }
+
+  .fs-skeleton {
+    background: var(--surface-sunken);
+    opacity: 0.85;
+  }
+
+  .fs-init-progress-bar-indeterminate,
+  .fs-progress-fill-indeterminate {
+    width: 100%;
+    opacity: 0.45;
+  }
 }

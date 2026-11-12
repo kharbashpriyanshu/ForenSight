@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
+import { CaseOverviewSkeleton, ErrorState, RefreshBanner } from '../components/common/LoadingStates';
 import { 
   FolderOpen, 
   Layers, 
@@ -125,7 +126,9 @@ const CaseOverview: React.FC = () => {
   const [sourceReferenceUrl, setSourceReferenceUrl] = useState('');
   const [intakeNotes, setIntakeNotes] = useState('');
 
-  useEffect(() => {
+  const loadOverview = useCallback(() => {
+    setLoading(true);
+    setError('');
     fetchApi(`/cases/${caseId}/overview`)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch case overview');
@@ -136,10 +139,14 @@ const CaseOverview: React.FC = () => {
         setLoading(false);
       })
       .catch(err => {
-        setError(err.message);
+        setError(err.message || 'Unable to load case dossier');
         setLoading(false);
       });
   }, [caseId]);
+
+  useEffect(() => {
+    loadOverview();
+  }, [loadOverview]);
 
   useEffect(() => {
     setClaimSummary(stats?.intake_context?.claim_summary || '');
@@ -175,24 +182,17 @@ const CaseOverview: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '3rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'var(--text-muted)' }}>
-        <Activity size={24} style={{ animation: 'spin 2s linear infinite', color: 'var(--accent-color)' }} />
-        <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>Loading investigation dossier...</div>
-      </div>
-    );
+  if (loading && !stats) {
+    return <CaseOverviewSkeleton />;
   }
 
-  if (error) {
+  if (error && !stats) {
     return (
-      <div className="card" style={{ borderLeft: '4px solid var(--danger-color)', padding: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', color: 'var(--danger-color)', fontWeight: 700 }}>
-          <AlertTriangle size={18} />
-          <span>Error loading case dossier</span>
-        </div>
-        <p style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{error}</p>
-      </div>
+      <ErrorState
+        title="Error loading case dossier"
+        message={error}
+        onRetry={loadOverview}
+      />
     );
   }
 
@@ -272,7 +272,8 @@ const CaseOverview: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div aria-busy={loading} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {loading && <RefreshBanner label="Refreshing case dossier…" />}
       {/* =================================================================== */}
       {/* 1. MINIMAL UNIFIED DOSSIER HEADER                                   */}
       {/* =================================================================== */}
