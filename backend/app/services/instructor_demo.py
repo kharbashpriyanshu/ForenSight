@@ -479,7 +479,7 @@ def seed_instructor_demo(db: Session, reset: bool = False) -> Dict[str, Any]:
             "master": ["metadata", "ela", "noise", "jpeg-dct"],
             "derived_banner": ["metadata", "jpeg-dct", "resampling"],
             "double_jpeg": ["metadata", "jpeg-dct", "adjpeg"],
-            "splice": ["metadata", "ela", "noise", "jpeg-dct", "advanced-noise"],
+            "splice": ["metadata", "ela", "noise", "jpeg-dct", "advanced-noise", "copy-move"],
             "copy_move": ["metadata", "copy-move", "clone-keypoint"],
             "lossless_png": ["metadata", "noise", "fourier"],
             "negative_control": ["metadata", "noise", "jpeg-dct"],

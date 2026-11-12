@@ -627,59 +627,68 @@ export default function EvidenceDetail() {
                   </div>
                 </div>
 
-                  {/* Heatmap Controls */}
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }} title="Adjust transparency of the spatial anomaly overlays on the evidence image">
-                      <label data-testid="heatmap-opacity-label" style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
-                      <input 
-                        data-testid="heatmap-opacity-slider"
-                        aria-label="Heatmap overlay opacity"
-                        type="range" 
-                        min="0" 
-                        max="1.0" 
-                        step="0.05"
-                        value={heatmapOpacity}
-                        onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
-                        style={{ width: '80px', cursor: 'pointer' }}
-                      />
+                  {/* Heatmap Controls or Clean Baseline Empty State */}
+                  {heatmap.composite_regions_count > 0 ? (
+                    <div data-testid="heatmap-controls-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }} title="Adjust transparency of the spatial anomaly overlays on the evidence image">
+                        <label data-testid="heatmap-opacity-label" style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
+                        <input 
+                          data-testid="heatmap-opacity-slider"
+                          aria-label="Heatmap overlay opacity"
+                          type="range" 
+                          min="0" 
+                          max="1.0" 
+                          step="0.05"
+                          value={heatmapOpacity}
+                          onChange={e => setHeatmapOpacity(parseFloat(e.target.value))}
+                          style={{ width: '80px', cursor: 'pointer' }}
+                        />
+                      </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Error Level Analysis compression variance overlay">
+                        <input 
+                          data-testid="heatmap-layer-ela-toggle"
+                          type="checkbox" 
+                          checked={showElaLayer} 
+                          onChange={e => setShowElaLayer(e.target.checked)} 
+                        />
+                        <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                          ELA Layer ({heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0})
+                        </span>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Sensor Noise residual inconsistency overlay">
+                        <input 
+                          data-testid="heatmap-layer-noise-toggle"
+                          type="checkbox" 
+                          checked={showNoiseLayer} 
+                          onChange={e => setShowNoiseLayer(e.target.checked)} 
+                        />
+                        <span style={{ color: '#06b6d4', fontWeight: 600 }}>
+                          Noise Layer ({heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0})
+                        </span>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Copy-Move duplicate keypoint cluster overlay">
+                        <input 
+                          data-testid="heatmap-layer-clone-toggle"
+                          type="checkbox" 
+                          checked={showCloneLayer} 
+                          onChange={e => setShowCloneLayer(e.target.checked)} 
+                        />
+                        <span style={{ color: '#10b981', fontWeight: 600 }}>
+                          Clone Layer ({heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0})
+                        </span>
+                      </label>
                     </div>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Error Level Analysis compression variance overlay">
-                      <input 
-                        data-testid="heatmap-layer-ela-toggle"
-                        type="checkbox" 
-                        checked={showElaLayer} 
-                        onChange={e => setShowElaLayer(e.target.checked)} 
-                      />
-                      <span style={{ color: '#ef4444', fontWeight: 600 }}>
-                        ELA Layer ({heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0})
-                      </span>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Sensor Noise residual inconsistency overlay">
-                      <input 
-                        data-testid="heatmap-layer-noise-toggle"
-                        type="checkbox" 
-                        checked={showNoiseLayer} 
-                        onChange={e => setShowNoiseLayer(e.target.checked)} 
-                      />
-                      <span style={{ color: '#06b6d4', fontWeight: 600 }}>
-                        Noise Layer ({heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0})
-                      </span>
-                    </label>
-
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Copy-Move duplicate keypoint cluster overlay">
-                      <input 
-                        data-testid="heatmap-layer-clone-toggle"
-                        type="checkbox" 
-                        checked={showCloneLayer} 
-                        onChange={e => setShowCloneLayer(e.target.checked)} 
-                      />
-                      <span style={{ color: '#10b981', fontWeight: 600 }}>
-                        Clone Layer ({heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0})
-                      </span>
-                    </label>
-                  </div>
+                  ) : (
+                    <div data-testid="heatmap-empty-state" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface-color-light)', padding: '0.65rem 0.95rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: '1.1rem' }}>🛡️</span>
+                      <div>
+                        <strong style={{ color: 'var(--text-main)' }}>Clean Baseline:</strong> No spatial anomaly zones detected across active modalities. Overlay controls are active when anomaly zones are present.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Canvas/Overlay Container */}

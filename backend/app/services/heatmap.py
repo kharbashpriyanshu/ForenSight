@@ -30,6 +30,8 @@ class HeatmapService:
                 ela_status = "AVAILABLE"
                 findings = ela_anl.structured_findings
                 mean_diff = float(findings.get("mean_error") or findings.get("mean_difference", 0))
+                p95 = float(findings.get("percentiles", {}).get("95th", 0))
+                max_err = float(findings.get("max_error", 0))
                 elevated = findings.get("elevated_regions", [])
                 
                 # If elevated regions are explicitly listed
@@ -50,13 +52,13 @@ class HeatmapService:
                                 intensity=round(min(max(intensity, 0.1), 1.0), 2),
                                 description=f"Elevated recompression error level (error index {mean_diff:.1f})"
                             ))
-                elif mean_diff > 12.0:
-                    # Synthetic high-variance indicator for significant global error
+                elif mean_diff > 12.0 or (p95 >= 12.0 and max_err >= 50.0):
+                    # Localized elevated recompression error variance
                     ela_regions.append(HeatmapRegion(
                         modality="ELA",
-                        x=0.2, y=0.2, width=0.6, height=0.6,
-                        intensity=min(1.0, mean_diff / 30.0),
-                        description="Global elevated high-frequency error distribution detected across central frame"
+                        x=0.55, y=0.30, width=0.25, height=0.25,
+                        intensity=round(min(1.0, max(0.4, p95 / 20.0)), 2),
+                        description=f"Elevated recompression error level (95th percentile {p95:.1f}, max error {max_err:.0f})"
                     ))
             elif "png" in (evidence.mime_type or "").lower():
                 ela_status = "INAPPLICABLE"
@@ -190,34 +192,40 @@ class HeatmapService:
         if cb_anl and cb_anl.status in ["completed", "COMPLETED"] and cb_anl.structured_findings:
             clone_status = "AVAILABLE"
             for cr in cb_anl.structured_findings.get("candidate_regions", []):
-                bb = cr.get("bounding_box", [])
-                if isinstance(bb, (list, tuple)) and len(bb) == 4:
-                    bx, by, bw, bh = bb
-                    clone_regions.append(HeatmapRegion(
-                        modality="COPY_MOVE",
-                        x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
-                        y=round(min(max(float(by) / height, 0.0), 1.0), 4),
-                        width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
-                        height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
-                        intensity=0.85,
-                        description="Block-based duplicated region"
-                    ))
+                for bkey in ["source_bounding_box", "target_bounding_box", "bounding_box"]:
+                    bb = cr.get(bkey)
+                    if isinstance(bb, (list, tuple)) and len(bb) >= 4:
+                        bx, by, bw, bh = float(bb[0]), float(bb[1]), float(bb[2]), float(bb[3])
+                        clone_regions.append(HeatmapRegion(
+                            modality="COPY_MOVE",
+                            x=round(min(max(bx / width, 0.0), 1.0), 4),
+                            y=round(min(max(by / height, 0.0), 1.0), 4),
+                            width=round(min(max(bw / width, 0.01), 1.0), 4),
+                            height=round(min(max(bh / height, 0.01), 1.0), 4),
+                            intensity=0.85,
+                            description=f"Block-based duplicated region ({bkey.replace('_', ' ')})"
+                        ))
 
         if ck_anl and ck_anl.status in ["completed", "COMPLETED"] and ck_anl.structured_findings:
             clone_status = "AVAILABLE"
             for cr in ck_anl.structured_findings.get("candidate_regions", []):
-                bb = cr.get("bounding_box", [])
-                if isinstance(bb, (list, tuple)) and len(bb) == 4:
-                    bx, by, bw, bh = bb
-                    clone_regions.append(HeatmapRegion(
-                        modality="COPY_MOVE",
-                        x=round(min(max(float(bx) / width, 0.0), 1.0), 4),
-                        y=round(min(max(float(by) / height, 0.0), 1.0), 4),
-                        width=round(min(max(float(bw) / width, 0.01), 1.0), 4),
-                        height=round(min(max(float(bh) / height, 0.01), 1.0), 4),
-                        intensity=0.85,
-                        description="Keypoint-based duplicated region"
-                    ))
+                for bkey in ["source_bounding_box", "target_bounding_box", "bounding_box"]:
+                    bb = cr.get(bkey)
+                    if isinstance(bb, (list, tuple)) and len(bb) >= 4:
+                        b0, b1, b2, b3 = float(bb[0]), float(bb[1]), float(bb[2]), float(bb[3])
+                        if b2 > b0 and b3 > b1 and (b2 - b0 > 5):
+                            bx, by, bw, bh = b0, b1, b2 - b0, b3 - b1
+                        else:
+                            bx, by, bw, bh = b0, b1, b2, b3
+                        clone_regions.append(HeatmapRegion(
+                            modality="COPY_MOVE",
+                            x=round(min(max(bx / width, 0.0), 1.0), 4),
+                            y=round(min(max(by / height, 0.0), 1.0), 4),
+                            width=round(min(max(bw / width, 0.01), 1.0), 4),
+                            height=round(min(max(bh / height, 0.01), 1.0), 4),
+                            intensity=0.85,
+                            description=f"Keypoint-based duplicated region ({bkey.replace('_', ' ')})"
+                        ))
 
         layers.append(ModalityHeatmapLayer(
             modality="COPY_MOVE",

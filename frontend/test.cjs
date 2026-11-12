@@ -1334,6 +1334,99 @@ async function main() {
     }
   }
 
+  // Reset opacity to default 65% for layer toggle screenshots
+  await setSlider(0.65);
+
+  // 15i: Layer toggle screenshots
+  // 1. Toggle off ELA
+  await page.evaluate(() => {
+    const elaToggle = document.querySelector('[data-testid="heatmap-layer-ela-toggle"]');
+    if (elaToggle && elaToggle.checked) elaToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 150));
+  const cardEla = await page.evaluateHandle(() => {
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    return svg ? svg.closest('.card') : document.body;
+  });
+  if (cardEla && cardEla.asElement()) {
+    await cardEla.asElement().screenshot({ path: path.join(screenshotDir, '05-ela-layer-toggled-off.png') });
+  }
+  // Restore ELA
+  await page.evaluate(() => {
+    const elaToggle = document.querySelector('[data-testid="heatmap-layer-ela-toggle"]');
+    if (elaToggle && !elaToggle.checked) elaToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  // 2. Toggle off Noise
+  await page.evaluate(() => {
+    const noiseToggle = document.querySelector('[data-testid="heatmap-layer-noise-toggle"]');
+    if (noiseToggle && noiseToggle.checked) noiseToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 150));
+  const cardNoise = await page.evaluateHandle(() => {
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    return svg ? svg.closest('.card') : document.body;
+  });
+  if (cardNoise && cardNoise.asElement()) {
+    await cardNoise.asElement().screenshot({ path: path.join(screenshotDir, '06-noise-layer-toggled-off.png') });
+  }
+  // Restore Noise
+  await page.evaluate(() => {
+    const noiseToggle = document.querySelector('[data-testid="heatmap-layer-noise-toggle"]');
+    if (noiseToggle && !noiseToggle.checked) noiseToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  // 3. Toggle off Clone
+  await page.evaluate(() => {
+    const cloneToggle = document.querySelector('[data-testid="heatmap-layer-copy_move-toggle"]');
+    if (cloneToggle && cloneToggle.checked) cloneToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 150));
+  const cardClone = await page.evaluateHandle(() => {
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    return svg ? svg.closest('.card') : document.body;
+  });
+  if (cardClone && cardClone.asElement()) {
+    await cardClone.asElement().screenshot({ path: path.join(screenshotDir, '07-clone-layer-toggled-off.png') });
+  }
+  // Restore Clone
+  await page.evaluate(() => {
+    const cloneToggle = document.querySelector('[data-testid="heatmap-layer-copy_move-toggle"]');
+    if (cloneToggle && !cloneToggle.checked) cloneToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  // 15j: Clean baseline empty state verification and screenshot
+  await page.goto(`${baseUrl}/cases/${caseData.case_identifier}/evidence/${evidenceData.id}`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="heatmap-empty-state"]');
+
+  const cleanBaselineCheck = await page.evaluate(() => {
+    const emptyState = document.querySelector('[data-testid="heatmap-empty-state"]');
+    const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
+    const controlsBar = document.querySelector('[data-testid="heatmap-controls-bar"]');
+    return {
+      hasEmptyState: Boolean(emptyState),
+      emptyText: emptyState ? emptyState.textContent.trim() : null,
+      hasSlider: Boolean(slider),
+      hasControlsBar: Boolean(controlsBar),
+    };
+  });
+
+  assert.ok(cleanBaselineCheck.hasEmptyState, 'Clean baseline evidence must display empty state element');
+  assert.ok(cleanBaselineCheck.emptyText.includes('Clean Baseline'), 'Empty state must announce Clean Baseline');
+  assert.equal(cleanBaselineCheck.hasSlider, false, 'Clean baseline evidence must NOT display non-functional opacity slider');
+  assert.equal(cleanBaselineCheck.hasControlsBar, false, 'Clean baseline evidence must NOT display controls bar');
+
+  const cleanCardEl = await page.evaluateHandle(() => {
+    const emptyState = document.querySelector('[data-testid="heatmap-empty-state"]');
+    return emptyState ? emptyState.closest('.card') : document.body;
+  });
+  if (cleanCardEl && cleanCardEl.asElement()) {
+    await cleanCardEl.asElement().screenshot({ path: path.join(screenshotDir, '00-clean-baseline-empty-state.png') });
+  }
+
   console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation → workbench dark mode → heatmap opacity functional repair');
 }
 
