@@ -363,7 +363,9 @@ def test_s3_end_to_end_evidence_custody_analysis_report_export_and_health(s3_e2e
     lineage_summary = LineageService.refresh_case(db, case_row)
     assert lineage_summary["evidence_count"] == 1
     c2pa_res = inspect_c2pa(ev_row)
-    assert c2pa_res["credential_status"] in {"NONE_DETECTED", "SDK_UNAVAILABLE"}
+    # C2PA inspection returns ABSENT when the SDK successfully scans an asset with no embedded
+    # credentials, or SDK_UNAVAILABLE when the optional C2PA binary library is not installed.
+    assert c2pa_res["credential_status"] in {"ABSENT", "SDK_UNAVAILABLE"}
     corr_res = CrossCorrelationService.evaluate_case(db, case_row)
     assert corr_res.case_identifier == case_row.case_identifier
 
