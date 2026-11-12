@@ -14,7 +14,7 @@ from app.forensics.copy_move.analyzer import CopyMoveAnalyzer
 from app.models.domain import Analysis, User, Evidence, InvestigationCase
 from app.api.deps import get_current_user, verify_evidence_access, verify_analysis_access
 from app.core.config import settings
-from app.services.storage import get_storage_backend
+from app.services.storage import get_storage_backend, run_legacy_analyzer_with_storage
 
 router = APIRouter()
 
@@ -26,7 +26,7 @@ def trigger_metadata_analysis(
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = MetadataAnalyzer.run_analysis(db, evidence_id)
+        analysis = run_legacy_analyzer_with_storage(db, evidence_id, MetadataAnalyzer, "metadata")
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower():
@@ -63,7 +63,7 @@ def trigger_ela_analysis(
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = ELAAnalyzer.run_analysis(db, evidence_id)
+        analysis = run_legacy_analyzer_with_storage(db, evidence_id, ELAAnalyzer, "ela")
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower() or "missing" in str(e).lower():
@@ -82,7 +82,7 @@ def trigger_noise_analysis(
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = NoiseAnalyzer.run_analysis(db, evidence_id, filter_method=filter_method, kernel_size=kernel_size)
+        analysis = run_legacy_analyzer_with_storage(db, evidence_id, NoiseAnalyzer, "noise", filter_method=filter_method, kernel_size=kernel_size)
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower() or "missing" in str(e).lower():
@@ -99,7 +99,7 @@ def trigger_jpeg_dct_analysis(
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = JPEGDCTAnalyzer.run_analysis(db, evidence_id)
+        analysis = run_legacy_analyzer_with_storage(db, evidence_id, JPEGDCTAnalyzer, "jpeg_dct")
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower() or "missing" in str(e).lower():
@@ -116,7 +116,7 @@ def trigger_copy_move_analysis(
 ):
     verify_evidence_access(db, evidence_id, current_user)
     try:
-        analysis = CopyMoveAnalyzer.run_analysis(db, evidence_id)
+        analysis = run_legacy_analyzer_with_storage(db, evidence_id, CopyMoveAnalyzer, "copy_move")
         return analysis
     except ValueError as e:
         if "not found" in str(e).lower() or "missing" in str(e).lower():

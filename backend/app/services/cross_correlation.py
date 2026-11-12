@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.domain import InvestigationCase, Evidence, Analysis, Finding
 from app.services.audit import AuditService
+from app.services.storage import get_storage_backend
 from app.schemas.v3 import (
     CrossImageCorrelationResponse,
     SharedCameraCluster,
@@ -206,10 +207,12 @@ class CrossCorrelationService:
         matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
         # Precompute descriptors
+        storage = get_storage_backend()
         descriptors_map: Dict[int, Any] = {}
         for ev in evidence_items:
-            if ev.stored_path and os.path.exists(ev.stored_path):
-                img = cv2.imread(ev.stored_path, cv2.IMREAD_GRAYSCALE)
+            if ev.stored_path and storage.exists(ev.stored_path):
+                with storage.local_file_path(ev.stored_path) as local_path:
+                    img = cv2.imread(str(local_path), cv2.IMREAD_GRAYSCALE)
                 if img is not None:
                     # Resize to manageable dimension for efficient comparison
                     h, w = img.shape[:2]

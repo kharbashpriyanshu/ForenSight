@@ -1,8 +1,9 @@
 """Case-scoped, explainable candidate links between image evidence items."""
 
+from contextlib import contextmanager
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.domain import Evidence, EvidenceLineageRelation, InvestigationCase
+from app.services.storage import get_storage_backend
 
 
 MAX_CASE_IMAGES = 80
@@ -29,6 +31,18 @@ class LineageService:
         if not path.is_file():
             raise FileNotFoundError("Evidence file is not available")
         return path
+
+    @classmethod
+    @contextmanager
+    def _evidence_file_path(cls, evidence: Evidence) -> Iterator[Path]:
+        storage = get_storage_backend()
+        if storage.is_remote:
+            if not evidence.stored_path or not storage.exists(evidence.stored_path):
+                raise FileNotFoundError("Evidence file is not available")
+            with storage.local_file_path(evidence.stored_path) as local_path:
+                yield local_path
+        else:
+            yield cls._safe_image_path(evidence)
 
     @staticmethod
     def _features(path: Path) -> Dict[str, Any]:
@@ -134,7 +148,8 @@ class LineageService:
         features: Dict[int, Dict[str, Any]] = {}
         for evidence in evidence_items:
             try:
-                features[evidence.id] = cls._features(cls._safe_image_path(evidence))
+                with cls._evidence_file_path(evidence) as local_path:
+                    features[evidence.id] = cls._features(local_path)
             except (OSError, ValueError):
                 continue
 

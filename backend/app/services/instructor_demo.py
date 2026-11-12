@@ -346,8 +346,18 @@ def reset_instructor_demo(db: Session) -> Dict[str, Any]:
     db.delete(case)
     db.commit()
 
+    from app.services.storage import get_storage_backend
+
+    storage = get_storage_backend()
     for p in stored_paths + report_paths:
-        if p and os.path.isfile(p):
+        if not p:
+            continue
+        if storage.is_remote and not os.path.isabs(p):
+            try:
+                storage.delete(p)
+            except Exception:
+                pass
+        elif os.path.isfile(p):
             try:
                 os.remove(p)
             except OSError:

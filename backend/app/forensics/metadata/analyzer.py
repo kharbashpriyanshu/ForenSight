@@ -1,7 +1,6 @@
 import datetime
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
-from app.services.storage import get_storage_backend
 from .schemas import ExtractedMetadata, MetadataFindings
 from .extractor import MetadataExtractor
 
@@ -22,8 +21,7 @@ class MetadataAnalyzer:
         db.refresh(analysis)
 
         try:
-            with get_storage_backend().local_file_path(evidence.stored_path) as local_path:
-                raw_meta = MetadataExtractor.extract(str(local_path))
+            raw_meta = MetadataExtractor.extract(evidence.stored_path)
             
             indicators = []
             

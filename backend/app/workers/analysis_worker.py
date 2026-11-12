@@ -14,6 +14,7 @@ from app.forensics.ela.analyzer import ELAAnalyzer
 from app.forensics.noise.analyzer import NoiseAnalyzer
 from app.forensics.jpeg_dct.analyzer import JPEGDCTAnalyzer
 from app.forensics.copy_move.analyzer import CopyMoveAnalyzer
+from app.services.storage import run_legacy_analyzer_with_storage
 import os
 import re
 
@@ -100,15 +101,15 @@ def run_analysis_task(self, job_id: int):
             db.commit()
             analysis = None
             if analysis_type in ("metadata",):
-                analysis = MetadataAnalyzer.run_analysis(db, evidence.id)
+                analysis = run_legacy_analyzer_with_storage(db, evidence.id, MetadataAnalyzer, "metadata")
             elif analysis_type in ("ela",):
-                analysis = ELAAnalyzer.run_analysis(db, evidence.id)
+                analysis = run_legacy_analyzer_with_storage(db, evidence.id, ELAAnalyzer, "ela")
             elif analysis_type in ("noise",):
-                analysis = NoiseAnalyzer.run_analysis(db, evidence.id)
+                analysis = run_legacy_analyzer_with_storage(db, evidence.id, NoiseAnalyzer, "noise")
             elif analysis_type in ("jpeg-dct", "jpeg_dct"):
-                analysis = JPEGDCTAnalyzer.run_analysis(db, evidence.id)
+                analysis = run_legacy_analyzer_with_storage(db, evidence.id, JPEGDCTAnalyzer, "jpeg_dct")
             elif analysis_type in ("copy-move", "copy_move"):
-                analysis = CopyMoveAnalyzer.run_analysis(db, evidence.id)
+                analysis = run_legacy_analyzer_with_storage(db, evidence.id, CopyMoveAnalyzer, "copy_move")
             elif analysis_type in ("jpeg-structure", "jpeg_structure"):
                 from app.engine_extensions.runner import V4EngineRunner
                 analysis = V4EngineRunner.run_engine(db, evidence.id, "JPEG-STRUCTURE", parameters=job.parameters or {})

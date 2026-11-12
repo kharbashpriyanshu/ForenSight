@@ -4,6 +4,7 @@ import hashlib
 import os
 import shutil
 import tempfile
+import threading
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
@@ -477,4 +478,95 @@ def get_storage_backend() -> StorageBackend:
     _cached_backend = backend
     _cached_signature = sig
     return backend
+
+
+_legacy_storage_dir_lock = threading.Lock()
+
+
+class _LocalEvidenceProxy:
+    """Read-only Evidence proxy overriding stored_path to a materialized local file."""
+
+    def __init__(self, evidence: Any, local_path: str):
+        self._evidence = evidence
+        self.stored_path = local_path
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._evidence, name)
+
+
+class _LegacyEvidenceQueryProxy:
+    def __init__(self, query: Any, local_path: str):
+        self._query = query
+        self._local_path = local_path
+
+    def filter(self, *args: Any, **kwargs: Any) -> "_LegacyEvidenceQueryProxy":
+        return _LegacyEvidenceQueryProxy(self._query.filter(*args, **kwargs), self._local_path)
+
+    def first(self) -> Any:
+        ev = self._query.first()
+        if ev is None:
+            return None
+        return _LocalEvidenceProxy(ev, self._local_path)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._query, name)
+
+
+class _LegacySessionProxy:
+    """Session proxy that provides materialized local Evidence paths without dirtying ORM rows."""
+
+    def __init__(self, db: Any, evidence_model: Any, local_path: str):
+        self._db = db
+        self._evidence_model = evidence_model
+        self._local_path = local_path
+
+    def query(self, *entities: Any, **kwargs: Any) -> Any:
+        q = self._db.query(*entities, **kwargs)
+        if len(entities) == 1 and entities[0] is self._evidence_model:
+            return _LegacyEvidenceQueryProxy(q, self._local_path)
+        return q
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._db, name)
+
+
+def run_legacy_analyzer_with_storage(
+    db: Any,
+    evidence_id: int,
+    analyzer_cls: Any,
+    slug: str,
+    **kwargs: Any,
+) -> Any:
+    """
+    Execute a frozen legacy analyzer (`MetadataAnalyzer`, `ELAAnalyzer`, `NoiseAnalyzer`,
+    `JPEGDCTAnalyzer`, `CopyMoveAnalyzer`) seamlessly against either local or remote storage
+    without modifying the frozen analyzer source files.
+    """
+    storage = get_storage_backend()
+    if not storage.is_remote:
+        return analyzer_cls.run_analysis(db, evidence_id, **kwargs)
+
+    from app.models.domain import Evidence
+
+    evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
+    if not evidence:
+        raise ValueError("Evidence not found")
+    if not evidence.stored_path or not storage.exists(evidence.stored_path):
+        raise ValueError("Evidence file is missing on disk")
+
+    with storage.local_file_path(evidence.stored_path) as local_ev_path:
+        with tempfile.TemporaryDirectory(prefix=f"forensight-{slug}-") as tmp_dir:
+            session_proxy = _LegacySessionProxy(db, Evidence, str(local_ev_path))
+            with _legacy_storage_dir_lock:
+                prev_storage_dir = settings.STORAGE_DIR
+                settings.STORAGE_DIR = tmp_dir
+                try:
+                    analysis = analyzer_cls.run_analysis(session_proxy, evidence_id, **kwargs)
+                finally:
+                    settings.STORAGE_DIR = prev_storage_dir
+
+            if slug != "metadata":
+                out_subdir = os.path.join(tmp_dir, "analyses", slug)
+                storage.sync_directory_to_storage(out_subdir, f"analyses/{slug}")
+            return analysis
 

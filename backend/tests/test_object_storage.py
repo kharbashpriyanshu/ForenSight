@@ -241,8 +241,9 @@ def s3_e2e_env(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("app.api.reports.get_storage_backend", lambda: s3_backend)
     monkeypatch.setattr("app.api.analysis.get_storage_backend", lambda: s3_backend)
     monkeypatch.setattr("app.services.case_export.get_storage_backend", lambda: s3_backend)
-    monkeypatch.setattr("app.forensics.ela.analyzer.get_storage_backend", lambda: s3_backend)
-    monkeypatch.setattr("app.forensics.metadata.analyzer.get_storage_backend", lambda: s3_backend)
+    monkeypatch.setattr("app.services.lineage.get_storage_backend", lambda: s3_backend)
+    monkeypatch.setattr("app.services.c2pa_provenance.get_storage_backend", lambda: s3_backend)
+    monkeypatch.setattr("app.services.cross_correlation.get_storage_backend", lambda: s3_backend)
 
     engine = create_engine(
         "sqlite://",
@@ -339,20 +340,34 @@ def test_s3_end_to_end_evidence_custody_analysis_report_export_and_health(s3_e2e
     assert custody_ok.status == "VERIFIED_INTACT"
     assert custody_ok.current_disk_sha256_hash == expected_sha
 
-    # 5. Run Metadata & ELA analysis against S3 evidence, serve ELA artifact from S3
-    meta_analysis = MetadataAnalyzer.run_analysis(db, ev_row.id)
-    assert meta_analysis.status == "completed"
-    ela_analysis = ELAAnalyzer.run_analysis(db, ev_row.id)
-    assert ela_analysis.status == "completed"
-    ela_art_key = ela_analysis.structured_findings["artifacts"]["ela_map"]
+    # 5. Run Metadata & ELA analysis via API against S3 evidence, serve ELA artifact from S3
+    meta_resp = client.post(f"/api/evidence/{ev_row.id}/analysis/metadata", headers=headers)
+    assert meta_resp.status_code == 200, meta_resp.text
+    assert meta_resp.json()["status"] == "completed"
+    ela_resp = client.post(f"/api/evidence/{ev_row.id}/analysis/ela", headers=headers)
+    assert ela_resp.status_code == 200, ela_resp.text
+    ela_data = ela_resp.json()
+    assert ela_data["status"] == "completed"
+    ela_art_key = ela_data["structured_findings"]["artifacts"]["ela_map"]
     assert ela_art_key.startswith("analyses/ela/")
     art_resp = client.get(f"/api/artifacts/{ela_art_key}")
     assert art_resp.status_code == 200
     assert art_resp.headers["content-type"].startswith("image/")
     assert len(art_resp.content) > 0
 
-    # 6. Generate JSON report -> stored in S3 & downloadable via /api/reports/{id}/download
+    # 5b. Lineage, C2PA provenance, and Cross-Correlation work with S3-backed evidence
+    from app.services.lineage import LineageService
+    from app.services.c2pa_provenance import inspect_c2pa
+    from app.services.cross_correlation import CrossCorrelationService
     case_row = db.query(InvestigationCase).filter(InvestigationCase.id == ev_row.case_id).first()
+    lineage_summary = LineageService.refresh_case(db, case_row)
+    assert lineage_summary["evidence_count"] == 1
+    c2pa_res = inspect_c2pa(ev_row)
+    assert c2pa_res["credential_status"] in {"NONE_DETECTED", "SDK_UNAVAILABLE"}
+    corr_res = CrossCorrelationService.evaluate_case(db, case_row)
+    assert corr_res.case_identifier == case_row.case_identifier
+
+    # 6. Generate JSON report -> stored in S3 & downloadable via /api/reports/{id}/download
     report = ReportService.generate_case_report(db, case_row.case_identifier, report_format="json", author_username="s3_investigator")
     assert report.artifact_path.startswith("reports/")
     dl_resp = client.get(f"/api/reports/{report.report_identifier}/download")

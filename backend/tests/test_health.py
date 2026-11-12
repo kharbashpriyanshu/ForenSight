@@ -75,9 +75,12 @@ def test_health_and_readiness_on_database_failure():
         app.dependency_overrides.pop(get_db, None)
 
 
-def test_health_and_readiness_on_storage_failure(monkeypatch):
-    monkeypatch.setattr(health_api.settings, "STORAGE_DIR", "/nonexistent_forbidden_storage_path_test")
-    with patch("app.api.health.os.makedirs", side_effect=PermissionError("read-only storage")):
+def test_health_and_readiness_on_storage_failure():
+    class _FailingStorage:
+        def health_check(self, probe_name: str = ".healthcheck") -> bool:
+            raise PermissionError("read-only storage")
+
+    with patch("app.api.health.get_storage_backend", return_value=_FailingStorage()):
         health_res = client.get("/api/health")
         assert health_res.status_code == 200
         health_data = health_res.json()

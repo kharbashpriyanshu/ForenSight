@@ -1,11 +1,13 @@
 """Read-only, network-restricted inspection of embedded C2PA credentials."""
 
+from contextlib import nullcontext
 import json
 from pathlib import Path
 from typing import Any, Dict
 
 from app.core.config import settings
 from app.models.domain import Evidence
+from app.services.storage import get_storage_backend
 
 
 def inspect_c2pa(evidence: Evidence) -> Dict[str, Any]:
@@ -20,14 +22,21 @@ def inspect_c2pa(evidence: Evidence) -> Dict[str, Any]:
             "manifest": None,
         }
 
-    root = Path(settings.STORAGE_DIR).resolve()
-    path = Path(evidence.stored_path).resolve()
-    try:
-        path.relative_to(root)
-    except ValueError:
-        return _error("Evidence path is outside the configured evidence storage directory.")
-    if not path.is_file():
-        return _error("The preserved evidence file is not available for inspection.")
+    storage = get_storage_backend()
+    if storage.is_remote:
+        if not evidence.stored_path or not storage.exists(evidence.stored_path):
+            return _error("The preserved evidence file is not available for inspection.")
+        path_ctx = storage.local_file_path(evidence.stored_path)
+    else:
+        root = Path(settings.STORAGE_DIR).resolve()
+        path = Path(evidence.stored_path).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError:
+            return _error("Evidence path is outside the configured evidence storage directory.")
+        if not path.is_file():
+            return _error("The preserved evidence file is not available for inspection.")
+        path_ctx = nullcontext(path)
 
     try:
         # Uploaded content is untrusted. Do not follow external manifest URLs or
@@ -35,8 +44,8 @@ def inspect_c2pa(evidence: Evidence) -> Dict[str, Any]:
         context = Context.from_dict({
             "verify": {"remote_manifest_fetch": False, "ocsp_fetch": False}
         })
-        with context:
-            reader = Reader(str(path), context=context)
+        with path_ctx as local_path, context:
+            reader = Reader(str(local_path), context=context)
             with reader:
                 if not reader.is_embedded():
                     remote_url = reader.get_remote_url()
