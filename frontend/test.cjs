@@ -19,6 +19,8 @@ const state = {
   jobPolls: 0,
   reportGenerated: false,
   requestedApiPaths: [],
+  requestedApiQueries: [],
+  seenCsrfTokens: [],
   healthPayload: {
     status: 'healthy',
     service: 'forensight',
@@ -180,6 +182,9 @@ async function mockApiRequest(request) {
   const url = new URL(request.url());
   const route = `${request.method()} ${url.pathname}`;
   state.requestedApiPaths.push(route);
+  state.requestedApiQueries.push(`${request.method()} ${url.pathname}${url.search}`);
+  const csrfHeader = request.headers()['x-csrf-token'];
+  if (csrfHeader) state.seenCsrfTokens.push(`${route}:${csrfHeader}`);
 
   if (url.pathname.endsWith('/timeline') || url.pathname.endsWith('/custody')) {
     return jsonResponse({ detail: 'Not Found' }, 404);
@@ -187,6 +192,9 @@ async function mockApiRequest(request) {
 
   if (url.pathname === '/api/auth/login' && request.method() === 'POST') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR', mfa_enabled: false });
+  }
+  if (url.pathname === '/api/auth/logout' && request.method() === 'POST') {
+    return { status: 204, contentType: 'text/plain', body: '' };
   }
   if (url.pathname === '/api/auth/session' && request.method() === 'GET') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR' });
@@ -810,7 +818,37 @@ async function main() {
   await page.goto(`${baseUrl}/cases/FS-DEMO-001/reports`, { waitUntil: 'networkidle0' });
   await page.waitForFunction(() => document.body.innerText.includes('FS-RPT-DEMO01'));
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey');
+  // 12: Vercel same-origin proxy config, localhost-free prod bundle, CSRF, session persistence & logout
+  const vercelConfigPath = path.join(__dirname, 'vercel.json');
+  assert.ok(fs.existsSync(vercelConfigPath), 'frontend/vercel.json must exist');
+  const vercelConfig = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8'));
+  assert.ok(!vercelConfig.redirects, 'vercel.json must not use redirects for API proxying');
+  const apiRewrite = (vercelConfig.rewrites || []).find((r) => r.source === '/api/:path*');
+  assert.ok(apiRewrite, 'vercel.json must define /api/:path* rewrite');
+  assert.ok(apiRewrite.destination.startsWith('https://') && apiRewrite.destination.endsWith('/api/:path*'), 'API rewrite must target HTTPS origin and preserve /api/:path*');
+  const spaRewrite = (vercelConfig.rewrites || []).find((r) => r.destination === '/index.html');
+  assert.ok(spaRewrite && spaRewrite.source.includes('(?!api/'), 'SPA fallback rewrite must exclude /api/ and static assets');
+
+  const distAssetsDir = path.join(__dirname, 'dist', 'assets');
+  if (fs.existsSync(distAssetsDir)) {
+    for (const file of fs.readdirSync(distAssetsDir).filter((f) => f.endsWith('.js'))) {
+      const content = fs.readFileSync(path.join(distAssetsDir, file), 'utf8');
+      assert.ok(!content.includes('localhost:8001') && !content.includes('localhost:8000'), `Production bundle ${file} must not contain localhost backend URLs`);
+    }
+  }
+
+  assert.ok(state.requestedApiQueries.some((q) => q.includes('/api/cases?skip=0&limit=100')), 'API query parameters must be preserved');
+
+  await page.goto(`${baseUrl}/cases`, { waitUntil: 'networkidle0' });
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.location.pathname === '/cases');
+
+  await page.evaluate(() => { document.cookie = 'fs_csrf=e2e-csrf-token-123; path=/'; });
+  await clickButton(page, 'Sign Out');
+  await page.waitForFunction(() => window.location.pathname === '/login');
+  assert.ok(state.seenCsrfTokens.includes('POST /api/auth/logout:e2e-csrf-token-123'), 'Logout must transmit X-CSRF-Token from fs_csrf cookie');
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth');
 }
 
 main()

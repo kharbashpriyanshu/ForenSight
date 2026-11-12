@@ -1,4 +1,19 @@
-const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api';
+const LOCALHOST_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+
+/**
+ * Resolve the API base path. Production builds never retain localhost origins
+ * and always default to same-origin `/api` so Vercel rewrites proxy requests.
+ */
+export function resolveApiBase(rawApiUrl?: string, isProd = import.meta.env.PROD): string {
+  const normalized = (rawApiUrl || '').trim().replace(/\/+$/, '');
+  if (!normalized) return '/api';
+  if (isProd && LOCALHOST_ORIGIN_RE.test(normalized)) {
+    return '/api';
+  }
+  return `${normalized}/api`;
+}
+
+export const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.PROD);
 
 interface CacheEntry {
   response: Response;
@@ -27,7 +42,7 @@ export function invalidateApiCache(filterPattern?: string) {
   }
 }
 
-function readCsrfCookie(): string {
+export function readCsrfCookie(): string {
   const match = document.cookie.match(/(?:^|;\s*)fs_csrf=([^;]*)/);
   return match ? decodeURIComponent(match[1]) : '';
 }

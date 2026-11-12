@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { invalidateApiCache, refreshApiSession } from '../api';
+import { API_BASE, invalidateApiCache, readCsrfCookie, refreshApiSession } from '../api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -9,12 +9,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const API_BASE = (import.meta.env.VITE_API_URL || '') + '/api';
-
-function readCsrfCookie(): string {
-  const match = document.cookie.match(/(?:^|;\s*)fs_csrf=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : '';
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setAuthenticated] = useState(false);

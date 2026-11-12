@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/layout/ThemeToggle';
 import BrandHeader from '../components/layout/BrandHeader';
+import { API_BASE } from '../api';
 
 
 export default function Login() {
@@ -29,7 +30,7 @@ export default function Login() {
       formData.append('password', password);
 
       if (mfaChallenge) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/mfa/verify`, {
+        const response = await fetch(`${API_BASE}/auth/mfa/verify`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -40,7 +41,7 @@ export default function Login() {
         login();
         navigate('/cases');
       } else {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/auth/login`, {
+        const response = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

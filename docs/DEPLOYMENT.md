@@ -168,3 +168,11 @@ python scripts/audit_integrity.py verify-checkpoint ../audit-checkpoints/<checkp
 ```
 
 Protect the checkpoint directory with separate write credentials or immutable retention. The verifier checks checkpoint signature and trusted signer fingerprint; chain-head comparison across time is an operator procedure.
+
+## 8. Vercel + Render Same-Origin `/api/*` Proxy
+
+When deploying the frontend on **Vercel** and the backend on **Render**:
+
+1. **Same-Origin Rewrites (`frontend/vercel.json`):** Vercel proxies `/api/:path*` to the Render backend (`https://forensight-api.onrender.com/api/:path*` by default; update `destination` in `frontend/vercel.json` to match your Render service URL before deploying). Rewrites preserve HTTP methods, headers, cookies, `Set-Cookie`, and query strings without redirects, keeping `SameSite=Lax` session cookies (`fs_access`, `fs_refresh`) and `fs_csrf` first-party on the Vercel origin.
+2. **Frontend Environment (`VITE_API_URL`):** Leave `VITE_API_URL` unset (or empty) on Vercel so production builds use same-origin `/api`. Production builds also ignore any accidental `localhost` / `127.0.0.1` `VITE_API_URL` value via `resolveApiBase()` in `frontend/src/api.ts`.
+3. **Backend CORS & Trusted Origin (`BACKEND_CORS_ORIGINS`):** On Render, include your explicit HTTPS Vercel origin in `BACKEND_CORS_ORIGINS` (e.g., `https://forensight.vercel.app`) so `_ensure_trusted_origin` and `CORSMiddleware` accept proxied browser requests.
