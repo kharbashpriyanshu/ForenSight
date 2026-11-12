@@ -384,8 +384,27 @@ export default function CasesList() {
                 marginBottom: 0
               }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <code style={{ fontSize: '0.75rem', fontWeight: 600 }}>{c.case_identifier}</code>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <code style={{ fontSize: '0.75rem', fontWeight: 600 }}>{c.case_identifier}</code>
+                      {c.case_identifier === 'FS-DEMO-001' && (
+                        <span
+                          data-testid="demo-case-badge"
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
+                            padding: '0.12rem 0.45rem',
+                            borderRadius: '999px',
+                            background: 'rgba(212, 160, 67, 0.14)',
+                            color: 'var(--accent-color)',
+                            border: '1px solid rgba(212, 160, 67, 0.35)',
+                          }}
+                        >
+                          SYNTHETIC DEMO
+                        </span>
+                      )}
+                    </div>
                     <span className={`status-badge ${c.status === 'Open' ? '' : 'pending'}`}>
                       {c.status || 'Active'}
                     </span>

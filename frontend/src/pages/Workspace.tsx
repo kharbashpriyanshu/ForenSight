@@ -86,6 +86,25 @@ const Workspace: React.FC = () => {
             <span className="status-dot-active" aria-hidden="true" />
             <span className="case-status-text">Active Investigation</span>
           </div>
+          {caseId === 'FS-DEMO-001' && (
+            <div
+              data-testid="workspace-demo-badge"
+              style={{
+                marginTop: '0.45rem',
+                fontSize: '0.66rem',
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                color: 'var(--accent-color)',
+                background: 'rgba(212, 160, 67, 0.12)',
+                border: '1px solid rgba(212, 160, 67, 0.3)',
+                borderRadius: '6px',
+                padding: '0.2rem 0.45rem',
+                textAlign: 'center',
+              }}
+            >
+              SYNTHETIC TRAINING CASE
+            </div>
+          )}
         </div>
 
         {/* CASE NAVIGATION */}

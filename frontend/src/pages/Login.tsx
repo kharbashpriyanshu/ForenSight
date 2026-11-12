@@ -242,8 +242,22 @@ export default function Login() {
           </button>
         </form>
         
-        <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color-translucent)', paddingTop: '1.25rem' }}>
-          Station Roles: <code>admin</code> (Lead) • <code>user_a</code> (Analyst) • <code>user_b</code> (Technician)
+        <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color-translucent)', paddingTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.55rem', alignItems: 'center' }}>
+          <div>
+            Instructor Demonstration Account (Synthetic Training Data): <code>demo_instructor</code>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            data-testid="fill-demo-credentials"
+            onClick={() => {
+              setUsername('demo_instructor');
+              setPassword('forensight_demo_instructor');
+            }}
+            style={{ fontSize: '0.74rem', padding: '0.35rem 0.75rem' }}
+          >
+            Use Instructor Demo Credentials
+          </button>
         </div>
       </div>
     </div>

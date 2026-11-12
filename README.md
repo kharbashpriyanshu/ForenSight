@@ -428,3 +428,9 @@ ForenSight builds upon foundational scientific research in digital image forensi
 - **Resampling & Interpolation Detection:** Popescu, A. C., & Farid, H. (2005). *Exposing digital forgeries by detecting traces of resampling*.
 - **JPEG Quantization & Ghosting:** Farid, H. (2009). *Exposing digital forgeries from JPEG ghosts*.
 - **PRNU Sensor Fingerprinting:** Chen, M., Fridrich, J., Goljan, M., & Lukáš, J. (2008). *Determining image origin and integrity using sensor noise*.
+
+---
+
+## 19. Instructor Demonstration Investigation (`FS-DEMO-001`)
+
+ForenSight includes a reproducible, self-contained synthetic demonstration case (`FS-DEMO-001`) with a dedicated non-admin `demo_instructor` account, 7 synthetic evidence files, real engine analyses, lineage/correlation links, investigation graph, audit trail, and reports. See [`docs/INSTRUCTOR_DEMO.md`](docs/INSTRUCTOR_DEMO.md) for setup, seeding, reset commands, and environment notes.

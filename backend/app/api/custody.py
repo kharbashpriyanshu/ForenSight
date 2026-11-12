@@ -15,7 +15,7 @@ def get_case_chain_of_custody(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:

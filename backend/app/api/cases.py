@@ -73,7 +73,7 @@ def read_cases(
 
 @router.get("/cases/{case_id}", response_model=InvestigationCaseResponse)
 def read_case(case_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
@@ -138,7 +138,7 @@ def upload_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
@@ -250,7 +250,7 @@ from app.schemas.domain import CaseOverviewStats
 
 @router.get("/cases/{case_id}/overview", response_model=CaseOverviewStats)
 def read_case_overview(case_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
@@ -271,7 +271,7 @@ def list_case_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
@@ -322,7 +322,7 @@ def compare_evidence(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:

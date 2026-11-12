@@ -85,6 +85,59 @@ const heatmapData = {
   limitations: 'Mocked data; not a forensic evaluation.',
 };
 
+const demoCaseData = {
+  id: 900,
+  case_identifier: 'FS-DEMO-001',
+  title: 'Digital Image Manipulation Investigation — Recruitment Campaign',
+  status: 'IN_REVIEW',
+  created_at: new Date().toISOString(),
+};
+
+const demoEvidenceData = {
+  id: 901,
+  evidence_identifier: 'FS-EVD-DEMO01',
+  case_id: 900,
+  original_filename: 'campaign_composite_splice.jpg',
+  mime_type: 'image/jpeg',
+  image_format: 'JPEG',
+  file_size: 4096,
+  sha256_hash: 'b'.repeat(64),
+  width: 640,
+  height: 480,
+  created_at: new Date().toISOString(),
+  intake_context: { source_platform: 'Synthetic Training Generator', acquisition_method: 'Deterministic Script' },
+};
+
+const demoReportData = {
+  id: 951,
+  report_identifier: 'FS-RPT-DEMO01',
+  case_id: demoCaseData.case_identifier,
+  generated_at: new Date().toISOString(),
+  rule_version: 'V3.0',
+  report_type: 'JSON',
+  status: 'COMPLETED',
+};
+
+const demoGraphData = {
+  case_id: 'FS-DEMO-001',
+  nodes: [
+    { id: 'case:FS-DEMO-001', type: 'CASE', label: demoCaseData.title, metadata: { identifier: 'FS-DEMO-001', status: 'IN_REVIEW' } },
+    { id: 'ev:901', type: 'EVIDENCE', label: 'campaign_composite_splice.jpg', metadata: { identifier: 'FS-EVD-DEMO01', format: 'JPEG' } },
+    { id: 'ev:902', type: 'EVIDENCE', label: 'campaign_original_master.png', metadata: { identifier: 'FS-EVD-DEMO02', format: 'PNG' } },
+    { id: 'obs:910', type: 'OBSERVATION', label: 'ELA & DCT Quantization Anomaly', metadata: { modality: 'ELA' } },
+    { id: 'finding:920', type: 'FINDING', label: 'Spliced Composite Region Detected', metadata: { status: 'VERIFIED' } },
+    { id: 'report:951', type: 'REPORT', label: 'FS-RPT-DEMO01', metadata: { type: 'JSON' } },
+  ],
+  edges: [
+    { source: 'case:FS-DEMO-001', target: 'ev:901', type: 'CONTAINS' },
+    { source: 'case:FS-DEMO-001', target: 'ev:902', type: 'CONTAINS' },
+    { source: 'ev:901', target: 'ev:902', type: 'DERIVED_FROM' },
+    { source: 'ev:901', target: 'obs:910', type: 'HAS_OBSERVATION' },
+    { source: 'obs:910', target: 'finding:920', type: 'SUPPORTS' },
+    { source: 'case:FS-DEMO-001', target: 'report:951', type: 'GENERATED' },
+  ],
+};
+
 function jsonResponse(body, status = 200) {
   return { status, contentType: 'application/json', body: JSON.stringify(body) };
 }
@@ -142,7 +195,127 @@ async function mockApiRequest(request) {
     return jsonResponse(state.healthPayload);
   }
   if (url.pathname === '/api/cases' && request.method() === 'GET') {
-    return jsonResponse(state.caseCreated ? [caseData] : []);
+    const list = state.caseCreated ? [caseData] : [];
+    if (state.demoMode) list.unshift(demoCaseData);
+    return jsonResponse(list);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}` && request.method() === 'GET') {
+    return jsonResponse(demoCaseData);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/overview` && request.method() === 'GET') {
+    return jsonResponse({
+      case_identifier: demoCaseData.case_identifier,
+      title: demoCaseData.title,
+      status: demoCaseData.status,
+      created_at: demoCaseData.created_at,
+      evidence_count: 7,
+      analysis_count: 25,
+      completed_analysis_count: 25,
+      failed_analysis_count: 0,
+      running_job_count: 0,
+      pending_job_count: 0,
+      findings_count: 4,
+      audit_event_count: 20,
+      assessment_status: 'MULTIPLE_ANOMALIES_CORROBORATED',
+      latest_assessment: 'MULTIPLE_ANOMALIES_CORROBORATED',
+    });
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/evidence` && request.method() === 'GET') {
+    return jsonResponse([demoEvidenceData]);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/evidence/${demoEvidenceData.id}` && request.method() === 'GET') {
+    return jsonResponse(demoEvidenceData);
+  }
+  if (url.pathname === `/api/evidence/${demoEvidenceData.id}` && request.method() === 'GET') {
+    return jsonResponse(demoEvidenceData);
+  }
+  if (url.pathname === `/api/evidence/${demoEvidenceData.id}/raw`) {
+    return { status: 200, contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ZkAAAAASUVORK5CYII=', 'base64') };
+  }
+  if (url.pathname === `/api/evidence/${demoEvidenceData.id}/jobs` && request.method() === 'GET') {
+    return jsonResponse([{ id: 9401, job_identifier: 'FS-JOB-DEMO01', evidence_id: demoEvidenceData.id, analysis_id: 9501, analysis_type: 'ela', engine_version: 'V3.0.0', status: 'COMPLETED', progress_percent: 100, progress_message: 'Completed', attempt_count: 1, queued_at: new Date().toISOString(), completed_at: new Date().toISOString() }]);
+  }
+  if (url.pathname === `/api/evidence/${demoEvidenceData.id}/analyses` && request.method() === 'GET') {
+    return jsonResponse([{ id: 9501, analysis_type: 'ELA', status: 'completed', summary: 'Error level differential detected on spliced region.', structured_findings: {} }]);
+  }
+  if (url.pathname === `/api/evidence/${demoEvidenceData.id}/heatmap`) {
+    return jsonResponse({ ...heatmapData, evidence_id: demoEvidenceData.id, what_was_found: 'Differential compression artifacts localized.' });
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/lineage` && request.method() === 'GET') {
+    return jsonResponse({
+      relations: [{
+        id: 1,
+        relation_kind: 'DERIVED_FROM',
+        review_status: 'VERIFIED',
+        parent_evidence_id: 902,
+        reviewer: 'demo_instructor',
+        review_note: 'Verified derivative relationship',
+        matching_details: { orb_inliers: 42 },
+        evidence_a: { id: 901, evidence_identifier: 'FS-EVD-DEMO01', filename: 'campaign_composite_splice.jpg', sha256: 'b'.repeat(64), width: 640, height: 480, created_at: new Date().toISOString() },
+        evidence_b: { id: 902, evidence_identifier: 'FS-EVD-DEMO02', filename: 'campaign_original_master.png', sha256: 'c'.repeat(64), width: 640, height: 480, created_at: new Date().toISOString() },
+      }],
+    });
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/cross-correlation` && request.method() === 'GET') {
+    return jsonResponse({
+      case_identifier: demoCaseData.case_identifier,
+      total_evidence_evaluated: 7,
+      camera_clusters: [],
+      temporal_sequence: [],
+      cross_image_matches: [{
+        evidence_a_id: 901,
+        evidence_a_filename: 'campaign_composite_splice.jpg',
+        evidence_b_id: 902,
+        evidence_b_filename: 'campaign_original_master.png',
+        shared_keypoint_count: 42,
+        confidence_label: 'HIGH',
+        forensic_explanation: 'Keypoint overlap between spliced composite and original master.',
+        limitations: 'Synthetic demo dataset.',
+      }],
+      findings_generated: 4,
+      evaluation_timestamp: new Date().toISOString(),
+      disclaimer: 'Synthetic demo dataset.',
+    });
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/graph` && request.method() === 'GET') {
+    return jsonResponse(demoGraphData);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/audit` && request.method() === 'GET') {
+    return jsonResponse([{ id: 1, sequence_number: 1, event_type: 'CASE_CREATED', actor: 'demo_instructor', timestamp: new Date().toISOString(), details: 'Created FS-DEMO-001' }]);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/chain-of-custody` && request.method() === 'GET') {
+    return jsonResponse({
+      case_identifier: demoCaseData.case_identifier,
+      case_created_at: new Date().toISOString(),
+      all_hashes_intact: true,
+      total_evidence_items: 1,
+      evidence_summaries: [{
+        evidence_id: 901,
+        evidence_identifier: 'FS-EVD-DEMO01',
+        filename: 'campaign_composite_splice.jpg',
+        stored_path: 'storage/evidence/demo.jpg',
+        ingest_sha256_hash: 'b'.repeat(64),
+        current_disk_sha256_hash: 'b'.repeat(64),
+        integrity_intact: true,
+        verified_at: new Date().toISOString(),
+        verifier: 'demo_instructor',
+        status: 'VERIFIED',
+        message: 'SHA-256 integrity verified.',
+      }],
+      custody_timeline: [],
+    });
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/findings` && request.method() === 'GET') {
+    return jsonResponse([{ id: 920, title: 'Spliced Composite Region Detected', status: 'VERIFIED', severity: 'HIGH', summary: 'ELA and DCT anomalies corroborate splice.' }]);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/notes` && request.method() === 'GET') {
+    return jsonResponse([{ id: 1, author: 'demo_instructor', content: 'Verified composite splice against master frame.', created_at: new Date().toISOString() }]);
+  }
+  if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/reports` && request.method() === 'GET') {
+    return jsonResponse([demoReportData]);
+  }
+  if (url.pathname === `/api/reports/${demoReportData.id}/download` && request.method() === 'GET') {
+    return jsonResponse({ report_identifier: demoReportData.report_identifier, case_information: { case_identifier: demoCaseData.case_identifier } });
   }
   if (url.pathname === '/api/cases' && request.method() === 'POST') {
     state.caseCreated = true;
@@ -581,7 +754,63 @@ async function main() {
   const lightBg = await page.$eval('canvas', (el) => getComputedStyle(el.parentElement).backgroundColor);
   assert.equal(lightBg, 'rgb(246, 242, 235)', 'Light theme graph container must use warm paper background');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph');
+  // 11: Instructor Demonstration Investigation (FS-DEMO-001) 15-step journey
+  state.demoMode = true;
+  await page.goto(`${baseUrl}/login`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="fill-demo-credentials"]');
+  await page.click('[data-testid="fill-demo-credentials"]');
+  const filledUser = await page.$eval('#username', (el) => el.value);
+  const filledPass = await page.$eval('#password', (el) => el.value);
+  assert.equal(filledUser, 'demo_instructor');
+  assert.equal(filledPass, 'forensight_demo_instructor');
+  await page.click('button[type="submit"]');
+  await page.waitForFunction(() => window.location.pathname === '/cases');
+  await page.waitForSelector('[data-testid="demo-case-badge"]');
+  await page.waitForFunction(() => document.body.innerText.includes('FS-DEMO-001'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="workspace-demo-badge"]');
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/evidence`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('campaign_composite_splice.jpg'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/evidence/901`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('campaign_composite_splice.jpg'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/lineage`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('DERIVED FROM'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/cross-correlation`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('Cross-Image') || document.body.innerText.includes('Correlation'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/graph`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => window.__forensightGraphMetrics && window.__forensightGraphMetrics.nodes.length >= 5);
+  await clickButton(page, 'Evidence Clusters');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  await clickButton(page, 'Hierarchical DAG');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const demoNodePos = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const ev = window.__forensightGraphMetrics.nodes.find((n) => n.id === 'ev:901');
+    return { x: rect.left + ev.screenX, y: rect.top + ev.screenY };
+  });
+  await page.mouse.click(demoNodePos.x, demoNodePos.y);
+  await page.waitForFunction(() => document.body.innerText.toUpperCase().includes('CONNECTED LINKS'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/audit`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('CASE CREATED'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/custody`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('FS-EVD-DEMO01'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/analyst`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('Spliced Composite Region Detected') || document.body.innerText.includes('Verified composite splice'));
+
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/reports`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => document.body.innerText.includes('FS-RPT-DEMO01'));
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey');
 }
 
 main()

@@ -10,7 +10,7 @@ from app.schemas.v3 import CrossImageCorrelationResponse
 router = APIRouter()
 
 def _get_authorized_case(case_id: str, db: Session, current_user: User):
-    case = CaseService.get_case_by_identifier(db, case_id) if case_id.startswith("FS-CASE") else CaseService.get_case(db, int(case_id))
+    case = CaseService.get_case_by_identifier(db, case_id) if not case_id.isdigit() else CaseService.get_case(db, int(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     if current_user.role != "ADMIN" and case.user_id != current_user.id:

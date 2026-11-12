@@ -262,7 +262,7 @@ class EvidenceService:
         target_case = None
         if case_id and str(case_id).strip():
             cid = str(case_id).strip()
-            if cid.startswith("FS-CASE"):
+            if not cid.isdigit():
                 target_case = db.query(InvestigationCase).filter(InvestigationCase.case_identifier == cid).first()
             else:
                 try:
