@@ -43,7 +43,7 @@ def health_check(db: Session = Depends(get_db)):
             pass
 
     # 4. Storage check
-    storage_status = "degraded"
+    storage_status = "unhealthy"
     try:
         os.makedirs(settings.STORAGE_DIR, exist_ok=True)
         test_file = os.path.join(settings.STORAGE_DIR, ".healthcheck")
@@ -55,15 +55,38 @@ def health_check(db: Session = Depends(get_db)):
     except Exception:
         pass
 
-    # 5. Overall platform status
-    if db_status == "healthy" and storage_status == "healthy":
-        overall = "healthy" if redis_status == "healthy" and celery_status == "healthy" else "degraded"
+    # 5. Aggregate platform status & execution mode
+    is_production = settings.ENVIRONMENT.strip().lower() in {"production", "prod"}
+    is_eager_dev = bool(settings.CELERY_TASK_ALWAYS_EAGER) and not is_production
+
+    if redis_status == "healthy" and celery_status == "healthy":
+        background_execution = "async_worker"
+    elif is_eager_dev:
+        background_execution = "eager_fallback"
+    elif redis_status == "healthy" or celery_status == "healthy":
+        background_execution = "degraded"
     else:
+        background_execution = "unavailable"
+
+    if db_status != "healthy" or storage_status != "healthy":
         overall = "unhealthy"
+        platform_mode = "unhealthy"
+    elif redis_status == "healthy" and celery_status == "healthy":
+        overall = "healthy"
+        platform_mode = "operational"
+    elif is_eager_dev:
+        overall = "healthy"
+        platform_mode = "dev_eager_mode"
+    else:
+        overall = "degraded"
+        platform_mode = "degraded"
 
     return HealthResponse(
         status=overall,
         service="forensight",
+        api_gateway="healthy",
+        platform_mode=platform_mode,
+        background_execution=background_execution,
         database=db_status,
         redis=redis_status,
         celery_worker=celery_status,

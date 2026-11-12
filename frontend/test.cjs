@@ -19,6 +19,18 @@ const state = {
   jobPolls: 0,
   reportGenerated: false,
   requestedApiPaths: [],
+  healthPayload: {
+    status: 'healthy',
+    service: 'forensight',
+    api_gateway: 'healthy',
+    platform_mode: 'dev_eager_mode',
+    background_execution: 'eager_fallback',
+    database: 'healthy',
+    redis: 'unavailable',
+    celery_worker: 'eager_fallback',
+    storage: 'healthy',
+    environment: 'development',
+  },
 };
 
 const caseData = {
@@ -118,6 +130,9 @@ async function mockApiRequest(request) {
   }
   if (url.pathname === '/api/auth/session' && request.method() === 'GET') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR' });
+  }
+  if (url.pathname === '/api/health' && request.method() === 'GET') {
+    return jsonResponse(state.healthPayload);
   }
   if (url.pathname === '/api/cases' && request.method() === 'GET') {
     return jsonResponse(state.caseCreated ? [caseData] : []);
@@ -350,7 +365,43 @@ async function main() {
     'Chain of Custody sidebar hover must never prefetch stale /custody route',
   );
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes');
+  // System Health checks: dev eager mode & degraded non-eager mode
+  await page.goto(`${baseUrl}/system`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="health-card-gateway"]');
+  const devGatewayText = await page.$eval('[data-testid="health-card-gateway"]', (el) => el.innerText);
+  const devPlatformText = await page.$eval('[data-testid="platform-summary-badge"]', (el) => el.innerText);
+  const devCeleryText = await page.$eval('[data-testid="health-card-celery"]', (el) => el.innerText);
+  const devRedisText = await page.$eval('[data-testid="health-card-redis"]', (el) => el.innerText);
+  assert.ok(devGatewayText.includes('HEALTHY') && !devGatewayText.includes('DEGRADED'), 'API Gateway must show HEALTHY in dev eager mode');
+  assert.ok(devPlatformText.includes('DEV EAGER MODE'), 'Platform badge must show DEV EAGER MODE');
+  assert.ok(devCeleryText.includes('EAGER FALLBACK'), 'Celery card must show EAGER FALLBACK');
+  assert.ok(devRedisText.includes('UNAVAILABLE'), 'Redis card must truthfully show UNAVAILABLE');
+
+  state.healthPayload = {
+    status: 'degraded',
+    service: 'forensight',
+    api_gateway: 'healthy',
+    platform_mode: 'degraded',
+    background_execution: 'unavailable',
+    database: 'healthy',
+    redis: 'unavailable',
+    celery_worker: 'unavailable',
+    storage: 'healthy',
+    environment: 'production',
+  };
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="platform-summary-badge"]');
+  const prodGatewayText = await page.$eval('[data-testid="health-card-gateway"]', (el) => el.innerText);
+  const prodPlatform = await page.$eval('[data-testid="platform-summary-badge"]', (el) => ({
+    text: el.innerText,
+    color: getComputedStyle(el).color,
+  }));
+  assert.ok(prodGatewayText.includes('HEALTHY'), 'API Gateway remains HEALTHY when FastAPI responds');
+  assert.ok(prodPlatform.text.includes('DEGRADED'), 'Platform badge must show DEGRADED when non-eager async dependencies fail');
+  assert.notEqual(prodPlatform.color, 'rgb(21, 128, 61)', 'DEGRADED badge must not use green success color');
+  assert.notEqual(prodPlatform.color, 'rgb(52, 211, 153)', 'DEGRADED badge must not use dark-mode green success color');
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health');
 }
 
 main()
