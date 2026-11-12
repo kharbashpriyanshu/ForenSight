@@ -157,7 +157,7 @@ export default function ReportsInterface() {
           <div>
             <h2 className="card-title" style={{ margin: 0 }}>Forensic Investigation Reports</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Generate courtroom-ready PDF dossier reports or export reproducible JSON examination records for analyst review
+              Generate formal forensic PDF dossiers or export reproducible JSON examination records for analyst review
             </div>
           </div>
 
@@ -239,7 +239,7 @@ export default function ReportsInterface() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <AlertCircle size={18} style={{ color: 'var(--accent-color)', flexShrink: 0 }} />
               <span style={{ fontSize: '0.825rem', color: 'var(--text-main)' }}>
-                <strong>Evidence Intake Required:</strong> At least one primary evidence file must be acquired and registered to this case before compiling formal investigation reports or exporting findings.
+                <strong>Evidence Intake Required:</strong> At least one evidence item must be acquired and registered to this case before compiling formal investigation reports or exporting findings.
               </span>
             </div>
             <button 
@@ -290,7 +290,7 @@ export default function ReportsInterface() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.5, margin: '0 0 1.25rem' }}>
               {isZeroEvidence ? (
                 <>
-                  Formal case reports synthesize evidence bitstreams, cryptographic SHA-256 hashes, multi-modality observations, and immutable custody logs into an archival document. <strong>Primary source evidence intake is required before report compilation.</strong>
+                  Formal case reports synthesize evidence bitstreams, cryptographic SHA-256 hashes, multi-modality observations, and immutable custody logs into an archival document. <strong>At least one evidence item must be acquired and registered before report compilation.</strong>
                 </>
               ) : (
                 'Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document.'
