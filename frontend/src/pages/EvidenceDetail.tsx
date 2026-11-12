@@ -630,10 +630,12 @@ export default function EvidenceDetail() {
                   {/* Heatmap Controls */}
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }} title="Adjust transparency of the spatial anomaly overlays on the evidence image">
-                      <label style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
+                      <label data-testid="heatmap-opacity-label" style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
                       <input 
+                        data-testid="heatmap-opacity-slider"
+                        aria-label="Heatmap overlay opacity"
                         type="range" 
-                        min="0.1" 
+                        min="0" 
                         max="1.0" 
                         step="0.05"
                         value={heatmapOpacity}
@@ -643,21 +645,36 @@ export default function EvidenceDetail() {
                     </div>
 
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Error Level Analysis compression variance overlay">
-                      <input type="checkbox" checked={showElaLayer} onChange={e => setShowElaLayer(e.target.checked)} />
+                      <input 
+                        data-testid="heatmap-layer-ela-toggle"
+                        type="checkbox" 
+                        checked={showElaLayer} 
+                        onChange={e => setShowElaLayer(e.target.checked)} 
+                      />
                       <span style={{ color: '#ef4444', fontWeight: 600 }}>
                         ELA Layer ({heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0})
                       </span>
                     </label>
 
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Sensor Noise residual inconsistency overlay">
-                      <input type="checkbox" checked={showNoiseLayer} onChange={e => setShowNoiseLayer(e.target.checked)} />
+                      <input 
+                        data-testid="heatmap-layer-noise-toggle"
+                        type="checkbox" 
+                        checked={showNoiseLayer} 
+                        onChange={e => setShowNoiseLayer(e.target.checked)} 
+                      />
                       <span style={{ color: '#06b6d4', fontWeight: 600 }}>
                         Noise Layer ({heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0})
                       </span>
                     </label>
 
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Copy-Move duplicate keypoint cluster overlay">
-                      <input type="checkbox" checked={showCloneLayer} onChange={e => setShowCloneLayer(e.target.checked)} />
+                      <input 
+                        data-testid="heatmap-layer-clone-toggle"
+                        type="checkbox" 
+                        checked={showCloneLayer} 
+                        onChange={e => setShowCloneLayer(e.target.checked)} 
+                      />
                       <span style={{ color: '#10b981', fontWeight: 600 }}>
                         Clone Layer ({heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0})
                       </span>
@@ -675,7 +692,17 @@ export default function EvidenceDetail() {
 
                   {/* Overlay SVG */}
                   <svg 
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    data-testid="heatmap-overlay-svg"
+                    style={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      left: 0, 
+                      width: '100%', 
+                      height: '100%', 
+                      pointerEvents: 'none',
+                      opacity: heatmapOpacity,
+                      transition: 'opacity 0.1s ease'
+                    }}
                     viewBox="0 0 1000 1000"
                     preserveAspectRatio="none"
                   >
@@ -686,46 +713,50 @@ export default function EvidenceDetail() {
 
                       const color = layer.modality === 'ELA' ? '#ef4444' : layer.modality === 'NOISE' ? '#06b6d4' : '#10b981';
 
-                      return layer.regions?.map((r, rIdx) => {
-                        const rx = r.x * 1000;
-                        const ry = r.y * 1000;
-                        const rw = r.width * 1000;
-                        const rh = r.height * 1000;
-                        return (
-                          <g key={`${layer.modality}-${rIdx}`}>
-                            <rect
-                              x={rx}
-                              y={ry}
-                              width={rw}
-                              height={rh}
-                              fill={color}
-                              fillOpacity={r.intensity * heatmapOpacity * 0.45}
-                              stroke={color}
-                              strokeWidth="3"
-                              strokeDasharray="6 3"
-                            />
-                            <rect
-                              x={rx}
-                              y={Math.max(0, ry - 22)}
-                              width={Math.min(220, rw)}
-                              height={20}
-                              fill={color}
-                              fillOpacity={Math.max(0.7, heatmapOpacity)}
-                              rx={3}
-                            />
-                            <text
-                              x={rx + 6}
-                              y={Math.max(0, ry - 22) + 14}
-                              fill="#ffffff"
-                              fontSize="12"
-                              fontWeight="bold"
-                              fontFamily="sans-serif"
-                            >
-                              {layer.modality}: {r.description?.slice(0, 22) || 'Anomaly Zone'}
-                            </text>
-                          </g>
-                        );
-                      });
+                      return (
+                        <g key={layer.modality} data-testid={`heatmap-layer-${layer.modality.toLowerCase()}`}>
+                          {layer.regions?.map((r, rIdx) => {
+                            const rx = r.x * 1000;
+                            const ry = r.y * 1000;
+                            const rw = r.width * 1000;
+                            const rh = r.height * 1000;
+                            return (
+                              <g key={`${layer.modality}-${rIdx}`}>
+                                <rect
+                                  x={rx}
+                                  y={ry}
+                                  width={rw}
+                                  height={rh}
+                                  fill={color}
+                                  fillOpacity={r.intensity * 0.45}
+                                  stroke={color}
+                                  strokeWidth="3"
+                                  strokeDasharray="6 3"
+                                />
+                                <rect
+                                  x={rx}
+                                  y={Math.max(0, ry - 22)}
+                                  width={Math.min(220, rw)}
+                                  height={20}
+                                  fill={color}
+                                  fillOpacity={0.85}
+                                  rx={3}
+                                />
+                                <text
+                                  x={rx + 6}
+                                  y={Math.max(0, ry - 22) + 14}
+                                  fill="#ffffff"
+                                  fontSize="12"
+                                  fontWeight="bold"
+                                  fontFamily="sans-serif"
+                                >
+                                  {layer.modality}: {r.description?.slice(0, 22) || 'Anomaly Zone'}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </g>
+                      );
                     })}
                   </svg>
 

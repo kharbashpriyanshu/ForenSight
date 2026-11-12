@@ -1165,7 +1165,7 @@ export default function UnifiedForensicResults({
                     <span>Opacity: {Math.round(heatmapOpacity * 100)}%</span>
                     <input 
                       type="range" 
-                      min="0.1" 
+                      min="0" 
                       max="1.0" 
                       step="0.05" 
                       value={heatmapOpacity} 
@@ -1249,7 +1249,16 @@ export default function UnifiedForensicResults({
                 {showOverlays && imgW && imgH && (
                   <svg 
                     data-testid="spatial-overlay-svg"
-                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                    style={{ 
+                      position: 'absolute', 
+                      top: 0, 
+                      left: 0, 
+                      width: '100%', 
+                      height: '100%', 
+                      pointerEvents: 'none',
+                      opacity: heatmapOpacity,
+                      transition: 'opacity 0.1s ease'
+                    }}
                     viewBox={`0 0 ${imgW} ${imgH}`}
                     preserveAspectRatio="none"
                   >

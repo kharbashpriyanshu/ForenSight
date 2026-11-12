@@ -110,6 +110,78 @@ const demoEvidenceData = {
   intake_context: { source_platform: 'Synthetic Training Generator', acquisition_method: 'Deterministic Script' },
 };
 
+const demoHeatmapData = {
+  evidence_id: demoEvidenceData.id,
+  evidence_identifier: demoEvidenceData.evidence_identifier,
+  filename: 'campaign_composite_splice.jpg',
+  width: 640,
+  height: 480,
+  layers: [
+    {
+      modality: 'ELA',
+      label: 'Error Level Analysis (Compression Variance)',
+      status: 'AVAILABLE',
+      weight: 0.35,
+      regions: [
+        {
+          modality: 'ELA',
+          x: 0.15,
+          y: 0.25,
+          width: 0.30,
+          height: 0.25,
+          intensity: 0.85,
+          description: 'Spliced text insert',
+        },
+      ],
+      summary: 'Mapped 1 high-frequency compression variance zone.',
+      limitations: 'Natural edges can exhibit elevated ELA error.',
+    },
+    {
+      modality: 'NOISE',
+      label: 'Sensor Noise Residual Variance',
+      status: 'AVAILABLE',
+      weight: 0.30,
+      regions: [
+        {
+          modality: 'NOISE',
+          x: 0.50,
+          y: 0.20,
+          width: 0.35,
+          height: 0.30,
+          intensity: 0.75,
+          description: 'High-pass SNR anomaly',
+        },
+      ],
+      summary: 'Isolated 1 anomalous noise residual zone.',
+      limitations: 'Lighting alters SNR under normal conditions.',
+    },
+    {
+      modality: 'COPY_MOVE',
+      label: 'Copy-Move Clustering',
+      status: 'AVAILABLE',
+      weight: 0.35,
+      regions: [
+        {
+          modality: 'COPY_MOVE',
+          x: 0.25,
+          y: 0.60,
+          width: 0.25,
+          height: 0.25,
+          intensity: 0.90,
+          description: 'Cloned badge pattern',
+        },
+      ],
+      summary: 'Detected 1 cloned cluster.',
+      limitations: 'Periodic structures produce false matches.',
+    },
+  ],
+  composite_regions_count: 3,
+  what_was_found: 'Differential compression and sensor noise variance localized over spliced text badge.',
+  why_it_matters: 'Corroborates localized modification across independent spatial domains.',
+  recommended_next_steps: ['Inspect localized pixel grid', 'Verify PRNU fingerprint'],
+  limitations: 'Synthetic mock for testing.',
+};
+
 const demoReportData = {
   id: 951,
   report_identifier: 'FS-RPT-DEMO01',
@@ -247,7 +319,7 @@ async function mockApiRequest(request) {
     return jsonResponse([{ id: 9501, analysis_type: 'ELA', status: 'completed', summary: 'Error level differential detected on spliced region.', structured_findings: {} }]);
   }
   if (url.pathname === `/api/evidence/${demoEvidenceData.id}/heatmap`) {
-    return jsonResponse({ ...heatmapData, evidence_id: demoEvidenceData.id, what_was_found: 'Differential compression artifacts localized.' });
+    return jsonResponse(demoHeatmapData);
   }
   if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/lineage` && request.method() === 'GET') {
     return jsonResponse({
@@ -1047,7 +1119,222 @@ async function main() {
   assert.ok(microscopyDarkMetrics.codeBadgeColor, 'Code badge must have visible color in dark mode');
   assert.ok(microscopyDarkMetrics.selectBg, 'Select control must have styled dark background');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation → workbench dark mode');
+  // 15: Investigation Workbench Overview & Attention Heatmap Opacity Functional Verification
+  // Return to Overview tab
+  await page.evaluate(() => {
+    const nav = document.getElementById('workbench-nav');
+    const overviewBtn = Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes('Overview'));
+    if (overviewBtn) overviewBtn.click();
+  });
+  await page.waitForSelector('[data-testid="heatmap-opacity-slider"]');
+  await page.waitForSelector('[data-testid="heatmap-overlay-svg"]');
+
+  // 15a: Verify initial default opacity (65%)
+  const initialOpacityData = await page.evaluate(() => {
+    const label = document.querySelector('[data-testid="heatmap-opacity-label"]');
+    const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    const elaLayer = document.querySelector('[data-testid="heatmap-layer-ela"]');
+    const noiseLayer = document.querySelector('[data-testid="heatmap-layer-noise"]');
+    const cloneLayer = document.querySelector('[data-testid="heatmap-layer-copy_move"]');
+
+    return {
+      labelText: label ? label.textContent.trim() : null,
+      sliderValue: slider ? slider.value : null,
+      sliderMin: slider ? slider.min : null,
+      sliderMax: slider ? slider.max : null,
+      sliderStep: slider ? slider.step : null,
+      svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+      hasEla: Boolean(elaLayer),
+      hasNoise: Boolean(noiseLayer),
+      hasClone: Boolean(cloneLayer),
+    };
+  });
+
+  assert.equal(initialOpacityData.labelText, 'Opacity: 65%', 'Initial opacity label must display Opacity: 65%');
+  assert.equal(initialOpacityData.sliderValue, '0.65', 'Initial slider value must be 0.65');
+  assert.equal(initialOpacityData.svgOpacity, '0.65', 'Rendered heatmap SVG overlay must have initial computed opacity of 0.65');
+  assert.ok(initialOpacityData.hasEla, 'Heatmap must render ELA layer');
+  assert.ok(initialOpacityData.hasNoise, 'Heatmap must render Noise layer');
+  assert.ok(initialOpacityData.hasClone, 'Heatmap must render Copy-Move layer');
+
+  // Helper to set slider value and dispatch input/change events with React value tracker support
+  const setSlider = async (val) => {
+    await page.evaluate((targetVal) => {
+      const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
+      if (!slider) return;
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      nativeSetter.call(slider, String(targetVal));
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+      slider.dispatchEvent(new Event('change', { bubbles: true }));
+    }, val);
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    return page.evaluate(() => {
+      const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
+      const label = document.querySelector('[data-testid="heatmap-opacity-label"]');
+      const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+
+      return {
+        labelText: label ? label.textContent.trim() : null,
+        sliderValue: slider ? slider.value : null,
+        svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+      };
+    });
+  };
+
+  // 15b: Moving slider to 25% updates displayed value and rendered overlay opacity
+  const state25 = await setSlider(0.25);
+  assert.equal(state25.labelText, 'Opacity: 25%', 'Displayed opacity label must update immediately to Opacity: 25%');
+  assert.equal(state25.svgOpacity, '0.25', 'Rendered heatmap SVG overlay must visibly receive 25% (0.25) opacity');
+
+  // 15c: Moving slider to 90% updates displayed value and rendered overlay opacity
+  const state90 = await setSlider(0.9);
+  assert.equal(state90.labelText, 'Opacity: 90%', 'Displayed opacity label must update immediately to Opacity: 90%');
+  assert.equal(state90.svgOpacity, '0.9', 'Rendered heatmap SVG overlay must visibly receive 90% (0.9) opacity');
+
+  // 15d: Disabling an individual layer hides that layer without breaking opacity control
+  await page.evaluate(() => {
+    const elaToggle = document.querySelector('[data-testid="heatmap-layer-ela-toggle"]');
+    if (elaToggle && elaToggle.checked) elaToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  const afterDisableEla = await page.evaluate(() => {
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    const elaLayer = document.querySelector('[data-testid="heatmap-layer-ela"]');
+    const noiseLayer = document.querySelector('[data-testid="heatmap-layer-noise"]');
+    const cloneLayer = document.querySelector('[data-testid="heatmap-layer-copy_move"]');
+
+    return {
+      svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+      hasEla: Boolean(elaLayer),
+      hasNoise: Boolean(noiseLayer),
+      hasClone: Boolean(cloneLayer),
+    };
+  });
+
+  assert.equal(afterDisableEla.hasEla, false, 'Disabling ELA layer must hide ELA layer in SVG');
+  assert.equal(afterDisableEla.hasNoise, true, 'Noise layer must remain visible when ELA is disabled');
+  assert.equal(afterDisableEla.hasClone, true, 'Clone layer must remain visible when ELA is disabled');
+  assert.equal(afterDisableEla.svgOpacity, '0.9', 'Overlay opacity must remain at selected 0.9 when a layer is hidden');
+
+  // 15e: Re-enabling the layer restores its visibility using selected opacity
+  await page.evaluate(() => {
+    const elaToggle = document.querySelector('[data-testid="heatmap-layer-ela-toggle"]');
+    if (elaToggle && !elaToggle.checked) elaToggle.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  const afterReenableEla = await page.evaluate(() => {
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    const elaLayer = document.querySelector('[data-testid="heatmap-layer-ela"]');
+    return {
+      hasEla: Boolean(elaLayer),
+      svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+    };
+  });
+
+  assert.equal(afterReenableEla.hasEla, true, 'Re-enabling ELA layer must restore ELA layer in SVG');
+  assert.equal(afterReenableEla.svgOpacity, '0.9', 'Restored layer must retain selected 0.9 opacity');
+
+  // 15f: Switching tabs and returning preserves the selected opacity value
+  await page.evaluate(() => {
+    const nav = document.getElementById('workbench-nav');
+    const microscopyBtn = Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes('Microscopy'));
+    if (microscopyBtn) microscopyBtn.click();
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  await page.evaluate(() => {
+    const nav = document.getElementById('workbench-nav');
+    const overviewBtn = Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes('Overview'));
+    if (overviewBtn) overviewBtn.click();
+  });
+  await page.waitForSelector('[data-testid="heatmap-overlay-svg"]');
+
+  const afterTabSwitch = await page.evaluate(() => {
+    const label = document.querySelector('[data-testid="heatmap-opacity-label"]');
+    const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    return {
+      labelText: label ? label.textContent.trim() : null,
+      sliderValue: slider ? slider.value : null,
+      svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+    };
+  });
+
+  assert.equal(afterTabSwitch.labelText, 'Opacity: 90%', 'Tab navigation must preserve selected Opacity: 90%');
+  assert.equal(afterTabSwitch.sliderValue, '0.9', 'Tab navigation must preserve slider value 0.9');
+  assert.equal(afterTabSwitch.svgOpacity, '0.9', 'Tab navigation must preserve overlay opacity 0.9');
+
+  // 15g: Switching themes preserves the selected opacity value
+  await page.evaluate(() => {
+    localStorage.setItem('forensight-theme', 'light');
+    document.documentElement.setAttribute('data-theme', 'light');
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  const afterThemeSwitch = await page.evaluate(() => {
+    const label = document.querySelector('[data-testid="heatmap-opacity-label"]');
+    const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+    return {
+      labelText: label ? label.textContent.trim() : null,
+      svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+    };
+  });
+
+  assert.equal(afterThemeSwitch.labelText, 'Opacity: 90%', 'Theme change must preserve selected Opacity: 90%');
+  assert.equal(afterThemeSwitch.svgOpacity, '0.9', 'Theme change must preserve overlay opacity 0.9');
+
+  // Restore dark theme for screenshot captures
+  await page.evaluate(() => {
+    localStorage.setItem('forensight-theme', 'dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  // 15h: Browser verification screenshots at 0%, 25%, 65%, 100%
+  const screenshotDir = path.join(__dirname, '..', 'visual-qa-screenshots', 'heatmap-opacity-repair');
+  if (!fs.existsSync(screenshotDir)) fs.mkdirSync(screenshotDir, { recursive: true });
+
+  const testOpacities = [
+    { value: 0, label: '0%', file: '01-heatmap-opacity-0pct.png' },
+    { value: 0.25, label: '25%', file: '02-heatmap-opacity-25pct.png' },
+    { value: 0.65, label: '65%', file: '03-heatmap-opacity-65pct.png' },
+    { value: 1.0, label: '100%', file: '04-heatmap-opacity-100pct.png' },
+  ];
+
+  for (const { value, label, file } of testOpacities) {
+    await setSlider(value);
+    await new Promise((r) => setTimeout(r, 150));
+
+    const check = await page.evaluate((expectedVal) => {
+      const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+      const img = svg ? svg.parentElement.querySelector('img') : null;
+      return {
+        svgOpacity: svg ? getComputedStyle(svg).opacity : null,
+        imgSrcPresent: Boolean(img && img.src),
+        imgOpacity: img ? getComputedStyle(img).opacity : null,
+      };
+    }, value);
+
+    assert.equal(Number(check.svgOpacity), value, `Overlay opacity for ${label} must be exactly ${value}`);
+    assert.equal(check.imgOpacity, '1', 'Original evidence image opacity must remain 100% (1) across all heatmap opacity levels');
+    assert.ok(check.imgSrcPresent, 'Evidence image must remain mounted and unchanged');
+
+    // Capture screenshot of the heatmap overlay container card
+    const cardEl = await page.evaluateHandle(() => {
+      const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+      return svg ? svg.closest('.card') : document.body;
+    });
+    if (cardEl && cardEl.asElement()) {
+      await cardEl.asElement().screenshot({ path: path.join(screenshotDir, file) });
+    }
+  }
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation → workbench dark mode → heatmap opacity functional repair');
 }
 
 main()
