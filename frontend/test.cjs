@@ -123,6 +123,24 @@ async function mockApiRequest(request) {
   if (url.pathname === `/api/cases/${caseData.case_identifier}` && request.method() === 'GET') {
     return jsonResponse(caseData);
   }
+  if (url.pathname === `/api/cases/${caseData.case_identifier}/overview` && request.method() === 'GET') {
+    return jsonResponse({
+      case_identifier: caseData.case_identifier,
+      title: caseData.title,
+      status: caseData.status,
+      created_at: caseData.created_at,
+      evidence_count: state.evidenceUploaded ? 1 : 0,
+      analysis_count: state.jobQueued ? 1 : 0,
+      completed_analysis_count: state.jobQueued ? 1 : 0,
+      failed_analysis_count: 0,
+      running_job_count: 0,
+      pending_job_count: 0,
+      findings_count: 0,
+      audit_event_count: 0,
+      assessment_status: 'INSUFFICIENT_EVIDENCE',
+      latest_assessment: null,
+    });
+  }
   if (url.pathname === `/api/cases/${caseData.case_identifier}/evidence/${evidenceData.id}` && request.method() === 'GET') {
     return jsonResponse(evidenceData);
   }
@@ -270,6 +288,10 @@ async function main() {
   assert.ok(state.jobPolls >= 2, 'job progress endpoint was polled');
 
   await page.goto(`${baseUrl}/cases/${caseData.case_identifier}/reports`, { waitUntil: 'networkidle0' });
+  await page.waitForFunction(() => {
+    const button = document.querySelector('button.primary-button');
+    return Boolean(button && !button.disabled);
+  });
   await page.click("button.primary-button");
   await page.waitForFunction(() => document.body.innerText.includes('FS-RPT-E2E001'));
   assert.equal(state.reportGenerated, true, 'report generation endpoint was called');
