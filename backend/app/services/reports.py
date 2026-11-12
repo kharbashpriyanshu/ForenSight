@@ -3,8 +3,10 @@ import uuid
 import json
 import datetime
 import html
+import tempfile
 from pathlib import Path
 from sqlalchemy.orm import Session
+from app.services.storage import get_storage_backend
 from app.models.domain import (
     Report,
     InvestigationCase,
@@ -291,23 +293,46 @@ class ReportService:
             ),
         }
 
-        report_dir = Path("storage/reports")
-        report_dir.mkdir(parents=True, exist_ok=True)
-
-        # 2. Always save JSON artifact
-        json_path = report_dir / f"{report_identifier}.json"
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(report_payload, f, indent=2)
-
-        # 3. Generate PDF if requested and ReportLab is available
+        storage = get_storage_backend()
         actual_format = "JSON"
-        final_artifact_path = str(json_path)
 
-        if report_format.lower() == "pdf" and REPORTLAB_AVAILABLE:
-            pdf_path = report_dir / f"{report_identifier}.pdf"
-            ReportService._build_pdf(pdf_path, report_payload)
-            final_artifact_path = str(pdf_path)
-            actual_format = "PDF"
+        if storage.is_remote:
+            with tempfile.TemporaryDirectory(prefix="forensight-rpt-") as tmp_dir:
+                report_dir = Path(tmp_dir)
+                json_path = report_dir / f"{report_identifier}.json"
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(report_payload, f, indent=2)
+                final_artifact_path = storage.put_file(
+                    f"reports/{report_identifier}.json",
+                    json_path,
+                    content_type="application/json",
+                )
+                if report_format.lower() == "pdf" and REPORTLAB_AVAILABLE:
+                    pdf_path = report_dir / f"{report_identifier}.pdf"
+                    ReportService._build_pdf(pdf_path, report_payload)
+                    final_artifact_path = storage.put_file(
+                        f"reports/{report_identifier}.pdf",
+                        pdf_path,
+                        content_type="application/pdf",
+                    )
+                    actual_format = "PDF"
+        else:
+            report_dir = Path("storage/reports")
+            report_dir.mkdir(parents=True, exist_ok=True)
+
+            # 2. Always save JSON artifact
+            json_path = report_dir / f"{report_identifier}.json"
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(report_payload, f, indent=2)
+
+            # 3. Generate PDF if requested and ReportLab is available
+            final_artifact_path = str(json_path)
+
+            if report_format.lower() == "pdf" and REPORTLAB_AVAILABLE:
+                pdf_path = report_dir / f"{report_identifier}.pdf"
+                ReportService._build_pdf(pdf_path, report_payload)
+                final_artifact_path = str(pdf_path)
+                actual_format = "PDF"
 
         # 4. Save record in database
         report = Report(

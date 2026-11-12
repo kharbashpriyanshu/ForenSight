@@ -18,3 +18,4 @@ bcrypt==4.0.1
 alembic
 reportlab
 c2pa-python
+boto3

@@ -15,6 +15,7 @@ from sqlalchemy.orm.exc import FlushError
 from app.models.domain import Evidence, EvidenceIntakeContext, InvestigationCase, IntakeIdempotencyRecord, FailedCleanupRecord, User
 from app.db.database import SessionLocal
 from app.services.audit import AuditService
+from app.services.storage import get_storage_backend
 from app.core.config import settings
 from PIL import Image, UnidentifiedImageError
 from PIL.Image import DecompressionBombError, DecompressionBombWarning
@@ -76,27 +77,40 @@ def _perform_cleanup(
     """
     if not path:
         return True
-    if not os.path.exists(path):
-        return True
+    storage = get_storage_backend()
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+            return True
+        except OSError as exc:
+            logger.error(
+                f"Filesystem cleanup failed at stage '{stage}' for path '{path}': {type(exc).__name__}: {exc} "
+                f"[idempotency_key={idempotency_key}, user_id={user_id}]",
+                extra={
+                    "cleanup_stage": stage,
+                    "file_path": path,
+                    "error_type": type(exc).__name__,
+                    "error_message": str(exc),
+                    "idempotency_key": idempotency_key,
+                    "user_id": user_id,
+                },
+            )
+            _record_failed_cleanup(path=path, stage=stage, exc=exc, db=db)
+            return False
 
-    try:
-        os.remove(path)
-        return True
-    except OSError as exc:
-        logger.error(
-            f"Filesystem cleanup failed at stage '{stage}' for path '{path}': {type(exc).__name__}: {exc} "
-            f"[idempotency_key={idempotency_key}, user_id={user_id}]",
-            extra={
-                "cleanup_stage": stage,
-                "file_path": path,
-                "error_type": type(exc).__name__,
-                "error_message": str(exc),
-                "idempotency_key": idempotency_key,
-                "user_id": user_id,
-            },
-        )
-        _record_failed_cleanup(path=path, stage=stage, exc=exc, db=db)
-        return False
+    if storage.is_remote and not os.path.isabs(path):
+        try:
+            storage.delete(path)
+            return True
+        except Exception as exc:
+            logger.error(
+                f"Remote object cleanup failed at stage '{stage}' for key '{path}': {type(exc).__name__}: {exc} "
+                f"[idempotency_key={idempotency_key}, user_id={user_id}]",
+            )
+            _record_failed_cleanup(path=path, stage=stage, exc=exc, db=db)
+            return False
+
+    return True
 
 
 def _record_failed_cleanup(path: str, stage: str, exc: Exception, db: Optional[Session] = None) -> None:
@@ -149,7 +163,8 @@ class EvidenceService:
             file.file.seek(0)
         except (AttributeError, OSError):
             pass
-        storage_dir = os.path.abspath(settings.STORAGE_DIR)
+        storage = get_storage_backend()
+        storage_dir = tempfile.gettempdir() if storage.is_remote else os.path.abspath(settings.STORAGE_DIR)
         os.makedirs(storage_dir, exist_ok=True)
         staging_path = None
         final_path = None
@@ -191,9 +206,12 @@ class EvidenceService:
                 raise HTTPException(status_code=400, detail="Image contents do not match the filename extension")
 
             safe_filename = f"{uuid.uuid4().hex}{ext}"
-            final_path = os.path.join(storage_dir, safe_filename)
-            os.replace(staging_path, final_path)
-            staging_path = None
+            if storage.is_remote:
+                final_path = storage.put_file(f"evidence/{safe_filename}", staging_path, content_type=expected_mime)
+            else:
+                final_path = os.path.join(storage_dir, safe_filename)
+                os.replace(staging_path, final_path)
+                staging_path = None
 
             db_evidence = Evidence(
                 case_id=case_id,
@@ -283,7 +301,8 @@ class EvidenceService:
             file.file.seek(0)
         except (AttributeError, OSError):
             pass
-        storage_dir = os.path.abspath(settings.STORAGE_DIR)
+        storage = get_storage_backend()
+        storage_dir = tempfile.gettempdir() if storage.is_remote else os.path.abspath(settings.STORAGE_DIR)
         os.makedirs(storage_dir, exist_ok=True)
         staging_path = None
         final_path = None
@@ -356,9 +375,12 @@ class EvidenceService:
 
             # Staging verified! Atomically rename to permanent path:
             safe_filename = f"{uuid.uuid4().hex}{ext}"
-            final_path = os.path.join(storage_dir, safe_filename)
-            os.replace(staging_path, final_path)
-            staging_path = None
+            if storage.is_remote:
+                final_path = storage.put_file(f"evidence/{safe_filename}", staging_path, content_type=expected_mime)
+            else:
+                final_path = os.path.join(storage_dir, safe_filename)
+                os.replace(staging_path, final_path)
+                staging_path = None
 
             # 7. Atomic Database registration:
             if target_case is None:
@@ -474,19 +496,22 @@ class EvidenceService:
         skipped_active = 0
         failed = 0
 
+        storage = get_storage_backend()
         for rec in records:
             rec.retry_count += 1
             target_path = rec.file_path
+            is_remote_key = storage.is_remote and not os.path.isabs(target_path) and not os.path.exists(target_path)
 
-            # 1. If file already gone from disk, mark resolved
-            if not os.path.exists(target_path):
+            # 1. If file already gone from storage, mark resolved
+            exists = storage.exists(target_path) if is_remote_key else os.path.exists(target_path)
+            if not exists:
                 rec.resolved = True
                 rec.resolved_at = datetime.datetime.utcnow()
                 cleaned += 1
                 continue
 
             # 2. Forensic integrity guard: Verify file is NOT referenced by any committed Evidence
-            norm_path = os.path.abspath(target_path)
+            norm_path = target_path if is_remote_key else os.path.abspath(target_path)
             committed_evidence = db.query(Evidence).filter(
                 func.lower(Evidence.stored_path) == func.lower(norm_path)
             ).first()
@@ -502,12 +527,15 @@ class EvidenceService:
 
             # 3. Attempt unlinking
             try:
-                os.remove(target_path)
+                if is_remote_key:
+                    storage.delete(target_path)
+                else:
+                    os.remove(target_path)
                 rec.resolved = True
                 rec.resolved_at = datetime.datetime.utcnow()
                 cleaned += 1
                 logger.info(f"Successfully recovered and deleted orphaned file: {target_path}")
-            except OSError as e:
+            except Exception as e:
                 rec.error_message = f"Retry {rec.retry_count} failed: {type(e).__name__}: {e}"
                 failed += 1
                 logger.error(f"Recovery attempt failed for '{target_path}': {e}")

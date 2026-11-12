@@ -4,6 +4,7 @@ import datetime
 from sqlalchemy.orm import Session
 from app.models.domain import InvestigationCase, Evidence, Analysis, AnalysisJob, Finding, Report
 from app.services.audit import AuditService
+from app.services.storage import get_storage_backend
 
 class InvestigationReplayService:
     @staticmethod
@@ -34,18 +35,15 @@ class InvestigationReplayService:
         evidence_results = []
         all_hashes_matched = True
 
+        storage = get_storage_backend()
         for ev in evidence_list:
             actual_hash = None
             file_exists = False
             hash_matched = False
 
-            if ev.stored_path and os.path.exists(ev.stored_path):
+            if ev.stored_path and storage.exists(ev.stored_path):
                 file_exists = True
-                sha256 = hashlib.sha256()
-                with open(ev.stored_path, "rb") as f:
-                    while chunk := f.read(8192):
-                        sha256.update(chunk)
-                actual_hash = sha256.hexdigest()
+                actual_hash = storage.compute_sha256(ev.stored_path)
                 hash_matched = (actual_hash == ev.sha256_hash)
             
             if not hash_matched:

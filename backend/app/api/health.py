@@ -7,6 +7,7 @@ from app.db.database import get_db
 import redis
 from app.core.config import settings
 from app.core.celery_app import celery_app
+from app.services.storage import get_storage_backend
 
 router = APIRouter()
 
@@ -45,12 +46,7 @@ def health_check(db: Session = Depends(get_db)):
     # 4. Storage check
     storage_status = "unhealthy"
     try:
-        os.makedirs(settings.STORAGE_DIR, exist_ok=True)
-        test_file = os.path.join(settings.STORAGE_DIR, ".healthcheck")
-        with open(test_file, "w") as f:
-            f.write("ok")
-        if os.path.exists(test_file):
-            os.remove(test_file)
+        if get_storage_backend().health_check(".healthcheck"):
             storage_status = "healthy"
     except Exception:
         pass
@@ -109,13 +105,7 @@ def readiness_check(db: Session = Depends(get_db)):
 
     storage_ready = False
     try:
-        os.makedirs(settings.STORAGE_DIR, exist_ok=True)
-        test_file = os.path.join(settings.STORAGE_DIR, ".readycheck")
-        with open(test_file, "w") as f:
-            f.write("ok")
-        if os.path.exists(test_file):
-            os.remove(test_file)
-            storage_ready = True
+        storage_ready = bool(get_storage_backend().health_check(".readycheck"))
     except Exception:
         pass
 

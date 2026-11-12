@@ -2,7 +2,7 @@ import os
 import pathlib
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.schemas.domain import AnalysisResponse
@@ -14,6 +14,7 @@ from app.forensics.copy_move.analyzer import CopyMoveAnalyzer
 from app.models.domain import Analysis, User, Evidence, InvestigationCase
 from app.api.deps import get_current_user, verify_evidence_access, verify_analysis_access
 from app.core.config import settings
+from app.services.storage import get_storage_backend
 
 router = APIRouter()
 
@@ -567,46 +568,62 @@ def get_artifact(
     # Explicitly reject absolute paths and Windows drives
     if os.path.isabs(artifact_path) or artifact_path.startswith("/") or artifact_path.startswith("\\"):
         raise HTTPException(status_code=403, detail="Invalid artifact path")
-        
-    try:
-        base_dir = pathlib.Path(settings.STORAGE_DIR).resolve()
-        target_path = (base_dir / artifact_path).resolve()
-        target_path.relative_to(base_dir)
-    except Exception:
-        raise HTTPException(status_code=403, detail="Invalid artifact path")
-        
-    if not target_path.exists() or not target_path.is_file():
-        # Fallback: check subdirectories within STORAGE_DIR for matches
-        found = False
-        candidates = [
-            base_dir / "evidence" / "analyses" / artifact_path,
-            base_dir / "evidence" / "analyses" / "prnu" / artifact_path,
-            base_dir / "evidence" / "analyses" / "camera_id" / artifact_path,
-            base_dir / "analyses" / artifact_path,
-            base_dir / "analyses" / "prnu" / artifact_path,
-            base_dir / "analyses" / "camera_id" / artifact_path,
+
+    storage = get_storage_backend()
+    norm_path = artifact_path.replace("\\", "/").strip("/")
+    remote_key = None
+    target_path = None
+
+    if storage.is_remote:
+        remote_candidates = [
+            norm_path,
+            f"analyses/{norm_path}",
+            f"analyses/prnu/{norm_path}",
+            f"analyses/camera_id/{norm_path}",
         ]
-        for cand in candidates:
-            if cand.exists() and cand.is_file():
-                target_path = cand.resolve()
-                found = True
-                break
-        
-        if not found:
-            base_name = os.path.basename(artifact_path)
-            for root, _, files in os.walk(str(base_dir)):
-                if base_name in files:
-                    resolved = (pathlib.Path(root) / base_name).resolve()
-                    try:
-                        resolved.relative_to(base_dir)
-                        target_path = resolved
-                        found = True
-                        break
-                    except ValueError:
-                        pass
-        
-        if not found or not target_path.exists() or not target_path.is_file():
+        remote_key = next((cand for cand in remote_candidates if cand and storage.exists(cand)), None)
+        if not remote_key:
             raise HTTPException(status_code=404, detail="Artifact not found")
+    else:
+        try:
+            base_dir = pathlib.Path(settings.STORAGE_DIR).resolve()
+            target_path = (base_dir / artifact_path).resolve()
+            target_path.relative_to(base_dir)
+        except Exception:
+            raise HTTPException(status_code=403, detail="Invalid artifact path")
+
+        if not target_path.exists() or not target_path.is_file():
+            # Fallback: check subdirectories within STORAGE_DIR for matches
+            found = False
+            candidates = [
+                base_dir / "evidence" / "analyses" / artifact_path,
+                base_dir / "evidence" / "analyses" / "prnu" / artifact_path,
+                base_dir / "evidence" / "analyses" / "camera_id" / artifact_path,
+                base_dir / "analyses" / artifact_path,
+                base_dir / "analyses" / "prnu" / artifact_path,
+                base_dir / "analyses" / "camera_id" / artifact_path,
+            ]
+            for cand in candidates:
+                if cand.exists() and cand.is_file():
+                    target_path = cand.resolve()
+                    found = True
+                    break
+
+            if not found:
+                base_name = os.path.basename(artifact_path)
+                for root, _, files in os.walk(str(base_dir)):
+                    if base_name in files:
+                        resolved = (pathlib.Path(root) / base_name).resolve()
+                        try:
+                            resolved.relative_to(base_dir)
+                            target_path = resolved
+                            found = True
+                            break
+                        except ValueError:
+                            pass
+
+            if not found or not target_path.exists() or not target_path.is_file():
+                raise HTTPException(status_code=404, detail="Artifact not found")
 
     # Authorize access: ADMIN has global access; INVESTIGATOR must own the associated case
     if current_user.role != "ADMIN":
@@ -659,7 +676,7 @@ def get_artifact(
             raise HTTPException(status_code=403, detail="Not authorized to access this artifact")
 
     # Detect appropriate media_type
-    ext = target_path.suffix.lower()
+    ext = pathlib.Path(remote_key or str(target_path)).suffix.lower()
     if ext in (".jpg", ".jpeg"):
         media_type = "image/jpeg"
     elif ext == ".png":
@@ -671,6 +688,8 @@ def get_artifact(
     else:
         media_type = "application/octet-stream"
 
+    if remote_key is not None:
+        return StreamingResponse(storage.open_stream(remote_key), media_type=media_type)
     return FileResponse(str(target_path), media_type=media_type)
 
 

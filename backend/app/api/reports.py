@@ -1,11 +1,12 @@
 import os
 import pathlib
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.domain import Report, User
 from app.services.reports import ReportService
+from app.services.storage import get_storage_backend
 from app.api.deps import get_current_user, verify_case_access, verify_report_access
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
@@ -71,6 +72,30 @@ def download_report(
         raise HTTPException(status_code=404, detail="Report artifact path not recorded")
 
     target_path = report.artifact_path
+    storage = get_storage_backend()
+
+    if storage.is_remote:
+        if format == "json" and target_path.endswith(".pdf"):
+            candidate_json = target_path[:-4] + ".json"
+            if storage.exists(candidate_json):
+                target_path = candidate_json
+        elif format == "pdf" and target_path.endswith(".json"):
+            candidate_pdf = target_path[:-5] + ".pdf"
+            if storage.exists(candidate_pdf):
+                target_path = candidate_pdf
+
+        if not storage.exists(target_path):
+            raise HTTPException(status_code=404, detail=f"Report file not found: {os.path.basename(target_path)}")
+
+        is_pdf = target_path.endswith(".pdf")
+        media_type = "application/pdf" if is_pdf else "application/json"
+        filename = f"{report.report_identifier}.pdf" if is_pdf else f"{report.report_identifier}.json"
+        return StreamingResponse(
+            storage.open_stream(target_path),
+            media_type=media_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     if format == "json" and target_path.endswith(".pdf"):
         candidate_json = target_path[:-4] + ".json"
         if os.path.exists(candidate_json):

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Query, Request
 from sqlalchemy import or_
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 import pathlib
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -9,6 +9,7 @@ from app.schemas.domain import InvestigationCaseCreate, InvestigationCaseRespons
 from app.services.cases import CaseService
 from app.services.evidence import EvidenceService
 from app.services.audit import AuditService
+from app.services.storage import get_storage_backend
 from app.api.deps import get_current_user
 from app.models.domain import User, InvestigationCase
 from app.models.domain import CaseIntakeContext
@@ -182,26 +183,40 @@ def read_evidence_raw(evidence_id: int, db: Session = Depends(get_db), current_u
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this evidence")
     
-    raw_path = evidence.stored_path
-    candidate_paths = [
-        pathlib.Path(raw_path),
-        pathlib.Path(settings.STORAGE_DIR) / raw_path,
-        pathlib.Path(settings.STORAGE_DIR) / pathlib.Path(raw_path).name,
-        pathlib.Path("storage") / "evidence" / pathlib.Path(raw_path).name,
-    ]
-    resolved_path = None
-    for p in candidate_paths:
-        if p.exists() and p.is_file():
-            resolved_path = p.resolve()
-            break
-            
-    if not resolved_path:
-        raise HTTPException(status_code=404, detail="Evidence physical bitstream not found on disk")
-        
-    return FileResponse(
-        path=str(resolved_path),
+    raw_path = evidence.stored_path or ""
+    storage = get_storage_backend()
+    if not storage.is_remote:
+        candidate_paths = [
+            pathlib.Path(raw_path),
+            pathlib.Path(settings.STORAGE_DIR) / raw_path,
+            pathlib.Path(settings.STORAGE_DIR) / pathlib.Path(raw_path).name,
+            pathlib.Path("storage") / "evidence" / pathlib.Path(raw_path).name,
+        ]
+        resolved_path = None
+        for p in candidate_paths:
+            if p.exists() and p.is_file():
+                resolved_path = p.resolve()
+                break
+
+        if not resolved_path:
+            raise HTTPException(status_code=404, detail="Evidence physical bitstream not found on disk")
+
+        return FileResponse(
+            path=str(resolved_path),
+            media_type=evidence.mime_type or "application/octet-stream",
+            filename=evidence.original_filename
+        )
+
+    remote_candidates = [raw_path, f"evidence/{pathlib.Path(raw_path).name}"]
+    selected_key = next((key for key in remote_candidates if key and storage.exists(key)), None)
+    if not selected_key:
+        raise HTTPException(status_code=404, detail="Evidence physical bitstream not found in object storage")
+
+    safe_name = (evidence.original_filename or "evidence").replace('"', "_")
+    return StreamingResponse(
+        storage.open_stream(selected_key),
         media_type=evidence.mime_type or "application/octet-stream",
-        filename=evidence.original_filename
+        headers={"Content-Disposition": f'inline; filename="{safe_name}"'},
     )
 
 

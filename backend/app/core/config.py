@@ -11,6 +11,15 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./forensight.db"
     STORAGE_DIR: str = "storage/evidence"
     STORAGE_PATH: str = "storage/evidence"
+    STORAGE_BACKEND: str = "local"
+    ALLOW_EPHEMERAL_LOCAL_STORAGE: bool = False
+    S3_BUCKET: str = ""
+    S3_ENDPOINT_URL: str = ""
+    S3_REGION: str = "auto"
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_KEY_PREFIX: str = ""
+    S3_ADDRESSING_STYLE: str = "auto"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
     MAX_IMAGE_PIXELS: int = 40_000_000
     BACKEND_CORS_ORIGINS: str = "http://localhost,http://localhost:5173"
@@ -91,6 +100,31 @@ def validate_runtime_settings() -> None:
         problems.append("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 60")
     if settings.SESSION_REFRESH_EXPIRE_DAYS < 1 or settings.SESSION_REFRESH_EXPIRE_DAYS > 90:
         problems.append("SESSION_REFRESH_EXPIRE_DAYS must be between 1 and 90")
+
+    storage_backend = (settings.STORAGE_BACKEND or "").strip().lower()
+    if storage_backend in {"", "local"}:
+        if not settings.ALLOW_EPHEMERAL_LOCAL_STORAGE:
+            problems.append(
+                "STORAGE_BACKEND='local' is not permitted in production on ephemeral filesystems; "
+                "configure STORAGE_BACKEND=s3 with S3_BUCKET, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY"
+            )
+    elif storage_backend in {"s3", "s3-compatible", "s3_compatible"}:
+        if not settings.S3_BUCKET.strip():
+            problems.append("S3_BUCKET must be configured when STORAGE_BACKEND=s3")
+        if not settings.S3_ACCESS_KEY_ID.strip():
+            problems.append("S3_ACCESS_KEY_ID must be configured when STORAGE_BACKEND=s3")
+        if not settings.S3_SECRET_ACCESS_KEY.strip():
+            problems.append("S3_SECRET_ACCESS_KEY must be configured when STORAGE_BACKEND=s3")
+        endpoint = settings.S3_ENDPOINT_URL.strip()
+        if endpoint:
+            parsed_endpoint = urlparse(endpoint)
+            if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
+                problems.append("S3_ENDPOINT_URL must be a valid http:// or https:// URL")
+        addressing = (settings.S3_ADDRESSING_STYLE or "auto").strip().lower()
+        if addressing not in {"auto", "path", "virtual"}:
+            problems.append("S3_ADDRESSING_STYLE must be one of: auto, path, virtual")
+    else:
+        problems.append(f"Unsupported STORAGE_BACKEND '{settings.STORAGE_BACKEND}' (expected 'local' or 's3')")
 
     if problems:
         raise RuntimeError("Invalid production configuration: " + "; ".join(problems))

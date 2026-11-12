@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.domain import InvestigationCase, Evidence, AuditEvent
 from app.services.audit import AuditService
+from app.services.storage import get_storage_backend
 from app.schemas.v3 import (
     ChainOfCustodyResponse,
     CustodyVerificationResult,
@@ -22,7 +23,8 @@ class CustodyService:
     ) -> CustodyVerificationResult:
         now = datetime.datetime.now(datetime.timezone.utc)
         stored_path = evidence.stored_path or ""
-        file_exists = os.path.exists(stored_path)
+        storage = get_storage_backend()
+        file_exists = bool(stored_path) and storage.exists(stored_path)
 
         actual_hash = ""
         intact = False
@@ -30,12 +32,8 @@ class CustodyService:
         message = f"Physical evidence file missing at stored path: {stored_path}"
 
         if file_exists:
-            sha256 = hashlib.sha256()
             try:
-                with open(stored_path, "rb") as f:
-                    while chunk := f.read(8192):
-                        sha256.update(chunk)
-                actual_hash = sha256.hexdigest()
+                actual_hash = storage.compute_sha256(stored_path)
                 intact = (actual_hash.lower() == (evidence.sha256_hash or "").lower())
 
                 if intact:

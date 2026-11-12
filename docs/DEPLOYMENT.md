@@ -41,7 +41,16 @@ The platform is configured entirely via environment variables (or `.env` file). 
 | `CELERY_RESULT_BACKEND` | string | `redis://localhost:6379/0` | Result backend URI for Celery task statuses |
 | `REDIS_PASSWORD` | string | required by Compose | Unique URL-safe Redis password; at least 16 characters in production |
 | `CELERY_TASK_ALWAYS_EAGER` | bool | `true` | When `true`, tasks execute synchronously in-process (no Redis) |
-| `STORAGE_DIR` | string | `storage/evidence` | Physical directory for uploaded evidence and forensic artifacts |
+| `STORAGE_DIR` | string | `storage/evidence` | Physical directory for local storage mode (`STORAGE_BACKEND=local`) |
+| `STORAGE_BACKEND` | string | `local` | Storage backend: `local` (development/testing) or `s3` (required in production) |
+| `S3_BUCKET` | string | empty | S3-compatible bucket name (required when `STORAGE_BACKEND=s3`) |
+| `S3_ENDPOINT_URL` | string | empty | Custom S3 endpoint URL (e.g. Cloudflare R2, Backblaze B2, MinIO) |
+| `S3_REGION` | string | `auto` | S3 region name (`auto` for Cloudflare R2, or provider region) |
+| `S3_ACCESS_KEY_ID` | string | empty | S3-compatible access key ID (required when `STORAGE_BACKEND=s3`) |
+| `S3_SECRET_ACCESS_KEY` | string | empty | S3-compatible secret access key (required when `STORAGE_BACKEND=s3`) |
+| `S3_KEY_PREFIX` | string | empty | Optional key prefix inside the bucket (e.g. `prod` or `forensight`) |
+| `S3_ADDRESSING_STYLE` | string | `auto` | S3 URL addressing style: `auto`, `path`, or `virtual` |
+| `ALLOW_EPHEMERAL_LOCAL_STORAGE` | bool | `false` | Emergency override to allow `STORAGE_BACKEND=local` in production (only for mounted persistent disks) |
 | `MAX_UPLOAD_SIZE` | int | `10485760` (10 MB) | Maximum permitted HTTP multipart evidence payload in bytes |
 | `MAX_IMAGE_PIXELS` | int | `40000000` | Maximum image dimensions accepted at intake |
 | `CASE_EXPORT_SIGNING_PRIVATE_KEY` | string | empty | Base64-encoded 32-byte Ed25519 private key used to sign `.forensight` bundles |
@@ -176,3 +185,14 @@ When deploying the frontend on **Vercel** and the backend on **Render**:
 1. **Same-Origin Rewrites (`frontend/vercel.json`):** Vercel proxies `/api/:path*` to the Render backend (`https://forensight-api.onrender.com/api/:path*` by default; update `destination` in `frontend/vercel.json` to match your Render service URL before deploying). Rewrites preserve HTTP methods, headers, cookies, `Set-Cookie`, and query strings without redirects, keeping `SameSite=Lax` session cookies (`fs_access`, `fs_refresh`) and `fs_csrf` first-party on the Vercel origin.
 2. **Frontend Environment (`VITE_API_URL`):** Leave `VITE_API_URL` unset (or empty) on Vercel so production builds use same-origin `/api`. Production builds also ignore any accidental `localhost` / `127.0.0.1` `VITE_API_URL` value via `resolveApiBase()` in `frontend/src/api.ts`.
 3. **Backend CORS & Trusted Origin (`BACKEND_CORS_ORIGINS`):** On Render, include your explicit HTTPS Vercel origin in `BACKEND_CORS_ORIGINS` (e.g., `https://forensight.vercel.app`) so `_ensure_trusted_origin` and `CORSMiddleware` accept proxied browser requests.
+
+## 9. Persistent Object Storage (S3-Compatible)
+
+Platforms such as Render use ephemeral local filesystems that wipe uploaded evidence, analysis artifacts, and reports on restart or redeploy. Production (`ENVIRONMENT=production`) therefore **rejects** `STORAGE_BACKEND=local` on startup unless `ALLOW_EPHEMERAL_LOCAL_STORAGE=true` is explicitly set for a mounted persistent disk.
+
+Configure `STORAGE_BACKEND=s3` with any S3-compatible provider (Cloudflare R2, Backblaze B2, AWS S3, or MinIO):
+- `S3_BUCKET`: target bucket name
+- `S3_ENDPOINT_URL`: provider S3 API endpoint (e.g., `https://<accountid>.r2.cloudflarestorage.com` for R2 or `https://s3.us-west-004.backblazeb2.com` for B2; leave empty for standard AWS S3)
+- `S3_REGION`: `auto` for R2, or the bucket region for AWS/B2
+- `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY`: scoped read/write/delete credentials
+- Cryptographic SHA-256 chain-of-custody verification always hashes the actual stored byte stream rather than trusting provider ETags.

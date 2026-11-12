@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.services.storage import get_storage_backend
 from app.models.domain import (
     AnalystNote,
     Analysis,
@@ -90,10 +91,14 @@ class CaseExportService:
     @staticmethod
     def create_bundle(db: Session, case: InvestigationCase) -> Tuple[str, Dict[str, Any]]:
         private_key = _private_key_from_setting()
+        storage = get_storage_backend()
         storage_root = Path(settings.STORAGE_DIR).resolve()
         artifact_root = storage_root.parent
-        export_dir = storage_root / "exports"
-        export_dir.mkdir(parents=True, exist_ok=True)
+        if storage.is_remote:
+            export_dir = Path(tempfile.gettempdir())
+        else:
+            export_dir = storage_root / "exports"
+            export_dir.mkdir(parents=True, exist_ok=True)
 
         evidence = db.query(Evidence).filter(Evidence.case_id == case.id).order_by(Evidence.id.asc()).all()
         evidence_ids = [item.id for item in evidence]
@@ -129,16 +134,22 @@ class CaseExportService:
         try:
             with ZipFile(archive_path, "w", compression=ZIP_DEFLATED, compresslevel=6, allowZip64=True) as archive:
                 for item in evidence:
-                    source = Path(item.stored_path).resolve()
-                    try:
-                        source.relative_to(storage_root)
-                    except ValueError as exc:
-                        raise ValueError(f"Evidence {item.evidence_identifier} is stored outside the configured evidence root") from exc
-                    if not source.is_file():
-                        raise FileNotFoundError(f"Evidence bitstream is missing: {item.evidence_identifier}")
                     clean_name = PurePosixPath((item.original_filename or "evidence").replace("\\", "/")).name
                     member = f"evidence/{item.evidence_identifier}/{clean_name}"
-                    evidence_entry = CaseExportService._add_file(archive, member, source)
+                    if storage.is_remote:
+                        if not item.stored_path or not storage.exists(item.stored_path):
+                            raise FileNotFoundError(f"Evidence bitstream is missing: {item.evidence_identifier}")
+                        with storage.local_file_path(item.stored_path) as source:
+                            evidence_entry = CaseExportService._add_file(archive, member, source)
+                    else:
+                        source = Path(item.stored_path).resolve()
+                        try:
+                            source.relative_to(storage_root)
+                        except ValueError as exc:
+                            raise ValueError(f"Evidence {item.evidence_identifier} is stored outside the configured evidence root") from exc
+                        if not source.is_file():
+                            raise FileNotFoundError(f"Evidence bitstream is missing: {item.evidence_identifier}")
+                        evidence_entry = CaseExportService._add_file(archive, member, source)
                     if item.sha256_hash and evidence_entry["sha256"] != item.sha256_hash:
                         raise ValueError(f"Evidence integrity check failed for {item.evidence_identifier}")
                     entries.append(evidence_entry)
@@ -161,24 +172,37 @@ class CaseExportService:
                         if artifact_id in artifact_values:
                             artifact_values[artifact_id] = None
                         relative = raw_path.split("/api/artifacts/", 1)[-1].split("?", 1)[0].split("#", 1)[0]
-                        candidate = Path(relative)
-                        source = candidate.resolve() if candidate.is_absolute() else (storage_root / candidate).resolve()
-                        try:
-                            source.relative_to(artifact_root)
-                        except ValueError:
-                            omitted_artifacts.append(PurePosixPath(raw_path.replace("\\", "/")).name)
-                            continue
-                        if not source.is_file():
-                            omitted_artifacts.append(PurePosixPath(raw_path.replace("\\", "/")).name)
-                            continue
-                        artifact_index += 1
-                        suffix = source.suffix.lower()[:12]
-                        member = f"artifacts/{analysis.analysis_identifier}/{artifact_index:04d}{suffix}"
-                        entries.append(CaseExportService._add_file(archive, member, source))
+                        if storage.is_remote:
+                            norm_rel = relative.replace("\\", "/").lstrip("/")
+                            if not norm_rel or ".." in norm_rel or not storage.exists(norm_rel):
+                                omitted_artifacts.append(PurePosixPath(raw_path.replace("\\", "/")).name)
+                                continue
+                            with storage.local_file_path(norm_rel) as source:
+                                artifact_index += 1
+                                suffix = source.suffix.lower()[:12]
+                                member = f"artifacts/{analysis.analysis_identifier}/{artifact_index:04d}{suffix}"
+                                entries.append(CaseExportService._add_file(archive, member, source))
+                                source_ref = norm_rel
+                        else:
+                            candidate = Path(relative)
+                            source = candidate.resolve() if candidate.is_absolute() else (storage_root / candidate).resolve()
+                            try:
+                                source.relative_to(artifact_root)
+                            except ValueError:
+                                omitted_artifacts.append(PurePosixPath(raw_path.replace("\\", "/")).name)
+                                continue
+                            if not source.is_file():
+                                omitted_artifacts.append(PurePosixPath(raw_path.replace("\\", "/")).name)
+                                continue
+                            artifact_index += 1
+                            suffix = source.suffix.lower()[:12]
+                            member = f"artifacts/{analysis.analysis_identifier}/{artifact_index:04d}{suffix}"
+                            entries.append(CaseExportService._add_file(archive, member, source))
+                            source_ref = source.relative_to(artifact_root).as_posix()
                         artifact_archive_map.append({
                             "analysis_identifier": analysis.analysis_identifier,
                             "artifact_id": artifact_id,
-                            "source_reference": source.relative_to(artifact_root).as_posix(),
+                            "source_reference": source_ref,
                             "bundle_member": member,
                         })
                         artifact_values[artifact_id] = member
@@ -189,20 +213,32 @@ class CaseExportService:
                     if not artifact_path:
                         continue
                     report["artifact_path"] = None
-                    source = Path(artifact_path).resolve()
-                    try:
-                        source.relative_to(artifact_root)
-                    except ValueError:
-                        omitted_artifacts.append(PurePosixPath(str(artifact_path).replace("\\", "/")).name)
-                        continue
-                    if source.is_file():
-                        report_index += 1
-                        member = f"reports/{report_index:04d}{source.suffix.lower()}"
-                        entries.append(CaseExportService._add_file(archive, member, source))
-                        report_archive_map.append({"report_identifier": report.get("report_identifier", ""), "bundle_member": member})
-                        report["artifact_path"] = member
+                    if storage.is_remote:
+                        norm_rpt = str(artifact_path).replace("\\", "/").lstrip("/")
+                        if norm_rpt and ".." not in norm_rpt and storage.exists(norm_rpt):
+                            with storage.local_file_path(norm_rpt) as source:
+                                report_index += 1
+                                member = f"reports/{report_index:04d}{source.suffix.lower()}"
+                                entries.append(CaseExportService._add_file(archive, member, source))
+                                report_archive_map.append({"report_identifier": report.get("report_identifier", ""), "bundle_member": member})
+                                report["artifact_path"] = member
+                        else:
+                            omitted_artifacts.append(PurePosixPath(str(artifact_path).replace("\\", "/")).name)
                     else:
-                        omitted_artifacts.append(PurePosixPath(str(artifact_path).replace("\\", "/")).name)
+                        source = Path(artifact_path).resolve()
+                        try:
+                            source.relative_to(artifact_root)
+                        except ValueError:
+                            omitted_artifacts.append(PurePosixPath(str(artifact_path).replace("\\", "/")).name)
+                            continue
+                        if source.is_file():
+                            report_index += 1
+                            member = f"reports/{report_index:04d}{source.suffix.lower()}"
+                            entries.append(CaseExportService._add_file(archive, member, source))
+                            report_archive_map.append({"report_identifier": report.get("report_identifier", ""), "bundle_member": member})
+                            report["artifact_path"] = member
+                        else:
+                            omitted_artifacts.append(PurePosixPath(str(artifact_path).replace("\\", "/")).name)
 
                 case_data["artifact_archive_map"] = artifact_archive_map
                 case_data["report_archive_map"] = report_archive_map
