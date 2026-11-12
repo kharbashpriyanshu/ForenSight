@@ -31,6 +31,13 @@ const state = {
     storage: 'healthy',
     environment: 'development',
   },
+  graphPayload: {
+    case_id: 'FS-CASE-E2E001',
+    nodes: [
+      { id: 'case:FS-CASE-E2E001', type: 'CASE', label: 'Browser workflow check', metadata: { identifier: 'FS-CASE-E2E001', status: 'Open' } },
+    ],
+    edges: [],
+  },
 };
 
 const caseData = {
@@ -250,6 +257,9 @@ async function mockApiRequest(request) {
   if (url.pathname === `/api/cases/${caseData.case_identifier}/chain-of-custody` && request.method() === 'GET') {
     return jsonResponse([]);
   }
+  if (url.pathname === `/api/cases/${caseData.case_identifier}/graph` && request.method() === 'GET') {
+    return jsonResponse(state.graphPayload);
+  }
 
   // Other workspace widgets can make optional calls. Keep the test isolated from a real API.
   if (route.startsWith('GET ')) return jsonResponse([]);
@@ -401,7 +411,66 @@ async function main() {
   assert.notEqual(prodPlatform.color, 'rgb(21, 128, 61)', 'DEGRADED badge must not use green success color');
   assert.notEqual(prodPlatform.color, 'rgb(52, 211, 153)', 'DEGRADED badge must not use dark-mode green success color');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health');
+  // Investigation Graph checks: empty state, populated graph with lineage/observation relations, inspector & theme switch
+  await page.goto(`${baseUrl}/cases/${caseData.case_identifier}/graph`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="graph-empty-state"]');
+  const emptyStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
+  assert.ok(emptyStats.includes('1 NODES') && emptyStats.includes('0 LINKS'), `Empty graph should show 1 NODES • 0 LINKS, got: ${emptyStats}`);
+
+  state.graphPayload = {
+    case_id: caseData.case_identifier,
+    nodes: [
+      { id: `case:${caseData.case_identifier}`, type: 'CASE', label: caseData.title, metadata: { identifier: caseData.case_identifier, status: 'Open' } },
+      { id: 'ev:201', type: 'EVIDENCE', label: 'original.jpg', metadata: { identifier: 'FS-EVD-201', sha256: 'a'.repeat(64) } },
+      { id: 'ev:202', type: 'EVIDENCE', label: 'derived.jpg', metadata: { identifier: 'FS-EVD-202', sha256: 'b'.repeat(64) } },
+      { id: 'anl:501', type: 'ANALYSIS', label: 'ELA Analysis', metadata: { identifier: 'FS-ANL-501', status: 'completed' } },
+      { id: 'obs:601', type: 'OBSERVATION', label: 'Obs: ela (ERROR)', metadata: { metric: 'mean_ela' } },
+      { id: 'obs:602', type: 'OBSERVATION', label: 'Obs: noise (SNR)', metadata: { metric: 'snr' } },
+      { id: 'fnd:701', type: 'FINDING', label: 'Localized ELA Elevation', metadata: { identifier: 'FS-FND-701', severity_label: 'HIGH' } },
+      { id: 'rpt:301', type: 'REPORT', label: 'Report FS-RPT-E2E001', metadata: { identifier: 'FS-RPT-E2E001', status: 'COMPLETED' } },
+    ],
+    edges: [
+      { source: `case:${caseData.case_identifier}`, target: 'ev:201', type: 'CONTAINS' },
+      { source: `case:${caseData.case_identifier}`, target: 'ev:202', type: 'CONTAINS' },
+      { source: 'ev:202', target: 'ev:201', type: 'DERIVED_FROM' },
+      { source: 'ev:201', target: 'anl:501', type: 'PRODUCED' },
+      { source: 'anl:501', target: 'obs:601', type: 'PRODUCED' },
+      { source: 'obs:601', target: 'obs:602', type: 'SUPPORTS' },
+      { source: 'ev:201', target: 'fnd:701', type: 'SUPPORTS' },
+      { source: `case:${caseData.case_identifier}`, target: 'rpt:301', type: 'GENERATED' },
+    ],
+  };
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="graph-stats-pill"]');
+  const populatedStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
+  assert.ok(populatedStats.includes('8 NODES') && populatedStats.includes('8 LINKS'), `Populated graph should show 8 NODES • 8 LINKS, got: ${populatedStats}`);
+
+  // Switch layout mode and verify nodes remain visible
+  await clickButton(page, 'Evidence Clusters');
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const clusterStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
+  assert.ok(clusterStats.includes('8 NODES'), 'Cluster layout must preserve all 8 nodes');
+  await clickButton(page, 'Hierarchical DAG');
+
+  // Switch to Card List, select ev:201, and verify inspector connected links
+  await clickButton(page, 'Switch to Card List');
+  await page.waitForFunction(() => document.body.innerText.includes('original.jpg'));
+  await page.evaluate(() => {
+    const cards = Array.from(document.querySelectorAll('div')).filter((el) => el.innerText && el.innerText.includes('original.jpg') && el.innerText.includes('Inspect connections'));
+    if (cards.length > 0) cards[cards.length - 1].click();
+  });
+  await page.waitForFunction(() => document.body.innerText.includes('DERIVED_FROM') && document.body.innerText.toUpperCase().includes('CONNECTED LINKS'));
+
+  // Verify dark theme switches canvas container background
+  await page.evaluate(() => {
+    localStorage.setItem('forensight-theme', 'dark');
+    document.documentElement.setAttribute('data-theme', 'dark');
+  });
+  await page.reload({ waitUntil: 'networkidle0' });
+  const darkBg = await page.$eval('canvas', (el) => getComputedStyle(el.parentElement).backgroundColor);
+  assert.equal(darkBg, 'rgb(15, 23, 42)', 'Dark theme graph container must use dark slate background');
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph');
 }
 
 main()

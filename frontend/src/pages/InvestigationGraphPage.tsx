@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchApi } from '../api';
+import { useTheme } from '../contexts/ThemeContext';
 import { GraphWorkspaceSkeleton } from '../components/common/LoadingStates';
 import { 
   Network, 
@@ -83,6 +84,7 @@ function cleanLabel(rawLabel: string, type: string): string {
 const InvestigationGraphPage: React.FC = () => {
   const { caseId } = useParams<{ caseId: string }>();
   const navigate = useNavigate();
+  const { isDark } = useTheme();
 
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ const InvestigationGraphPage: React.FC = () => {
   const [error, setError] = useState('');
   const [viewMode, setViewMode] = useState<'graph' | 'grid'>('graph');
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('dag');
-  const [showAnalyses, setShowAnalyses] = useState<boolean>(false);
+  const [showAnalyses, setShowAnalyses] = useState<boolean>(true);
   const [showArtifacts, setShowArtifacts] = useState<boolean>(false);
   const [activeRightTab, setActiveRightTab] = useState<'inspector' | 'controls'>('controls');
 
@@ -130,10 +132,10 @@ const InvestigationGraphPage: React.FC = () => {
   }, [caseId]);
 
   useEffect(() => {
-    if (graphData) {
+    if (graphData && !loading) {
       computeLayout(graphData, layoutMode, showAnalyses, showArtifacts, filterType);
     }
-  }, [layoutMode, showAnalyses, showArtifacts, filterType]);
+  }, [graphData, loading, layoutMode, showAnalyses, showArtifacts, filterType]);
 
   // =========================================================================
   // GUARANTEED DETERMINISTIC FORENSIC LAYOUT GENERATOR
@@ -199,7 +201,7 @@ const InvestigationGraphPage: React.FC = () => {
       });
 
       // Dynamic horizontal column positions with generous breathing room
-      const colX = showAnalyses ? [80, 420, 840, 1260, 2020] : [80, 420, 840, 840, 1280];
+      const colX = includeAnalyses ? [80, 420, 840, 1260, 2020] : [80, 420, 840, 840, 1280];
 
       // Sort items in columns to align neatly
       const evidenceList = columns[1];
@@ -429,15 +431,15 @@ const InvestigationGraphPage: React.FC = () => {
     // Clear entire logical area (which maps to 100% of physical pixels)
     ctx.clearRect(0, 0, width, height);
 
-    // Warm Forensic Technical Workbench Canvas
-    ctx.fillStyle = '#f6f2eb';
+    // Theme-aware Forensic Technical Workbench Canvas
+    ctx.fillStyle = isDark ? '#0f172a' : '#f6f2eb';
     ctx.fillRect(0, 0, width, height);
 
     // Clean dot matrix
     const { x: tx, y: ty, k } = transformRef.current;
     const gridSize = 32 * k;
     if (gridSize > 12) {
-      ctx.fillStyle = 'rgba(190, 175, 150, 0.45)';
+      ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.22)' : 'rgba(190, 175, 150, 0.45)';
       const startX = (tx % gridSize + gridSize) % gridSize;
       const startY = (ty % gridSize + gridSize) % gridSize;
       for (let x = startX; x < width; x += gridSize) {
@@ -493,18 +495,18 @@ const InvestigationGraphPage: React.FC = () => {
       }
 
       if (isConnectedToActive) {
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = isDark ? '#60a5fa' : '#2563eb';
         ctx.lineWidth = 3.2;
         ctx.globalAlpha = 1.0;
-        ctx.shadowColor = 'rgba(37, 99, 235, 0.6)';
+        ctx.shadowColor = isDark ? 'rgba(96, 165, 250, 0.55)' : 'rgba(37, 99, 235, 0.6)';
         ctx.shadowBlur = 10;
       } else if (isDimmed) {
-        ctx.strokeStyle = 'rgba(200, 190, 175, 0.45)';
+        ctx.strokeStyle = isDark ? 'rgba(100, 116, 139, 0.35)' : 'rgba(200, 190, 175, 0.45)';
         ctx.lineWidth = 1.1;
         ctx.globalAlpha = 0.35;
         ctx.shadowBlur = 0;
       } else {
-        ctx.strokeStyle = 'rgba(165, 150, 130, 0.85)';
+        ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.65)' : 'rgba(165, 150, 130, 0.85)';
         ctx.lineWidth = 1.6;
         ctx.globalAlpha = 0.85;
         ctx.shadowBlur = 0;
@@ -524,7 +526,9 @@ const InvestigationGraphPage: React.FC = () => {
           ctx.save();
           ctx.translate(arrowX, arrowY);
           ctx.rotate(angle);
-          ctx.fillStyle = isConnectedToActive ? '#2563eb' : 'rgba(150, 135, 115, 0.95)';
+          ctx.fillStyle = isConnectedToActive
+            ? (isDark ? '#60a5fa' : '#2563eb')
+            : (isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(150, 135, 115, 0.95)');
           ctx.beginPath();
           ctx.moveTo(0, 0);
           ctx.lineTo(-8, -4);
@@ -601,8 +605,8 @@ const InvestigationGraphPage: React.FC = () => {
       const labelY = sim.y + sim.radius + 5;
 
       // Solid high-contrast label capsule
-      ctx.fillStyle = isSelected ? '#1e3a8a' : '#ffffff';
-      ctx.strokeStyle = isSelected ? '#3b82f6' : 'rgba(195, 180, 160, 0.9)';
+      ctx.fillStyle = isSelected ? '#1e3a8a' : (isDark ? '#1e293b' : '#ffffff');
+      ctx.strokeStyle = isSelected ? '#3b82f6' : (isDark ? 'rgba(71, 85, 105, 0.95)' : 'rgba(195, 180, 160, 0.9)');
       ctx.lineWidth = 1.2;
 
       const rx = sim.x - textW / 2 - padX;
@@ -616,7 +620,7 @@ const InvestigationGraphPage: React.FC = () => {
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = isSelected ? '#ffffff' : '#1a1610';
+      ctx.fillStyle = isSelected ? '#ffffff' : (isDark ? '#f1f5f9' : '#1a1610');
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(truncated, sim.x, labelY);
@@ -627,7 +631,7 @@ const InvestigationGraphPage: React.FC = () => {
 
     // Close Camera Transform
     ctx.restore();
-  }, [graphData, selectedNode, hoveredNode, searchQuery, layoutMode]);
+  }, [graphData, selectedNode, hoveredNode, searchQuery, layoutMode, isDark]);
 
   // Request Animation Loop
   useEffect(() => {
@@ -809,9 +813,15 @@ const InvestigationGraphPage: React.FC = () => {
   if (!graphData) return null;
 
   const currentNodesList = Array.from(simNodesRef.current.values());
+  const visibleNodeIds = new Set(currentNodesList.map(n => n.id));
+  const visibleEdgeCount = graphData.edges.filter(e => visibleNodeIds.has(e.source) && visibleNodeIds.has(e.target)).length;
+  const isEmptyCaseGraph = graphData.nodes.length <= 1 && graphData.edges.length === 0;
   const allAvailableTypes = ['ALL', 'CASE', 'EVIDENCE', 'FINDING', 'OBSERVATION', 'ANALYSIS', 'REPORT'];
   const analysisCount = graphData.nodes.filter(n => n.type === 'ANALYSIS').length;
   const artifactCount = graphData.nodes.filter(n => n.type === 'ARTIFACT').length;
+
+  const overlaySurface = isDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(254, 251, 246, 0.92)';
+  const overlayBorder = isDark ? '1px solid var(--border-color)' : '1px solid rgba(255, 255, 255, 0.90)';
 
   return (
     <div style={{ display: 'flex', gap: '1.25rem', height: 'calc(100vh - 128px)', minHeight: 0 }}>
@@ -829,7 +839,7 @@ const InvestigationGraphPage: React.FC = () => {
           overflow: 'hidden', 
           borderRadius: '16px',
           border: '1px solid var(--border-color)',
-          background: '#f6f2eb',
+          background: isDark ? '#0f172a' : '#f6f2eb',
           boxShadow: 'var(--shadow-card)',
           display: 'flex',
           flexDirection: 'column'
@@ -863,14 +873,14 @@ const InvestigationGraphPage: React.FC = () => {
               zIndex: 10
             }}>
               <div style={{
-                background: 'rgba(254, 251, 246, 0.92)',
+                background: overlaySurface,
                 backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.90)',
+                border: overlayBorder,
                 borderRadius: '10px',
                 display: 'flex',
                 flexDirection: 'column',
                 padding: '0.25rem',
-                boxShadow: '0 4px 14px rgba(45, 35, 20, 0.08)'
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.14)'
               }}>
                 <button
                   type="button"
@@ -930,25 +940,70 @@ const InvestigationGraphPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Live Node Count Pill (Bottom-Left) */}
-            <div style={{
-              position: 'absolute',
-              bottom: '1rem',
-              left: '1.2rem',
-              background: 'rgba(254, 251, 246, 0.88)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.85)',
-              borderRadius: '20px',
-              padding: '0.25rem 0.75rem',
-              fontSize: '0.72rem',
-              fontWeight: 700,
-              color: 'var(--text-muted)',
-              fontFamily: 'var(--font-tech)',
-              letterSpacing: '0.04em',
-              boxShadow: '0 2px 8px rgba(45, 35, 20, 0.05)',
-              zIndex: 10
-            }}>
-              {currentNodesList.length} NODES VISIBLE • {layoutMode === 'dag' ? 'PIPELINE DAG' : 'SATELLITE CLUSTERS'}
+            {/* Empty-Case Guidance Banner */}
+            {isEmptyCaseGraph && (
+              <div
+                data-testid="graph-empty-state"
+                style={{
+                  position: 'absolute',
+                  bottom: '3.25rem',
+                  left: '1.2rem',
+                  right: '1.2rem',
+                  maxWidth: '480px',
+                  background: overlaySurface,
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                  padding: '0.9rem 1.05rem',
+                  boxShadow: 'var(--shadow-card)',
+                  zIndex: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.2rem' }}>
+                    No evidence or relationships recorded yet
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    Acquire and register evidence to populate analyses, observations, findings, and provenance links.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/cases/${caseId}/evidence/new`)}
+                  style={{ whiteSpace: 'nowrap', fontSize: '0.76rem', padding: '0.45rem 0.85rem', flexShrink: 0 }}
+                >
+                  Acquire Evidence
+                </button>
+              </div>
+            )}
+
+            {/* Quick Live Node & Link Count Pill (Bottom-Left) */}
+            <div
+              data-testid="graph-stats-pill"
+              style={{
+                position: 'absolute',
+                bottom: '1rem',
+                left: '1.2rem',
+                background: overlaySurface,
+                backdropFilter: 'blur(10px)',
+                border: overlayBorder,
+                borderRadius: '20px',
+                padding: '0.25rem 0.75rem',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: 'var(--text-muted)',
+                fontFamily: 'var(--font-tech)',
+                letterSpacing: '0.04em',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                zIndex: 10
+              }}
+            >
+              {currentNodesList.length} NODES • {visibleEdgeCount} LINKS • {layoutMode === 'dag' ? 'PIPELINE DAG' : 'SATELLITE CLUSTERS'}
             </div>
           </>
         ) : (
@@ -961,9 +1016,12 @@ const InvestigationGraphPage: React.FC = () => {
                 return (
                   <div 
                     key={node.id}
-                    onClick={() => setSelectedNode(node)}
+                    onClick={() => {
+                      setSelectedNode(node);
+                      setActiveRightTab('inspector');
+                    }}
                     style={{ 
-                      background: isSelected ? 'rgba(255, 254, 250, 0.95)' : 'rgba(254, 251, 246, 0.75)',
+                      background: isSelected ? 'var(--surface-color)' : 'var(--surface-color-light)',
                       border: `1.5px solid ${isSelected ? cfg.fill : 'var(--border-color)'}`,
                       borderLeft: `5px solid ${cfg.fill}`,
                       borderRadius: '12px',
@@ -1017,7 +1075,7 @@ const InvestigationGraphPage: React.FC = () => {
         <div style={{ 
           display: 'flex', 
           borderBottom: '1px solid var(--border-color-translucent)',
-          background: 'rgba(250, 246, 238, 0.75)',
+          background: 'var(--surface-color-light)',
           padding: '0.45rem 0.6rem',
           gap: '0.4rem',
           flexShrink: 0
@@ -1030,7 +1088,7 @@ const InvestigationGraphPage: React.FC = () => {
               padding: '0.48rem 0.65rem',
               borderRadius: '8px',
               border: activeRightTab === 'controls' ? '1px solid var(--border-color)' : '1px solid transparent',
-              background: activeRightTab === 'controls' ? '#ffffff' : 'transparent',
+              background: activeRightTab === 'controls' ? 'var(--surface-color)' : 'transparent',
               color: activeRightTab === 'controls' ? 'var(--primary-color)' : 'var(--text-muted)',
               fontWeight: 700,
               fontSize: '0.78rem',
@@ -1055,7 +1113,7 @@ const InvestigationGraphPage: React.FC = () => {
               padding: '0.48rem 0.65rem',
               borderRadius: '8px',
               border: activeRightTab === 'inspector' ? '1px solid var(--border-color)' : '1px solid transparent',
-              background: activeRightTab === 'inspector' ? '#ffffff' : 'transparent',
+              background: activeRightTab === 'inspector' ? 'var(--surface-color)' : 'transparent',
               color: activeRightTab === 'inspector' ? 'var(--primary-color)' : 'var(--text-muted)',
               fontWeight: 700,
               fontSize: '0.78rem',
@@ -1133,7 +1191,7 @@ const InvestigationGraphPage: React.FC = () => {
                   type="button"
                   onClick={() => setLayoutMode('dag')}
                   style={{
-                    background: layoutMode === 'dag' ? '#ffffff' : 'transparent',
+                    background: layoutMode === 'dag' ? 'var(--surface-color)' : 'transparent',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '0.45rem 0.5rem',
@@ -1156,7 +1214,7 @@ const InvestigationGraphPage: React.FC = () => {
                   type="button"
                   onClick={() => setLayoutMode('cluster')}
                   style={{
-                    background: layoutMode === 'cluster' ? '#ffffff' : 'transparent',
+                    background: layoutMode === 'cluster' ? 'var(--surface-color)' : 'transparent',
                     border: 'none',
                     borderRadius: '8px',
                     padding: '0.45rem 0.5rem',
@@ -1246,7 +1304,7 @@ const InvestigationGraphPage: React.FC = () => {
                       type="button"
                       onClick={() => setFilterType(t)}
                       style={{
-                        background: isSelected ? 'var(--primary-color)' : 'rgba(254, 251, 246, 0.75)',
+                        background: isSelected ? 'var(--primary-color)' : 'var(--surface-color-light)',
                         color: isSelected ? '#ffffff' : 'var(--text-main)',
                         border: isSelected ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
                         borderRadius: '8px',
@@ -1433,7 +1491,7 @@ const InvestigationGraphPage: React.FC = () => {
                             <div>
                               <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: '0.7rem', fontFamily: 'var(--font-tech)' }}>{e.type}</span>
                               <div style={{ fontSize: '0.72rem', color: 'var(--text-main)', marginTop: '0.1rem' }}>
-                                {e.source === selectedNode.id ? `&rarr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.target}` : `&larr; ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.source}`}
+                                {e.source === selectedNode.id ? `→ ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.target}` : `← ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.source}`}
                               </div>
                             </div>
                             {targetNode && <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />}

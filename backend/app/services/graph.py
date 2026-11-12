@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
+from collections import defaultdict
 from sqlalchemy.orm import Session
 from app.models.domain import (
     InvestigationCase,
@@ -6,6 +7,8 @@ from app.models.domain import (
     Analysis,
     AnalysisJob,
     EvidenceObservation,
+    EvidenceRelation,
+    EvidenceLineageRelation,
     Finding,
     Report,
 )
@@ -20,10 +23,12 @@ class GraphService:
         """
         Builds the complete investigation-level observation graph:
         CASE -> EVIDENCE -> ANALYSIS JOB -> ANALYSIS -> OBSERVATION -> FINDING -> REPORT
+        plus persisted EvidenceLineageRelation and EvidenceRelation edges.
         """
         nodes: List[Dict[str, Any]] = []
         edges: List[Dict[str, Any]] = []
         seen_node_ids = set()
+        seen_edges = set()
 
         def add_node(node_id: str, node_type: str, label: str, metadata: Dict[str, Any] = None):
             if node_id not in seen_node_ids:
@@ -36,11 +41,16 @@ class GraphService:
                 })
 
         def add_edge(source: str, target: str, edge_type: str):
-            edges.append({
-                "source": source,
-                "target": target,
-                "type": edge_type
-            })
+            if source not in seen_node_ids or target not in seen_node_ids:
+                return
+            edge_key = (source, target, edge_type)
+            if edge_key not in seen_edges:
+                seen_edges.add(edge_key)
+                edges.append({
+                    "source": source,
+                    "target": target,
+                    "type": edge_type
+                })
 
         case_node_id = f"case:{case.case_identifier}"
         add_node(
@@ -51,6 +61,32 @@ class GraphService:
         )
 
         evidence_items = db.query(Evidence).filter(Evidence.case_id == case.id).all()
+        evidence_ids = [ev.id for ev in evidence_items]
+
+        jobs_by_ev: Dict[int, List[AnalysisJob]] = defaultdict(list)
+        analyses_by_ev: Dict[int, List[Analysis]] = defaultdict(list)
+        obs_by_analysis: Dict[int, List[EvidenceObservation]] = defaultdict(list)
+        findings_by_ev: Dict[int, List[Finding]] = defaultdict(list)
+        obs_relations: List[EvidenceRelation] = []
+        lineage_relations: List[EvidenceLineageRelation] = []
+
+        if evidence_ids:
+            for j in db.query(AnalysisJob).filter(AnalysisJob.evidence_id.in_(evidence_ids)).all():
+                jobs_by_ev[j.evidence_id].append(j)
+            analyses_all = db.query(Analysis).filter(Analysis.evidence_id.in_(evidence_ids)).all()
+            analysis_ids = [a.id for a in analyses_all]
+            for a in analyses_all:
+                analyses_by_ev[a.evidence_id].append(a)
+            if analysis_ids:
+                for o in db.query(EvidenceObservation).filter(EvidenceObservation.analysis_id.in_(analysis_ids)).all():
+                    obs_by_analysis[o.analysis_id].append(o)
+            for f in db.query(Finding).filter(Finding.evidence_id.in_(evidence_ids)).all():
+                findings_by_ev[f.evidence_id].append(f)
+            obs_relations = db.query(EvidenceRelation).filter(EvidenceRelation.evidence_id.in_(evidence_ids)).all()
+            lineage_relations = db.query(EvidenceLineageRelation).filter(
+                EvidenceLineageRelation.case_id == case.id
+            ).all()
+
         for ev in evidence_items:
             ev_node_id = f"ev:{ev.id}"
             add_node(
@@ -68,8 +104,7 @@ class GraphService:
             add_edge(case_node_id, ev_node_id, "CONTAINS")
 
             # Link Jobs
-            jobs = db.query(AnalysisJob).filter(AnalysisJob.evidence_id == ev.id).all()
-            for j in jobs:
+            for j in jobs_by_ev[ev.id]:
                 job_node_id = f"job:{j.id}"
                 add_node(
                     job_node_id,
@@ -80,8 +115,7 @@ class GraphService:
                 add_edge(ev_node_id, job_node_id, "ANALYZED_BY")
 
             # Link Analyses
-            analyses = db.query(Analysis).filter(Analysis.evidence_id == ev.id).all()
-            for a in analyses:
+            for a in analyses_by_ev[ev.id]:
                 anl_node_id = f"anl:{a.id}"
                 add_node(
                     anl_node_id,
@@ -105,8 +139,7 @@ class GraphService:
                             add_edge(anl_node_id, art_node_id, "GENERATED")
 
                 # Link Observations
-                obs_items = db.query(EvidenceObservation).filter(EvidenceObservation.analysis_id == a.id).all()
-                for o in obs_items:
+                for o in obs_by_analysis[a.id]:
                     obs_node_id = f"obs:{o.id}"
                     add_node(
                         obs_node_id,
@@ -122,8 +155,7 @@ class GraphService:
                     add_edge(anl_node_id, obs_node_id, "PRODUCED")
 
             # Link Findings
-            findings = db.query(Finding).filter(Finding.evidence_id == ev.id).all()
-            for f in findings:
+            for f in findings_by_ev[ev.id]:
                 fnd_node_id = f"fnd:{f.id}"
                 add_node(
                     fnd_node_id,
@@ -145,6 +177,35 @@ class GraphService:
                         target_anl = f"anl:{aid}"
                         if target_anl in seen_node_ids:
                             add_edge(target_anl, fnd_node_id, "SUPPORTS")
+
+        # Link Persisted Evidence Lineage Relations (within this case, non-dangling)
+        for rel in lineage_relations:
+            if rel.parent_evidence_id == rel.evidence_a_id:
+                source_id = f"ev:{rel.evidence_b_id}"
+                target_id = f"ev:{rel.evidence_a_id}"
+                edge_type = "DERIVED_FROM"
+            elif rel.parent_evidence_id == rel.evidence_b_id:
+                source_id = f"ev:{rel.evidence_a_id}"
+                target_id = f"ev:{rel.evidence_b_id}"
+                edge_type = "DERIVED_FROM"
+            else:
+                source_id = f"ev:{rel.evidence_a_id}"
+                target_id = f"ev:{rel.evidence_b_id}"
+                edge_type = (rel.relation_kind or "CANDIDATE_LINEAGE").upper()
+            add_edge(source_id, target_id, edge_type)
+
+        # Link Persisted Observation Relations (within this case, non-dangling)
+        for orel in obs_relations:
+            raw_type = (orel.relation_type or "").strip().upper()
+            if raw_type in {"SUPPORTING", "SUPPORTS"}:
+                edge_type = "SUPPORTS"
+            elif raw_type in {"CONTRASTING", "CONTRADICTS"}:
+                edge_type = "CONTRADICTS"
+            elif raw_type:
+                edge_type = raw_type
+            else:
+                continue
+            add_edge(f"obs:{orel.observation_a_id}", f"obs:{orel.observation_b_id}", edge_type)
 
         # Link Reports
         reports = db.query(Report).filter(
