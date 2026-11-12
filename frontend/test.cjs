@@ -411,21 +411,24 @@ async function main() {
   assert.notEqual(prodPlatform.color, 'rgb(21, 128, 61)', 'DEGRADED badge must not use green success color');
   assert.notEqual(prodPlatform.color, 'rgb(52, 211, 153)', 'DEGRADED badge must not use dark-mode green success color');
 
-  // Investigation Graph checks: empty state, populated graph with lineage/observation relations, inspector & theme switch
+  // Investigation Graph checks: empty state, 9-node/11-link layout, zoom/reset, canvas selection, inspector overflow, resize & theme
+  await page.setViewport({ width: 1440, height: 1000 });
   await page.goto(`${baseUrl}/cases/${caseData.case_identifier}/graph`, { waitUntil: 'networkidle0' });
   await page.waitForSelector('[data-testid="graph-empty-state"]');
   const emptyStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
   assert.ok(emptyStats.includes('1 NODES') && emptyStats.includes('0 LINKS'), `Empty graph should show 1 NODES • 0 LINKS, got: ${emptyStats}`);
 
+  // 2-6: 9-node, 11-link populated graph
   state.graphPayload = {
     case_id: caseData.case_identifier,
     nodes: [
       { id: `case:${caseData.case_identifier}`, type: 'CASE', label: caseData.title, metadata: { identifier: caseData.case_identifier, status: 'Open' } },
-      { id: 'ev:201', type: 'EVIDENCE', label: 'original.jpg', metadata: { identifier: 'FS-EVD-201', sha256: 'a'.repeat(64) } },
-      { id: 'ev:202', type: 'EVIDENCE', label: 'derived.jpg', metadata: { identifier: 'FS-EVD-202', sha256: 'b'.repeat(64) } },
+      { id: 'ev:201', type: 'EVIDENCE', label: 'original_capture.jpg', metadata: { identifier: 'FS-EVD-201', sha256: 'a'.repeat(64) } },
+      { id: 'ev:202', type: 'EVIDENCE', label: 'spliced_suspect.jpg', metadata: { identifier: 'FS-EVD-202', sha256: 'b'.repeat(64) } },
       { id: 'anl:501', type: 'ANALYSIS', label: 'ELA Analysis', metadata: { identifier: 'FS-ANL-501', status: 'completed' } },
-      { id: 'obs:601', type: 'OBSERVATION', label: 'Obs: ela (ERROR)', metadata: { metric: 'mean_ela' } },
-      { id: 'obs:602', type: 'OBSERVATION', label: 'Obs: noise (SNR)', metadata: { metric: 'snr' } },
+      { id: 'anl:502', type: 'ANALYSIS', label: 'Noise Residual Analysis', metadata: { identifier: 'FS-ANL-502', status: 'completed' } },
+      { id: 'obs:601', type: 'OBSERVATION', label: 'Obs: ela (ERROR)', metadata: { metric: 'mean_ela', value: 18.4 } },
+      { id: 'obs:602', type: 'OBSERVATION', label: 'Obs: noise (SNR)', metadata: { metric: 'snr', value: 21.7 } },
       { id: 'fnd:701', type: 'FINDING', label: 'Localized ELA Elevation', metadata: { identifier: 'FS-FND-701', severity_label: 'HIGH' } },
       { id: 'rpt:301', type: 'REPORT', label: 'Report FS-RPT-E2E001', metadata: { identifier: 'FS-RPT-E2E001', status: 'COMPLETED' } },
     ],
@@ -434,34 +437,134 @@ async function main() {
       { source: `case:${caseData.case_identifier}`, target: 'ev:202', type: 'CONTAINS' },
       { source: 'ev:202', target: 'ev:201', type: 'DERIVED_FROM' },
       { source: 'ev:201', target: 'anl:501', type: 'PRODUCED' },
+      { source: 'ev:202', target: 'anl:502', type: 'PRODUCED' },
       { source: 'anl:501', target: 'obs:601', type: 'PRODUCED' },
+      { source: 'anl:502', target: 'obs:602', type: 'PRODUCED' },
       { source: 'obs:601', target: 'obs:602', type: 'SUPPORTS' },
-      { source: 'ev:201', target: 'fnd:701', type: 'SUPPORTS' },
+      { source: 'obs:601', target: 'fnd:701', type: 'SUPPORTS' },
+      { source: 'ev:202', target: 'fnd:701', type: 'SUPPORTS' },
       { source: `case:${caseData.case_identifier}`, target: 'rpt:301', type: 'GENERATED' },
     ],
   };
   await page.reload({ waitUntil: 'networkidle0' });
   await page.waitForSelector('[data-testid="graph-stats-pill"]');
+  await page.waitForFunction(() => window.__forensightGraphMetrics && window.__forensightGraphMetrics.nodes.length === 9);
   const populatedStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
-  assert.ok(populatedStats.includes('8 NODES') && populatedStats.includes('8 LINKS'), `Populated graph should show 8 NODES • 8 LINKS, got: ${populatedStats}`);
+  assert.ok(populatedStats.includes('9 NODES') && populatedStats.includes('11 LINKS'), `Populated graph should show 9 NODES • 11 LINKS, got: ${populatedStats}`);
 
-  // Switch layout mode and verify nodes remain visible
+  // Assert 2D canvas utilization, readability (zoom >= 0.65), and non-overlapping nodes in Hierarchical DAG
+  const dagMetrics = await page.evaluate(() => window.__forensightGraphMetrics);
+  assert.equal(dagMetrics.layoutMode, 'dag', 'Default layout mode should be dag');
+  assert.ok(dagMetrics.zoom >= 0.65, `Initial zoom for 9-node graph should keep labels readable (>= 0.65), got: ${dagMetrics.zoom}`);
+  const xs = dagMetrics.nodes.map((n) => n.screenX);
+  const ys = dagMetrics.nodes.map((n) => n.screenY);
+  const bboxW = Math.max(...xs) - Math.min(...xs);
+  const bboxH = Math.max(...ys) - Math.min(...ys);
+  assert.ok(bboxW / dagMetrics.width >= 0.35, `DAG graph should span >= 35% of canvas width, got ${(bboxW / dagMetrics.width).toFixed(2)}`);
+  assert.ok(bboxH / dagMetrics.height >= 0.25, `DAG graph must not collapse into a horizontal strip (height ratio >= 0.25), got ${(bboxH / dagMetrics.height).toFixed(2)}`);
+  for (let i = 0; i < dagMetrics.nodes.length; i++) {
+    for (let j = i + 1; j < dagMetrics.nodes.length; j++) {
+      const a = dagMetrics.nodes[i];
+      const b = dagMetrics.nodes[j];
+      const dist = Math.hypot(a.screenX - b.screenX, a.screenY - b.screenY);
+      assert.ok(dist >= a.radius + b.radius, `Nodes ${a.id} and ${b.id} must not overlap (dist=${dist.toFixed(1)})`);
+    }
+  }
+
+  // 6: Evidence Clusters layout
   await clickButton(page, 'Evidence Clusters');
-  await new Promise((resolve) => setTimeout(resolve, 150));
-  const clusterStats = await page.$eval('[data-testid="graph-stats-pill"]', (el) => el.innerText);
-  assert.ok(clusterStats.includes('8 NODES'), 'Cluster layout must preserve all 8 nodes');
-  await clickButton(page, 'Hierarchical DAG');
+  await page.waitForFunction(() => window.__forensightGraphMetrics?.layoutMode === 'cluster');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const clusterMetrics = await page.evaluate(() => window.__forensightGraphMetrics);
+  assert.equal(clusterMetrics.nodes.length, 9, 'Cluster layout must preserve all 9 nodes');
+  const cXs = clusterMetrics.nodes.map((n) => n.screenX);
+  const cYs = clusterMetrics.nodes.map((n) => n.screenY);
+  assert.ok((Math.max(...cYs) - Math.min(...cYs)) / clusterMetrics.height >= 0.25, 'Cluster layout must use vertical space');
+  assert.ok((Math.max(...cXs) - Math.min(...cXs)) / clusterMetrics.width >= 0.25, 'Cluster layout must use horizontal space');
 
-  // Switch to Card List, select ev:201, and verify inspector connected links
-  await clickButton(page, 'Switch to Card List');
-  await page.waitForFunction(() => document.body.innerText.includes('original.jpg'));
-  await page.evaluate(() => {
-    const cards = Array.from(document.querySelectorAll('div')).filter((el) => el.innerText && el.innerText.includes('original.jpg') && el.innerText.includes('Inspect connections'));
-    if (cards.length > 0) cards[cards.length - 1].click();
+  // Switch back to Hierarchical DAG
+  await clickButton(page, 'Hierarchical DAG');
+  await page.waitForFunction(() => window.__forensightGraphMetrics?.layoutMode === 'dag');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  // 7: Zoom in, Zoom out, and Reset View
+  const baseZoom = await page.evaluate(() => window.__forensightGraphMetrics.zoom);
+  await page.click('button[title="Zoom In"]');
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const zoomedIn = await page.evaluate(() => window.__forensightGraphMetrics.zoom);
+  assert.ok(zoomedIn > baseZoom, `Zoom In must increase zoom (${zoomedIn} > ${baseZoom})`);
+
+  await page.click('button[title="Zoom Out"]');
+  await page.click('button[title="Zoom Out"]');
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const zoomedOut = await page.evaluate(() => window.__forensightGraphMetrics.zoom);
+  assert.ok(zoomedOut < zoomedIn, `Zoom Out must decrease zoom (${zoomedOut} < ${zoomedIn})`);
+
+  await page.click('button[title="Fit All Nodes in View"]');
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const resetZoom = await page.evaluate(() => window.__forensightGraphMetrics.zoom);
+  assert.ok(Math.abs(resetZoom - baseZoom) < 0.02, `Reset View must restore auto-fit zoom (${resetZoom} vs ${baseZoom})`);
+
+  // 8: Click a node directly on the canvas to select it and open Inspector
+  const targetCanvasNode = await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const ev = window.__forensightGraphMetrics.nodes.find((n) => n.id === 'ev:201');
+    return { x: rect.left + ev.screenX, y: rect.top + ev.screenY };
   });
+  await page.mouse.click(targetCanvasNode.x, targetCanvasNode.y);
   await page.waitForFunction(() => document.body.innerText.includes('DERIVED_FROM') && document.body.innerText.toUpperCase().includes('CONNECTED LINKS'));
 
-  // Verify dark theme switches canvas container background
+  // 11: Viewport resize keeps all nodes inside visible canvas bounds
+  await page.setViewport({ width: 1100, height: 760 });
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const resizedMetrics = await page.evaluate(() => window.__forensightGraphMetrics);
+  for (const n of resizedMetrics.nodes) {
+    assert.ok(
+      n.screenX >= 0 && n.screenX <= resizedMetrics.width && n.screenY >= 0 && n.screenY <= resizedMetrics.height,
+      `Node ${n.id} must stay within resized canvas (${n.screenX.toFixed(1)}, ${n.screenY.toFixed(1)} in ${resizedMetrics.width}x${resizedMetrics.height})`,
+    );
+  }
+  await page.setViewport({ width: 1440, height: 1000 });
+
+  // 9: Inspector Connected Links overflow accessibility (node with 12 connected links)
+  const manyLinksNodes = [
+    { id: `case:${caseData.case_identifier}`, type: 'CASE', label: caseData.title, metadata: { identifier: caseData.case_identifier } },
+    { id: 'ev:hub', type: 'EVIDENCE', label: 'hub_evidence.jpg', metadata: { identifier: 'FS-EVD-HUB' } },
+  ];
+  const manyLinksEdges = [
+    { source: `case:${caseData.case_identifier}`, target: 'ev:hub', type: 'CONTAINS' },
+  ];
+  for (let i = 1; i <= 11; i++) {
+    manyLinksNodes.push({ id: `obs:m${i}`, type: 'OBSERVATION', label: `Observation Link ${i}`, metadata: { index: i } });
+    manyLinksEdges.push({ source: 'ev:hub', target: `obs:m${i}`, type: 'SUPPORTS' });
+  }
+  state.graphPayload = { case_id: caseData.case_identifier, nodes: manyLinksNodes, edges: manyLinksEdges };
+  await page.reload({ waitUntil: 'networkidle0' });
+  await clickButton(page, 'Switch to Card List');
+  await page.waitForFunction(() => document.body.innerText.includes('hub_evidence.jpg'));
+  await page.evaluate(() => {
+    const cards = Array.from(document.querySelectorAll('div')).filter((el) => el.innerText && el.innerText.includes('hub_evidence.jpg') && el.innerText.includes('Inspect connections'));
+    if (cards.length > 0) cards[cards.length - 1].click();
+  });
+  await page.waitForSelector('[data-testid="inspector-connected-links"]');
+  const overflowCheck = await page.evaluate(() => {
+    const list = document.querySelector('[data-testid="inspector-connected-links"]');
+    const lastItem = document.querySelector('[data-testid="inspector-link-item-11"]');
+    list.scrollTop = list.scrollHeight;
+    const listRect = list.getBoundingClientRect();
+    const lastRect = lastItem ? lastItem.getBoundingClientRect() : null;
+    return {
+      scrollHeight: list.scrollHeight,
+      clientHeight: list.clientHeight,
+      hasLastItem: Boolean(lastItem),
+      lastItemVisible: Boolean(lastRect && lastRect.bottom <= listRect.bottom + 2 && lastRect.height >= 28),
+    };
+  });
+  assert.ok(overflowCheck.scrollHeight > overflowCheck.clientHeight, 'Connected Links container must scroll when overflowing');
+  assert.ok(overflowCheck.hasLastItem && overflowCheck.lastItemVisible, 'Final Connected Link card must be scrollable into view without clipping');
+
+  // 10: Verify dark and light theme canvas container backgrounds
   await page.evaluate(() => {
     localStorage.setItem('forensight-theme', 'dark');
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -469,6 +572,14 @@ async function main() {
   await page.reload({ waitUntil: 'networkidle0' });
   const darkBg = await page.$eval('canvas', (el) => getComputedStyle(el.parentElement).backgroundColor);
   assert.equal(darkBg, 'rgb(15, 23, 42)', 'Dark theme graph container must use dark slate background');
+
+  await page.evaluate(() => {
+    localStorage.setItem('forensight-theme', 'light');
+    document.documentElement.setAttribute('data-theme', 'light');
+  });
+  await page.reload({ waitUntil: 'networkidle0' });
+  const lightBg = await page.$eval('canvas', (el) => getComputedStyle(el.parentElement).backgroundColor);
+  assert.equal(lightBg, 'rgb(246, 242, 235)', 'Light theme graph container must use warm paper background');
 
   console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph');
 }

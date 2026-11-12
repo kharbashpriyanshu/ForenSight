@@ -139,7 +139,7 @@ const InvestigationGraphPage: React.FC = () => {
 
   // =========================================================================
   // GUARANTEED DETERMINISTIC FORENSIC LAYOUT GENERATOR
-  // (NO CORNER-STACKING, PERFECT VISIBILITY & BOUNDS)
+  // (RELATIONSHIP-DRIVEN HIERARCHY, BALANCED 2D SPREAD & ZERO STACKING)
   // =========================================================================
   const computeLayout = (
     data: GraphData, 
@@ -172,111 +172,178 @@ const InvestigationGraphPage: React.FC = () => {
 
     const activeNodeIds = new Set(activeNodes.map(n => n.id));
     const activeEdges = data.edges.filter(e => activeNodeIds.has(e.source) && activeNodeIds.has(e.target));
+    const nodeById = new Map(activeNodes.map(n => [n.id, n]));
 
     if (mode === 'dag') {
       // ---------------------------------------------------------------------
-      // HIERARCHICAL COLUMNAR PIPELINE (LEFT-TO-RIGHT)
-      // Level 0: CASE
-      // Level 1: EVIDENCE
-      // Level 2: OBSERVATIONS & FINDINGS (Direct forensic conclusions)
-      // Level 3: ANALYSES & JOBS (Underlying engine traces)
-      // Level 4: REPORTS
+      // RELATIONSHIP-DRIVEN HIERARCHICAL DAG (LONGEST-PATH TOPOLOGICAL LAYERS)
       // ---------------------------------------------------------------------
-      const columnLevels: Record<string, number> = {
+      const outNeighbors = new Map<string, string[]>();
+      const inNeighbors = new Map<string, string[]>();
+      const inDegree = new Map<string, number>();
+
+      activeNodes.forEach(n => {
+        outNeighbors.set(n.id, []);
+        inNeighbors.set(n.id, []);
+        inDegree.set(n.id, 0);
+      });
+
+      activeEdges.forEach(e => {
+        if (e.source === e.target) return;
+        outNeighbors.get(e.source)?.push(e.target);
+        inNeighbors.get(e.target)?.push(e.source);
+        inDegree.set(e.target, (inDegree.get(e.target) ?? 0) + 1);
+      });
+
+      const typeTieOrder: Record<string, number> = {
         CASE: 0,
         EVIDENCE: 1,
-        FINDING: 2,
-        OBSERVATION: 2,
+        ANALYSIS_JOB: 2,
         ANALYSIS: 3,
-        ANALYSIS_JOB: 3,
-        ARTIFACT: 3,
-        REPORT: 4,
-        OTHER: 2
+        ARTIFACT: 4,
+        OBSERVATION: 5,
+        FINDING: 6,
+        REPORT: 7,
       };
 
-      const columns: GraphNode[][] = [[], [], [], [], []];
-      activeNodes.forEach(n => {
-        const col = columnLevels[n.type] ?? 2;
-        columns[col].push(n);
+      const sortByDeterministicOrder = (ids: string[]) =>
+        ids.sort((a, b) => {
+          const na = nodeById.get(a);
+          const nb = nodeById.get(b);
+          const ta = typeTieOrder[na?.type || ''] ?? 99;
+          const tb = typeTieOrder[nb?.type || ''] ?? 99;
+          if (ta !== tb) return ta - tb;
+          return (na?.label || a).localeCompare(nb?.label || b);
+        });
+
+      const remainingIn = new Map(inDegree);
+      const levelMap = new Map<string, number>();
+      const visited = new Set<string>();
+      const topoOrder: string[] = [];
+
+      // Kahn's algorithm with deterministic tie-breaking and cycle safety
+      while (visited.size < activeNodes.length) {
+        const ready = sortByDeterministicOrder(
+          activeNodes
+            .filter(n => !visited.has(n.id) && (remainingIn.get(n.id) ?? 0) === 0)
+            .map(n => n.id)
+        );
+
+        let batch: string[];
+        if (ready.length > 0) {
+          batch = ready;
+        } else {
+          // Break cycles deterministically by picking the unvisited node with smallest remaining in-degree
+          const unvisited = activeNodes.filter(n => !visited.has(n.id)).map(n => n.id);
+          sortByDeterministicOrder(unvisited);
+          unvisited.sort((a, b) => (remainingIn.get(a) ?? 0) - (remainingIn.get(b) ?? 0));
+          batch = [unvisited[0]];
+        }
+
+        for (const u of batch) {
+          if (visited.has(u)) continue;
+          visited.add(u);
+          topoOrder.push(u);
+          if (!levelMap.has(u)) levelMap.set(u, 0);
+          const uLevel = levelMap.get(u)!;
+
+          for (const v of outNeighbors.get(u) || []) {
+            if (!visited.has(v)) {
+              levelMap.set(v, Math.max(levelMap.get(v) ?? 0, uLevel + 1));
+              remainingIn.set(v, Math.max(0, (remainingIn.get(v) ?? 0) - 1));
+            }
+          }
+        }
+      }
+
+      // Group nodes by computed topological level
+      const maxLevel = Math.max(0, ...Array.from(levelMap.values()));
+      const levels: GraphNode[][] = Array.from({ length: maxLevel + 1 }, () => []);
+      topoOrder.forEach(id => {
+        const node = nodeById.get(id);
+        if (node) {
+          levels[levelMap.get(id) ?? 0].push(node);
+        }
       });
 
-      // Dynamic horizontal column positions with generous breathing room
-      const colX = includeAnalyses ? [80, 420, 840, 1260, 2020] : [80, 420, 840, 840, 1280];
+      // Adaptive horizontal & vertical spacing so graph fills canvas proportionally
+      const numLevels = levels.length;
+      const colSpacing = numLevels <= 3 ? 250 : numLevels <= 4 ? 215 : numLevels <= 5 ? 190 : 165;
+      const totalWidthSpan = (numLevels - 1) * colSpacing;
+      const startX = -totalWidthSpan / 2;
 
-      // Sort items in columns to align neatly
-      const evidenceList = columns[1];
-      const evidenceOrderMap = new Map<string, number>();
-      evidenceList.forEach((ev, idx) => evidenceOrderMap.set(ev.id, idx));
+      const yPositions = new Map<string, number>();
 
-      // Sort findings & observations by parent evidence
-      columns[2].sort((a, b) => {
-        const edgeA = activeEdges.find(e => e.target === a.id || e.source === a.id);
-        const edgeB = activeEdges.find(e => e.target === b.id || e.source === b.id);
-        const orderA = edgeA ? (evidenceOrderMap.get(edgeA.source) ?? evidenceOrderMap.get(edgeA.target) ?? 0) : 0;
-        const orderB = edgeB ? (evidenceOrderMap.get(edgeB.source) ?? evidenceOrderMap.get(edgeB.target) ?? 0) : 0;
-        return orderA - orderB;
-      });
+      levels.forEach((nodesInLevel, lvlIdx) => {
+        if (nodesInLevel.length === 0) return;
 
-      // Position each column with centered vertical spacing
-      columns.forEach((nodesInCol, colIdx) => {
-        const count = nodesInCol.length;
-        if (count === 0) return;
+        // Barycenter sort by average parent Y to minimize edge crossings
+        if (lvlIdx > 0) {
+          nodesInLevel.sort((a, b) => {
+            const parentsA = (inNeighbors.get(a.id) || []).filter(p => yPositions.has(p));
+            const parentsB = (inNeighbors.get(b.id) || []).filter(p => yPositions.has(p));
+            const avgA = parentsA.length > 0
+              ? parentsA.reduce((sum, p) => sum + (yPositions.get(p) ?? 0), 0) / parentsA.length
+              : 0;
+            const avgB = parentsB.length > 0
+              ? parentsB.reduce((sum, p) => sum + (yPositions.get(p) ?? 0), 0) / parentsB.length
+              : 0;
+            if (Math.abs(avgA - avgB) > 1) return avgA - avgB;
+            return (typeTieOrder[a.type] ?? 99) - (typeTieOrder[b.type] ?? 99);
+          });
+        }
 
-        const baseX = colX[colIdx] || (colIdx * 380);
+        const count = nodesInLevel.length;
+        const baseX = startX + lvlIdx * colSpacing;
 
-        if (colIdx === 3 && count > 12) {
-          // Stagger dense analysis passes into 3 readable, non-overlapping sub-columns
-          const numSubCols = 3;
-          const subColWidth = 220;
-          const rowPitch = 60;
+        if (count > 10) {
+          // Wrap very dense levels into 2 readable sub-columns
+          const numSubCols = count > 18 ? 3 : 2;
+          const subColWidth = 210;
+          const rowPitch = 86;
           const numRows = Math.ceil(count / numSubCols);
-          const totalHeight = (numRows - 1) * rowPitch;
-          const startY = -totalHeight / 2;
+          const startY = -((numRows - 1) * rowPitch) / 2;
 
-          nodesInCol.forEach((n, idx) => {
+          nodesInLevel.forEach((n, idx) => {
             const cfg = TYPE_CONFIG[n.type] || DEFAULT_CONFIG;
             const subCol = idx % numSubCols;
             const subRow = Math.floor(idx / numSubCols);
-            const x = baseX + subCol * subColWidth;
+            const x = baseX + (subCol - (numSubCols - 1) / 2) * subColWidth;
             const y = startY + subRow * rowPitch;
-
-            simMap.set(n.id, {
-              ...n,
-              x,
-              y,
-              radius: cfg.defaultRadius,
-              column: colIdx
-            });
+            yPositions.set(n.id, y);
+            simMap.set(n.id, { ...n, x, y, radius: cfg.defaultRadius, column: lvlIdx });
           });
         } else {
-          // Standard single column with comfortable spacing
-          const verticalPitch = count > 15 ? 68 : count > 6 ? 88 : 115;
+          // Generous vertical pitch for small/medium levels so graph expands in 2D
+          const verticalPitch = count === 2 ? 360 : count === 3 ? 210 : count === 4 ? 160 : count <= 7 ? 120 : 95;
           const totalHeight = (count - 1) * verticalPitch;
-          const startY = -totalHeight / 2;
+          let startY = -totalHeight / 2;
 
-          nodesInCol.forEach((n, rowIdx) => {
+          if (count === 1 && lvlIdx > 0) {
+            const parents = (inNeighbors.get(nodesInLevel[0].id) || []).filter(p => yPositions.has(p));
+            if (parents.length > 0) {
+              startY = parents.reduce((sum, p) => sum + (yPositions.get(p) ?? 0), 0) / parents.length;
+            }
+          }
+
+          nodesInLevel.forEach((n, rowIdx) => {
             const cfg = TYPE_CONFIG[n.type] || DEFAULT_CONFIG;
-            simMap.set(n.id, {
-              ...n,
-              x: baseX,
-              y: startY + rowIdx * verticalPitch,
-              radius: cfg.defaultRadius,
-              column: colIdx
-            });
+            const y = startY + rowIdx * verticalPitch;
+            yPositions.set(n.id, y);
+            simMap.set(n.id, { ...n, x: baseX, y, radius: cfg.defaultRadius, column: lvlIdx });
           });
         }
       });
 
     } else {
       // ---------------------------------------------------------------------
-      // EVIDENCE SATELLITE CLUSTER LAYOUT
+      // EVIDENCE SATELLITE CLUSTER LAYOUT (RELATIONSHIP-GROUPED)
       // ---------------------------------------------------------------------
       const evidenceNodes = activeNodes.filter(n => n.type === 'EVIDENCE');
       const caseNodes = activeNodes.filter(n => n.type === 'CASE');
       const otherNodes = activeNodes.filter(n => n.type !== 'EVIDENCE' && n.type !== 'CASE');
 
       if (evidenceNodes.length === 0) {
-        // When evidence is filtered out, center the Case and neatly orbit other active nodes
         caseNodes.forEach((cn, i) => {
           const cfg = TYPE_CONFIG[cn.type] || DEFAULT_CONFIG;
           simMap.set(cn.id, {
@@ -287,7 +354,7 @@ const InvestigationGraphPage: React.FC = () => {
           });
         });
 
-        const orbitRadius = Math.max(220, otherNodes.length * 45);
+        const orbitRadius = Math.max(180, otherNodes.length * 36);
         otherNodes.forEach((on, i) => {
           const cfg = TYPE_CONFIG[on.type] || DEFAULT_CONFIG;
           const angle = (i / Math.max(1, otherNodes.length)) * 2 * Math.PI - Math.PI / 2;
@@ -299,65 +366,91 @@ const InvestigationGraphPage: React.FC = () => {
           });
         });
       } else {
+        // Build undirected adjacency (excluding CASE) to group transitive analytical descendants with their Evidence
+        const adjNoCase = new Map<string, string[]>();
+        activeNodes.forEach(n => adjNoCase.set(n.id, []));
+        activeEdges.forEach(e => {
+          const src = nodeById.get(e.source);
+          const tgt = nodeById.get(e.target);
+          if (!src || !tgt || src.type === 'CASE' || tgt.type === 'CASE') return;
+          adjNoCase.get(e.source)?.push(e.target);
+          adjNoCase.get(e.target)?.push(e.source);
+        });
+
+        const claimed = new Set<string>(evidenceNodes.map(e => e.id));
+        const clusterMembers = new Map<string, GraphNode[]>();
+        evidenceNodes.forEach(ev => clusterMembers.set(ev.id, []));
+
+        // Multi-source BFS so every node joins its nearest Evidence cluster
+        const queue: Array<{ nodeId: string; evId: string }> = evidenceNodes.map(ev => ({ nodeId: ev.id, evId: ev.id }));
+        while (queue.length > 0) {
+          const { nodeId, evId } = queue.shift()!;
+          for (const nbrId of adjNoCase.get(nodeId) || []) {
+            if (!claimed.has(nbrId)) {
+              claimed.add(nbrId);
+              const nbrNode = nodeById.get(nbrId);
+              if (nbrNode && nbrNode.type !== 'EVIDENCE' && nbrNode.type !== 'CASE') {
+                clusterMembers.get(evId)?.push(nbrNode);
+                queue.push({ nodeId: nbrId, evId });
+              }
+            }
+          }
+        }
+
+        // Arrange Evidence clusters in a balanced 2D grid
+        const cols = evidenceNodes.length <= 2 ? evidenceNodes.length : Math.ceil(Math.sqrt(evidenceNodes.length));
+        const rows = Math.ceil(evidenceNodes.length / cols);
+        const clusterSpacingX = 430;
+        const clusterSpacingY = 380;
+
         caseNodes.forEach((cn, i) => {
           const cfg = TYPE_CONFIG[cn.type] || DEFAULT_CONFIG;
           simMap.set(cn.id, {
             ...cn,
-            x: (i - (caseNodes.length - 1) / 2) * 260,
-            y: -380,
+            x: (i - (caseNodes.length - 1) / 2) * 240,
+            y: -((rows - 1) * clusterSpacingY) / 2 - 220,
             radius: cfg.defaultRadius
           });
         });
 
-        const clusterSpacing = Math.max(580, 2400 / Math.max(1, evidenceNodes.length));
-        const evCenters = new Map<string, { x: number; y: number }>();
-
-        evidenceNodes.forEach((ev, i) => {
+        evidenceNodes.forEach((ev, idx) => {
           const cfg = TYPE_CONFIG[ev.type] || DEFAULT_CONFIG;
-          const cx = (i - (evidenceNodes.length - 1) / 2) * clusterSpacing;
-          const cy = 0;
-          evCenters.set(ev.id, { x: cx, y: cy });
+          const col = idx % cols;
+          const row = Math.floor(idx / cols);
+          const cx = (col - (cols - 1) / 2) * clusterSpacingX;
+          const cy = (row - (rows - 1) / 2) * clusterSpacingY + 40;
 
-          simMap.set(ev.id, {
-            ...ev,
-            x: cx,
-            y: cy,
-            radius: cfg.defaultRadius
-          });
-        });
+          simMap.set(ev.id, { ...ev, x: cx, y: cy, radius: cfg.defaultRadius });
 
-        evidenceNodes.forEach(ev => {
-          const center = evCenters.get(ev.id) || { x: 0, y: 0 };
-          const children = activeEdges
-            .filter(e => e.source === ev.id || e.target === ev.id)
-            .map(e => activeNodes.find(n => n.id === (e.source === ev.id ? e.target : e.source)))
-            .filter(Boolean) as GraphNode[];
-
-          const orbitRadius = Math.max(180, children.length * 12);
-          children.forEach((child, ci) => {
-            if (child.type === 'CASE') return;
-            const cfg = TYPE_CONFIG[child.type] || DEFAULT_CONFIG;
-            const angle = (ci / Math.max(1, children.length)) * 2 * Math.PI - Math.PI / 2;
+          const members = clusterMembers.get(ev.id) || [];
+          const orbitRadius = Math.max(135, Math.min(210, 105 + members.length * 16));
+          members.forEach((child, ci) => {
+            const childCfg = TYPE_CONFIG[child.type] || DEFAULT_CONFIG;
+            const ring = ci >= 10 ? 1 : 0;
+            const ringCount = ring === 0 ? Math.min(10, members.length) : members.length - 10;
+            const ringIdx = ring === 0 ? ci : ci - 10;
+            const r = orbitRadius + ring * 100;
+            const angle = (ringIdx / Math.max(1, ringCount)) * 2 * Math.PI + Math.PI / 4;
             simMap.set(child.id, {
               ...child,
-              x: center.x + Math.cos(angle) * orbitRadius,
-              y: center.y + Math.sin(angle) * orbitRadius,
-              radius: cfg.defaultRadius
+              x: cx + Math.cos(angle) * r,
+              y: cy + Math.sin(angle) * r,
+              radius: childCfg.defaultRadius
             });
           });
         });
 
-        otherNodes.forEach((on, oi) => {
-          if (!simMap.has(on.id)) {
-            const cfg = TYPE_CONFIG[on.type] || DEFAULT_CONFIG;
-            const angle = (oi / Math.max(1, otherNodes.length)) * 2 * Math.PI;
-            simMap.set(on.id, {
-              ...on,
-              x: Math.cos(angle) * 320,
-              y: 200 + Math.sin(angle) * 80,
-              radius: cfg.defaultRadius
-            });
-          }
+        // Place unclustered nodes (e.g. REPORT linked directly to CASE) cleanly beside CASE
+        const unclustered = otherNodes.filter(n => !simMap.has(n.id));
+        const caseTopY = -((rows - 1) * clusterSpacingY) / 2 - 220;
+        unclustered.forEach((on, oi) => {
+          const cfg = TYPE_CONFIG[on.type] || DEFAULT_CONFIG;
+          simMap.set(on.id, {
+            ...on,
+            x: 240 + (oi % 2) * 190,
+            y: caseTopY + Math.floor(oi / 2) * 100,
+            radius: cfg.defaultRadius
+          });
         });
       }
     }
@@ -366,7 +459,7 @@ const InvestigationGraphPage: React.FC = () => {
     autoFitView(Array.from(simMap.values()));
   };
 
-  // Center and auto-fit all nodes comfortably inside the canvas
+  // Center and auto-fit all nodes (including label capsules) comfortably inside the canvas
   const autoFitView = (nodes: SimNode[]) => {
     if (!containerRef.current || nodes.length === 0) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -374,26 +467,38 @@ const InvestigationGraphPage: React.FC = () => {
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     nodes.forEach(n => {
-      if (n.x - n.radius < minX) minX = n.x - n.radius;
-      if (n.x + n.radius > maxX) maxX = n.x + n.radius;
-      if (n.y - n.radius < minY) minY = n.y - n.radius;
-      if (n.y + n.radius > maxY) maxY = n.y + n.radius;
+      const displayLen = Math.min(28, cleanLabel(n.label, n.type).length);
+      const labelHalfW = Math.max(n.radius + 8, displayLen * 3.2 + 12);
+      const topExtent = n.radius + 8;
+      const bottomExtent = n.radius + 26; // Includes 19px label capsule + 5px gap
+
+      if (n.x - labelHalfW < minX) minX = n.x - labelHalfW;
+      if (n.x + labelHalfW > maxX) maxX = n.x + labelHalfW;
+      if (n.y - topExtent < minY) minY = n.y - topExtent;
+      if (n.y + bottomExtent > maxY) maxY = n.y + bottomExtent;
     });
 
-    const padding = 100;
-    const graphWidth = Math.max(200, maxX - minX + padding * 2);
-    const graphHeight = Math.max(200, maxY - minY + padding * 2);
+    const marginX = 28;
+    const marginTop = 36;
+    const marginBottom = 72; // Clears bottom-left stats pill & empty-state banner
+    const availW = Math.max(120, rect.width - marginX * 2);
+    const availH = Math.max(120, rect.height - marginTop - marginBottom);
 
-    const scaleX = rect.width / graphWidth;
-    const scaleY = rect.height / graphHeight;
-    const targetK = Math.min(1.1, Math.max(0.35, Math.min(scaleX, scaleY)));
+    const graphWidth = Math.max(120, maxX - minX);
+    const graphHeight = Math.max(120, maxY - minY);
+
+    const scaleX = availW / graphWidth;
+    const scaleY = availH / graphHeight;
+    const targetK = Math.min(1.2, Math.max(0.35, Math.min(scaleX, scaleY)));
 
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
+    const viewportCenterX = marginX + availW / 2;
+    const viewportCenterY = marginTop + availH / 2;
 
     transformRef.current = {
-      x: rect.width / 2 - centerX * targetK,
-      y: rect.height / 2 - centerY * targetK,
+      x: viewportCenterX - centerX * targetK,
+      y: viewportCenterY - centerY * targetK,
       k: targetK
     };
   };
@@ -474,21 +579,28 @@ const InvestigationGraphPage: React.FC = () => {
       });
     }
 
-    // 1. Draw Edges with S-curves and directional arrows
-    graphData.edges.forEach(e => {
-      const u = simNodes.get(e.source);
-      const v = simNodes.get(e.target);
-      if (!u || !v) return;
+    // 1. Draw Edges with S-curves, directional arrows & subtle relationship labels
+    const visibleEdgeList = graphData.edges.filter(e => simNodes.has(e.source) && simNodes.has(e.target));
+    const showAllEdgeLabels = k >= 0.70 && visibleEdgeList.length <= 24;
+
+    visibleEdgeList.forEach(e => {
+      const u = simNodes.get(e.source)!;
+      const v = simNodes.get(e.target)!;
 
       const edgeKey = `${e.source}->${e.target}`;
       const isConnectedToActive = activeEdgeKeys.has(edgeKey);
       const isDimmed = activeNode && !isConnectedToActive;
 
+      const isSameColDag = layoutMode === 'dag' && Math.abs(u.x - v.x) < 10;
+      const cp1x = isSameColDag ? u.x + 56 : (u.x + v.x) / 2;
+      const cp1y = u.y;
+      const cp2x = isSameColDag ? v.x + 56 : (u.x + v.x) / 2;
+      const cp2y = v.y;
+
       ctx.beginPath();
       if (layoutMode === 'dag') {
-        const midX = (u.x + v.x) / 2;
         ctx.moveTo(u.x, u.y);
-        ctx.bezierCurveTo(midX, u.y, midX, v.y, v.x, v.y);
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, v.x, v.y);
       } else {
         ctx.moveTo(u.x, u.y);
         ctx.lineTo(v.x, v.y);
@@ -514,13 +626,20 @@ const InvestigationGraphPage: React.FC = () => {
       ctx.stroke();
       ctx.shadowBlur = 0;
 
-      // Draw directional arrow on edge
-      if (k > 0.40 && !isDimmed) {
+      // Draw directional arrow on edge (aligned to curve tangent near target)
+      if (k > 0.38 && !isDimmed) {
         const dx = v.x - u.x;
         const dy = v.y - u.y;
-        const angle = Math.atan2(dy, dx);
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist > v.radius + 18) {
+          let angle: number;
+          if (layoutMode === 'dag') {
+            const tx = 3 * (v.x - cp2x);
+            const ty = 3 * (v.y - cp2y);
+            angle = Math.hypot(tx, ty) > 1 ? Math.atan2(ty, tx) : Math.atan2(dy, dx);
+          } else {
+            angle = Math.atan2(dy, dx);
+          }
           const arrowX = v.x - Math.cos(angle) * (v.radius + 4);
           const arrowY = v.y - Math.sin(angle) * (v.radius + 4);
           ctx.save();
@@ -531,12 +650,46 @@ const InvestigationGraphPage: React.FC = () => {
             : (isDark ? 'rgba(148, 163, 184, 0.9)' : 'rgba(150, 135, 115, 0.95)');
           ctx.beginPath();
           ctx.moveTo(0, 0);
-          ctx.lineTo(-8, -4);
-          ctx.lineTo(-8, 4);
+          ctx.lineTo(-9, -4.5);
+          ctx.lineTo(-9, 4.5);
           ctx.closePath();
           ctx.fill();
           ctx.restore();
         }
+      }
+
+      // Draw relationship label pill when connected to active node or zoomed comfortably
+      if ((isConnectedToActive || (showAllEdgeLabels && !isDimmed)) && e.type) {
+        const midPtX = layoutMode === 'dag'
+          ? 0.125 * u.x + 0.375 * cp1x + 0.375 * cp2x + 0.125 * v.x
+          : (u.x + v.x) / 2;
+        const midPtY = layoutMode === 'dag'
+          ? 0.125 * u.y + 0.375 * cp1y + 0.375 * cp2y + 0.125 * v.y
+          : (u.y + v.y) / 2;
+
+        ctx.save();
+        ctx.font = `${isConnectedToActive ? '700' : '600'} 8.5px "Space Grotesk", sans-serif`;
+        const lw = ctx.measureText(e.type).width + 8;
+        const lh = 13;
+        ctx.fillStyle = isConnectedToActive
+          ? (isDark ? '#1e3a8a' : '#2563eb')
+          : (isDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(246, 242, 235, 0.92)');
+        ctx.strokeStyle = isConnectedToActive
+          ? (isDark ? '#60a5fa' : '#1d4ed8')
+          : (isDark ? 'rgba(71, 85, 105, 0.7)' : 'rgba(180, 165, 145, 0.65)');
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.roundRect(midPtX - lw / 2, midPtY - lh / 2, lw, lh, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = isConnectedToActive
+          ? '#ffffff'
+          : (isDark ? '#cbd5e1' : '#5c5040');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(e.type, midPtX, midPtY + 0.5);
+        ctx.restore();
       }
     });
 
@@ -564,6 +717,18 @@ const InvestigationGraphPage: React.FC = () => {
       }
 
       const cfg = TYPE_CONFIG[sim.type] || DEFAULT_CONFIG;
+
+      // Investigation Root Ring for CASE node
+      if (sim.type === 'CASE') {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sim.x, sim.y, sim.radius + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = isDark ? 'rgba(96, 165, 250, 0.55)' : 'rgba(30, 58, 138, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 3]);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       // Luminous Glow Halo
       if (isSelected || isHovered) {
@@ -595,12 +760,12 @@ const InvestigationGraphPage: React.FC = () => {
       // Node Label Badge (Always visible, clean, high-contrast)
       ctx.save();
       const displayLabel = cleanLabel(sim.label, sim.type);
-      const maxLen = 26;
+      const maxLen = 28;
       const truncated = displayLabel.length > maxLen ? displayLabel.slice(0, maxLen - 1) + '…' : displayLabel;
 
-      ctx.font = `${isSelected || isHovered ? '700' : '600'} 10px "Plus Jakarta Sans", sans-serif`;
+      ctx.font = `${isSelected || isHovered ? '700' : '600'} 11px "Plus Jakarta Sans", sans-serif`;
       const textMetrics = ctx.measureText(truncated);
-      const padX = 6;
+      const padX = 7;
       const textW = textMetrics.width;
       const labelY = sim.y + sim.radius + 5;
 
@@ -612,7 +777,7 @@ const InvestigationGraphPage: React.FC = () => {
       const rx = sim.x - textW / 2 - padX;
       const ry = labelY - 2;
       const rw = textW + padX * 2;
-      const rh = 17;
+      const rh = 19;
       const rRadius = 5;
 
       ctx.beginPath();
@@ -623,7 +788,7 @@ const InvestigationGraphPage: React.FC = () => {
       ctx.fillStyle = isSelected ? '#ffffff' : (isDark ? '#f1f5f9' : '#1a1610');
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText(truncated, sim.x, labelY);
+      ctx.fillText(truncated, sim.x, labelY + 1);
       ctx.restore();
 
       ctx.restore();
@@ -631,6 +796,27 @@ const InvestigationGraphPage: React.FC = () => {
 
     // Close Camera Transform
     ctx.restore();
+
+    // Expose rendered screen-space metrics for layout telemetry & E2E verification
+    const renderedNodes: Array<{ id: string; type: string; screenX: number; screenY: number; radius: number }> = [];
+    simNodes.forEach(sim => {
+      renderedNodes.push({
+        id: sim.id,
+        type: sim.type,
+        screenX: tx + sim.x * k,
+        screenY: ty + sim.y * k,
+        radius: sim.radius * k,
+      });
+    });
+    (window as unknown as { __forensightGraphMetrics?: unknown }).__forensightGraphMetrics = {
+      width,
+      height,
+      zoom: k,
+      tx,
+      ty,
+      layoutMode,
+      nodes: renderedNodes,
+    };
   }, [graphData, selectedNode, hoveredNode, searchQuery, layoutMode, isDark]);
 
   // Request Animation Loop
@@ -648,17 +834,27 @@ const InvestigationGraphPage: React.FC = () => {
     };
   }, [renderCanvas]);
 
-  // Handle Canvas Resize
+  // Handle Canvas & Container Resize
   useEffect(() => {
     const handleResize = () => {
-      const container = containerRef.current;
-      if (!container) return;
+      if (!containerRef.current || simNodesRef.current.size === 0) return;
       autoFitView(Array.from(simNodesRef.current.values()));
     };
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    let observer: ResizeObserver | null = null;
+    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        handleResize();
+      });
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (observer) observer.disconnect();
+    };
+  }, [loading]);
 
   // Coordinate Helpers
   const getGraphCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -1343,20 +1539,33 @@ const InvestigationGraphPage: React.FC = () => {
 
         {/* Tab 2: Node Inspector (Full-height dedicated view) */}
         {activeRightTab === 'inspector' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div
+            data-testid="inspector-scroll-panel"
+            onWheel={e => e.stopPropagation()}
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}
+          >
             {selectedNode ? (() => {
               const cfg = TYPE_CONFIG[selectedNode.type] || DEFAULT_CONFIG;
               const connectedEdges = graphData.edges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
 
               return (
                 <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
                     <div>
                       <span style={{ 
                         fontSize: '0.68rem', 
                         fontWeight: 800, 
-                        color: cfg.fill,
-                        background: 'rgba(0,0,0,0.06)',
+                        color: isDark ? cfg.border : cfg.fill,
+                        background: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
                         padding: '0.18rem 0.5rem',
                         borderRadius: '5px',
                         textTransform: 'uppercase',
@@ -1386,7 +1595,7 @@ const InvestigationGraphPage: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', flexShrink: 0 }}>
                     <button
                       type="button"
                       className="btn btn-secondary"
@@ -1423,7 +1632,7 @@ const InvestigationGraphPage: React.FC = () => {
                   </div>
 
                   {/* Telemetry / Metadata Table - FULLY VISIBLE & SCROLLABLE */}
-                  <div>
+                  <div style={{ flexShrink: 0 }}>
                     <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.4rem', letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
                       Metadata Attributes ({Object.keys(selectedNode.metadata || {}).length})
                     </h4>
@@ -1433,8 +1642,9 @@ const InvestigationGraphPage: React.FC = () => {
                       borderRadius: '10px', 
                       padding: '0.75rem', 
                       fontSize: '0.76rem',
-                      maxHeight: '320px',
-                      overflowY: 'auto'
+                      maxHeight: '240px',
+                      overflowY: 'auto',
+                      overscrollBehavior: 'contain'
                     }}>
                       {Object.keys(selectedNode.metadata || {}).length === 0 ? (
                         <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No additional metadata attributes recorded for this node.</div>
@@ -1442,7 +1652,7 @@ const InvestigationGraphPage: React.FC = () => {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <tbody>
                             {Object.entries(selectedNode.metadata).map(([k, v]) => (
-                              <tr key={k} style={{ borderBottom: '1px solid rgba(220, 210, 190, 0.4)' }}>
+                              <tr key={k} style={{ borderBottom: '1px solid var(--border-color-translucent)' }}>
                                 <td style={{ padding: '0.4rem 0', fontWeight: 700, color: 'var(--text-muted)', width: '38%', verticalAlign: 'top' }}>{k}</td>
                                 <td style={{ padding: '0.4rem 0', textAlign: 'right', color: 'var(--text-main)', wordBreak: 'break-all', fontFamily: typeof v === 'number' || String(v).length > 20 ? 'var(--font-mono)' : 'inherit' }}>
                                   {String(v)}
@@ -1456,8 +1666,8 @@ const InvestigationGraphPage: React.FC = () => {
                   </div>
 
                   {/* Connected Edges */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexShrink: 0 }}>
                       <h4 style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0, letterSpacing: '0.06em', fontWeight: 700, fontFamily: 'var(--font-tech)' }}>
                         Connected Links
                       </h4>
@@ -1466,7 +1676,19 @@ const InvestigationGraphPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '220px', overflowY: 'auto' }}>
+                    <div
+                      data-testid="inspector-connected-links"
+                      onWheel={e => e.stopPropagation()}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.35rem',
+                        maxHeight: '260px',
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                        paddingRight: '0.2rem'
+                      }}
+                    >
                       {connectedEdges.map((e, idx) => {
                         const targetId = e.source === selectedNode.id ? e.target : e.source;
                         const targetNode = graphData.nodes.find(n => n.id === targetId);
@@ -1474,6 +1696,7 @@ const InvestigationGraphPage: React.FC = () => {
                         return (
                           <div 
                             key={idx} 
+                            data-testid={`inspector-link-item-${idx}`}
                             style={{ 
                               background: 'var(--surface-color-light)', 
                               padding: '0.45rem 0.65rem', 
@@ -1482,19 +1705,20 @@ const InvestigationGraphPage: React.FC = () => {
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
+                              flexShrink: 0,
                               cursor: targetNode ? 'pointer' : 'default',
                               transition: 'all 0.15s ease'
                             }}
                             onClick={() => targetNode && handleCenterOnNode(targetNode)}
                             title={targetNode ? `Jump to ${targetNode.label}` : ''}
                           >
-                            <div>
+                            <div style={{ minWidth: 0, paddingRight: '0.5rem' }}>
                               <span style={{ fontWeight: 800, color: 'var(--primary-color)', fontSize: '0.7rem', fontFamily: 'var(--font-tech)' }}>{e.type}</span>
-                              <div style={{ fontSize: '0.72rem', color: 'var(--text-main)', marginTop: '0.1rem' }}>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--text-main)', marginTop: '0.1rem', wordBreak: 'break-word' }}>
                                 {e.source === selectedNode.id ? `→ ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.target}` : `← ${targetNode ? cleanLabel(targetNode.label, targetNode.type) : e.source}`}
                               </div>
                             </div>
-                            {targetNode && <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />}
+                            {targetNode && <ArrowRight size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />}
                           </div>
                         );
                       })}
