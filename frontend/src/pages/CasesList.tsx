@@ -371,7 +371,7 @@ export default function CasesList() {
               onMouseEnter={() => {
                 prefetchApi(`/cases/${c.case_identifier}`);
                 prefetchApi(`/cases/${c.case_identifier}/evidence`);
-                prefetchApi(`/cases/${c.case_identifier}/timeline`);
+                prefetchApi(`/cases/${c.case_identifier}/audit`);
               }}
               style={{ textDecoration: 'none', color: 'inherit' }}
             >

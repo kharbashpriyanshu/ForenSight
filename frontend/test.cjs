@@ -18,6 +18,7 @@ const state = {
   jobQueued: false,
   jobPolls: 0,
   reportGenerated: false,
+  requestedApiPaths: [],
 };
 
 const caseData = {
@@ -106,6 +107,11 @@ async function startVite() {
 async function mockApiRequest(request) {
   const url = new URL(request.url());
   const route = `${request.method()} ${url.pathname}`;
+  state.requestedApiPaths.push(route);
+
+  if (url.pathname.endsWith('/timeline') || url.pathname.endsWith('/custody')) {
+    return jsonResponse({ detail: 'Not Found' }, 404);
+  }
 
   if (url.pathname === '/api/auth/login' && request.method() === 'POST') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR', mfa_enabled: false });
@@ -223,6 +229,12 @@ async function mockApiRequest(request) {
     state.reportGenerated = true;
     return jsonResponse(reportData);
   }
+  if (url.pathname === `/api/cases/${caseData.case_identifier}/audit` && request.method() === 'GET') {
+    return jsonResponse([]);
+  }
+  if (url.pathname === `/api/cases/${caseData.case_identifier}/chain-of-custody` && request.method() === 'GET') {
+    return jsonResponse([]);
+  }
 
   // Other workspace widgets can make optional calls. Keep the test isolated from a real API.
   if (route.startsWith('GET ')) return jsonResponse([]);
@@ -296,7 +308,49 @@ async function main() {
   await page.waitForFunction(() => document.body.innerText.includes('FS-RPT-E2E001'));
   assert.equal(state.reportGenerated, true, 'report generation endpoint was called');
 
-  console.log('PASS: login → case intake → evidence upload → analysis job → report generation');
+  // Regression check: case-card hover prefetches /audit (never /timeline)
+  await page.goto(`${baseUrl}/cases`, { waitUntil: 'networkidle0' });
+  const caseCardSelector = `a[href="/cases/${caseData.case_identifier}"]`;
+  await page.waitForSelector(caseCardSelector);
+  state.requestedApiPaths = [];
+  await page.hover(caseCardSelector);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.ok(
+    state.requestedApiPaths.includes(`GET /api/cases/${caseData.case_identifier}`),
+    'case card hover should prefetch case detail',
+  );
+  assert.ok(
+    state.requestedApiPaths.includes(`GET /api/cases/${caseData.case_identifier}/evidence`),
+    'case card hover should prefetch case evidence',
+  );
+  assert.ok(
+    state.requestedApiPaths.includes(`GET /api/cases/${caseData.case_identifier}/audit`),
+    'case card hover should prefetch /audit',
+  );
+  assert.equal(
+    state.requestedApiPaths.some((p) => p.endsWith('/timeline')),
+    false,
+    'case card hover must never prefetch stale /timeline route',
+  );
+
+  // Regression check: Chain of Custody sidebar hover prefetches /chain-of-custody (never /custody)
+  await page.goto(`${baseUrl}/cases/${caseData.case_identifier}`, { waitUntil: 'networkidle0' });
+  const custodyNavSelector = `a[href="/cases/${caseData.case_identifier}/custody"]`;
+  await page.waitForSelector(custodyNavSelector);
+  state.requestedApiPaths = [];
+  await page.hover(custodyNavSelector);
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.ok(
+    state.requestedApiPaths.includes(`GET /api/cases/${caseData.case_identifier}/chain-of-custody`),
+    'Chain of Custody sidebar hover should prefetch /chain-of-custody',
+  );
+  assert.equal(
+    state.requestedApiPaths.some((p) => p.endsWith('/custody')),
+    false,
+    'Chain of Custody sidebar hover must never prefetch stale /custody route',
+  );
+
+  console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes');
 }
 
 main()

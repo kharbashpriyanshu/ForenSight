@@ -184,7 +184,7 @@ const Workspace: React.FC = () => {
             </NavLink>
             <NavLink 
               to={`/cases/${caseId}/custody`} 
-              onMouseEnter={() => prefetchApi(`/cases/${caseId}/custody`)}
+              onMouseEnter={() => prefetchApi(`/cases/${caseId}/chain-of-custody`)}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
               <ShieldCheck size={16} aria-hidden="true" />
