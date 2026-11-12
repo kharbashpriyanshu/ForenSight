@@ -23,7 +23,7 @@ ForenSight addresses this challenge through an **explainable, evidence-first fra
 
 - **Claim-First Intake:** Separates investigative claims and custody acquisition history from engine-derived measurements.
 - **Asynchronous Task Architecture:** Offloads computationally intensive computer vision workloads (SIFT keypoints, DCT histograms, Radon transforms) to Celery workers via Redis, with transparent in-process fallback when Redis is unavailable.
-- **Multi-Modality Forensic Suite:** Over 14 analytical modules spanning spatial, compression, device profile, frequency, and geometric domains.
+- **Multi-Modality Forensic Suite:** Comprehensive suite of 13 analytical engines spanning spatial, compression, device profile, frequency, and geometric domains.
 - **Multi-Modality Spatial Heatmaps:** Visualizes spatial anomaly candidates across modalities without synthetic probability masks.
 - **Image Version Lineage:** Discovers identical bitstreams and near-duplicate visual derivatives across crops, recompression, and scaling.
 - **Processing History Hypotheses:** Synthesizes quantization tables, blocking grids, and interpolation signatures into candidate recompression sequences with explicit uncertainty notes.
@@ -330,6 +330,9 @@ pytest tests/ -v
 # Verify scientific core freeze invariant (all 38 forensic core files)
 python scripts/verify_scientific_freeze.py
 
+# Verify cryptographic audit chain integrity across all cases
+python scripts/audit_integrity.py verify-chain
+
 # Run dedicated authentication and RBAC security regression tests
 pytest tests/test_security_auth.py -v
 ```
@@ -377,7 +380,7 @@ To prevent undetected regressions in forensic algorithms, ForenSight employs a d
 ## 15. Security & Evidence Integrity Considerations
 
 - **Cryptographic Ingestion:** Evidence bitstreams are hashed (SHA-256) upon arrival and stored under isolated UUID-based paths. Absolute filesystem paths are suppressed from API responses to protect server topology.
-- **Append-Only Audit Ledger:** Key investigative actions (intake, job execution, report compilation, bundle export) append to a sequentially chained event ledger verified via `audit_integrity.py`.
+- **Append-Only Audit Ledger:** Key investigative actions (intake, job execution, report compilation, bundle export) append to a sequentially chained event ledger verified via `python backend/scripts/audit_integrity.py verify-chain`.
 - **Signed Case Bundles (`.forensight`):**
   Exported archives contain raw evidence, manifests, and an optional Ed25519 digital signature. Key generation and standalone verification:
   ```bash
