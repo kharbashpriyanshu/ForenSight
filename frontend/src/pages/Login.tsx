@@ -103,8 +103,8 @@ export default function Login() {
             <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-main)', fontFamily: 'var(--font-display)', lineHeight: 1.15 }}>
               ForenSight
             </div>
-            <div style={{ fontSize: '0.64rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)' }}>
-              Evidence OS
+            <div style={{ fontSize: '0.62rem', color: 'var(--accent-color)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontFamily: 'var(--font-tech)' }}>
+              Digital Forensic Platform
             </div>
           </div>
         </div>
