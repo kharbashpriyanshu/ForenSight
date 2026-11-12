@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { Activity, FolderOpen, FlaskConical, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 import ThemeToggle from './ThemeToggle';
 import Breadcrumbs from './Breadcrumbs';
@@ -17,6 +18,7 @@ export interface AppLayoutContext {
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout } = useAuth();
+  const { isDark } = useTheme();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -40,8 +42,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <div className="topbar-left">
           <Link to="/cases" className="topbar-brand" title="ForenSight Station Directory">
             <img 
-              src="/forensight-icon.png" 
-              alt="ForenSight Emblem" 
+              src={isDark ? "/forensight-icon-dark.svg" : "/forensight-icon-light.svg"} 
+              alt="ForenSight Evidence Trace Emblem" 
               className="topbar-logo"
             />
             <div className="topbar-brand-text">

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <style>
+    .fst-frame { fill: #1c2b3a; }
+    .fst-gold { fill: #b8872a; }
+    .fst-knockout { fill: #f7f4ee; }
+    @media (prefers-color-scheme: dark) {
+      .fst-frame { fill: #60a5fa; }
+      .fst-gold { fill: #e5a93c; }
+      .fst-knockout { fill: #0b0f14; }
+    }
+  </style>
+  <!-- Base Ground-Truth Image Plane (Obsidian / Steel Blue) -->
+  <path class="fst-frame" d="M7 15C7 10.5817 10.5817 7 15 7H26V13.5H15C14.1716 13.5 13.5 14.1716 13.5 15V33C13.5 33.8284 14.1716 34.5 15 34.5H33C33.8284 34.5 34.5 33.8284 34.5 33V22H41V33C41 37.4183 37.4183 41 33 41H15C10.5817 41 7 37.4183 7 33V15Z" />
+  
+  <!-- Reconstructed Forensic Layer (Telemetry Amber Gold) -->
+  <path class="fst-gold" d="M22 7H33C37.4183 7 41 10.5817 41 15V19H34.5V15C34.5 14.1716 33.8284 13.5 33 13.5H22V7Z" />
+  
+  <!-- Central Precision Focal Core (Sensor Node) -->
+  <rect class="fst-gold" x="20" y="20" width="8" height="8" rx="2" />
+  <rect class="fst-knockout" x="22.5" y="22.5" width="3" height="3" rx="0.75" />
+  
+  <!-- Fragmented Digital Evidence Trace (3-Stage Calibrated Pixel Emitter) -->
+  <rect class="fst-gold" x="35" y="7" width="6" height="6" rx="1.5" />
+  <rect class="fst-frame" x="42" y="14" width="4.5" height="4.5" rx="1" />
+  <rect class="fst-gold" x="36" y="21" width="4.5" height="4.5" rx="1" />
+</svg>

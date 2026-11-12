@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/layout/ThemeToggle';
 
 
@@ -13,6 +14,7 @@ export default function Login() {
   const [mfaCode, setMfaCode] = useState('');
   
   const { login } = useAuth();
+  const { isDark } = useTheme();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -88,11 +90,11 @@ export default function Login() {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           <img 
-            src="/forensight-icon.png" 
-            alt="ForenSight Emblem" 
+            src={isDark ? "/forensight-icon-dark.svg" : "/forensight-icon-light.svg"} 
+            alt="ForenSight Evidence Trace Emblem" 
             style={{ 
               height: '32px', 
-              width: 'auto', 
+              width: '32px', 
               objectFit: 'contain',
               filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2))'
             }} 
@@ -151,14 +153,16 @@ export default function Login() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
           <img 
-            src="/forensight-logo.png" 
+            src={isDark ? "/forensight-logo-dark.svg" : "/forensight-logo.svg"} 
             alt="ForenSight - Digital Image Forensics Platform" 
             style={{ 
               width: '100%', 
-              maxWidth: '260px', 
+              maxWidth: '280px', 
               height: 'auto',
               marginBottom: '0.5rem',
-              filter: 'drop-shadow(0 4px 12px rgba(28, 43, 58, 0.12))'
+              filter: isDark 
+                ? 'drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4))' 
+                : 'drop-shadow(0 4px 12px rgba(28, 43, 58, 0.12))'
             }} 
           />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.25rem', lineHeight: 1.45 }}>

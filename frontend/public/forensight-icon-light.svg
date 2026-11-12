@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Base Ground-Truth Image Plane (Obsidian Navy #1c2b3a) -->
+  <path fill="#1c2b3a" d="M7 15C7 10.5817 10.5817 7 15 7H26V13.5H15C14.1716 13.5 13.5 14.1716 13.5 15V33C13.5 33.8284 14.1716 34.5 15 34.5H33C33.8284 34.5 34.5 33.8284 34.5 33V22H41V33C41 37.4183 37.4183 41 33 41H15C10.5817 41 7 37.4183 7 33V15Z" />
+  <!-- Reconstructed Forensic Layer (Amber Gold #b8872a) -->
+  <path fill="#b8872a" d="M22 7H33C37.4183 7 41 10.5817 41 15V19H34.5V15C34.5 14.1716 33.8284 13.5 33 13.5H22V7Z" />
+  <!-- Central Precision Focal Core -->
+  <rect fill="#b8872a" x="20" y="20" width="8" height="8" rx="2" />
+  <rect fill="#f7f4ee" x="22.5" y="22.5" width="3" height="3" rx="0.75" />
+  <!-- Fragmented Digital Evidence Trace -->
+  <rect fill="#b8872a" x="35" y="7" width="6" height="6" rx="1.5" />
+  <rect fill="#1c2b3a" x="42" y="14" width="4.5" height="4.5" rx="1" />
+  <rect fill="#b8872a" x="36" y="21" width="4.5" height="4.5" rx="1" />
+</svg>

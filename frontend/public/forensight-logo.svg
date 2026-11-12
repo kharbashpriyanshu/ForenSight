@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none">
+  <!-- Evidence Trace Icon at (8, 12) sized 48x48 -->
+  <g transform="translate(8, 12)">
+    <path fill="#1c2b3a" d="M7 15C7 10.5817 10.5817 7 15 7H26V13.5H15C14.1716 13.5 13.5 14.1716 13.5 15V33C13.5 33.8284 14.1716 34.5 15 34.5H33C33.8284 34.5 34.5 33.8284 34.5 33V22H41V33C41 37.4183 37.4183 41 33 41H15C10.5817 41 7 37.4183 7 33V15Z" />
+    <path fill="#b8872a" d="M22 7H33C37.4183 7 41 10.5817 41 15V19H34.5V15C34.5 14.1716 33.8284 13.5 33 13.5H22V7Z" />
+    <rect fill="#b8872a" x="20" y="20" width="8" height="8" rx="2" />
+    <rect fill="#f7f4ee" x="22.5" y="22.5" width="3" height="3" rx="0.75" />
+    <rect fill="#b8872a" x="35" y="7" width="6" height="6" rx="1.5" />
+    <rect fill="#1c2b3a" x="42" y="14" width="4.5" height="4.5" rx="1" />
+    <rect fill="#b8872a" x="36" y="21" width="4.5" height="4.5" rx="1" />
+  </g>
+  <!-- Wordmark Text -->
+  <text x="66" y="40" font-family="'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="800" font-size="27" letter-spacing="-0.03em" fill="#1c2b3a">ForenSight</text>
+  <text x="68" y="54" font-family="'JetBrains Mono', monospace" font-weight="700" font-size="8.5" letter-spacing="0.1em" fill="#b8872a">DIGITAL FORENSIC PLATFORM</text>
+</svg>
