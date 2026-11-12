@@ -157,7 +157,7 @@ export default function ReportsInterface() {
           <div>
             <h2 className="card-title" style={{ margin: 0 }}>Forensic Investigation Reports</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-              Review-ready PDF reports and reproducible JSON exports for analyst and independent review
+              Generate courtroom-ready PDF dossier reports or export reproducible JSON examination records for analyst review
             </div>
           </div>
 
@@ -168,8 +168,8 @@ export default function ReportsInterface() {
                 onChange={e => setFormatOption(e.target.value as 'pdf' | 'json')}
                 style={{ padding: '0.55rem 0.75rem', background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '0.85rem' }}
               >
-                <option value="pdf">Formal Case Report (PDF)</option>
-                <option value="json">Case Findings & Summary (JSON)</option>
+                <option value="pdf">Formal Case Dossier (PDF)</option>
+                <option value="json">Raw Findings & Examination Data (JSON)</option>
               </select>
 
               <button 
@@ -180,19 +180,21 @@ export default function ReportsInterface() {
                   overviewError 
                     ? `Compilation unavailable: ${overviewError}` 
                     : isCompilationBlocked 
-                    ? 'Evidence acquisition and analysis passes required before compiling report' 
+                    ? 'Evidence intake required: At least one evidence item must be registered before compiling reports' 
                     : undefined
                 }
                 style={isCompilationBlocked ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
               >
-                {generating ? 'Compiling Report...' : 'Compile Case Report'}
+                {generating 
+                  ? (formatOption === 'pdf' ? 'Compiling PDF...' : 'Exporting JSON...') 
+                  : (formatOption === 'pdf' ? 'Compile Case Report' : 'Export JSON Findings')}
               </button>
               <button className="secondary-button" onClick={() => void handleCaseExport()} disabled={exportingBundle}>
                 {exportingBundle ? 'Packaging archive…' : 'Export Case Archive (.forensight)'}
               </button>
             </div>
             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'right' }}>
-              Case bundles package raw evidence binaries, manifests, and Ed25519 signatures (when configured on server)
+              Case bundles package raw evidence binaries, manifests, and Ed25519 signatures (when configured). Archive export operates independently of report compilation.
             </div>
           </div>
         </div>
@@ -237,7 +239,7 @@ export default function ReportsInterface() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <AlertCircle size={18} style={{ color: 'var(--accent-color)', flexShrink: 0 }} />
               <span style={{ fontSize: '0.825rem', color: 'var(--text-main)' }}>
-                <strong>Prerequisites Required:</strong> Evidence acquisition and forensic examination passes must be completed before compiling formal case reports.
+                <strong>Evidence Intake Required:</strong> At least one primary evidence file must be acquired and registered to this case before compiling formal investigation reports or exporting findings.
               </span>
             </div>
             <button 
@@ -288,7 +290,7 @@ export default function ReportsInterface() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.825rem', lineHeight: 1.5, margin: '0 0 1.25rem' }}>
               {isZeroEvidence ? (
                 <>
-                  Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document. <strong>Primary source evidence acquisition and forensic analysis passes are required prerequisites before report compilation.</strong>
+                  Formal case reports synthesize evidence bitstreams, cryptographic SHA-256 hashes, multi-modality observations, and immutable custody logs into an archival document. <strong>Primary source evidence intake is required before report compilation.</strong>
                 </>
               ) : (
                 'Formal case reports synthesize evidence hashes, multi-modality observations (ELA, noise residuals, DCT block grids), and immutable custody logs into an archival document.'
@@ -311,14 +313,14 @@ export default function ReportsInterface() {
                     type="button"
                     className="secondary-button" 
                     disabled={true}
-                    title="Evidence acquisition and analysis passes required before compiling report"
+                    title="Evidence intake required: At least one evidence item must be registered before compiling reports"
                     style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', opacity: 0.5, cursor: 'not-allowed' }}
                   >
-                    Compile {formatOption.toUpperCase()} Report
+                    {formatOption === 'pdf' ? 'Compile Case Report' : 'Export JSON Findings'}
                   </button>
                 </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Report compilation is disabled until evidence has been ingested and examined.
+                  Report compilation is disabled until at least one evidence item has been acquired and registered to this case.
                 </span>
               </div>
             ) : isCompilationBlocked ? (
@@ -327,13 +329,13 @@ export default function ReportsInterface() {
                   type="button"
                   className="secondary-button" 
                   disabled={true}
-                  title={overviewError || "Evidence acquisition and analysis passes required before compiling report"}
+                  title={overviewError ? `Compilation unavailable: ${overviewError}` : "Evidence intake required: At least one evidence item must be registered before compiling reports"}
                   style={{ fontSize: '0.82rem', padding: '0.45rem 1rem', opacity: 0.5, cursor: 'not-allowed' }}
                 >
-                  Compile {formatOption.toUpperCase()} Report
+                  {formatOption === 'pdf' ? 'Compile Case Report' : 'Export JSON Findings'}
                 </button>
                 <span style={{ fontSize: '0.75rem', color: overviewError ? '#ef4444' : 'var(--text-muted)' }}>
-                  {overviewError ? 'Report compilation is locked until case evidence status can be verified.' : 'Report compilation is disabled until evidence has been ingested and examined.'}
+                  {overviewError ? 'Report compilation is locked until case evidence status can be verified.' : 'Report compilation is disabled until at least one evidence item has been acquired and registered.'}
                 </span>
               </div>
             ) : (
@@ -344,7 +346,9 @@ export default function ReportsInterface() {
                 disabled={generating}
                 style={{ fontSize: '0.82rem', padding: '0.45rem 1rem' }}
               >
-                {generating ? 'Compiling Report...' : `Compile ${formatOption.toUpperCase()} Report`}
+                {generating 
+                  ? (formatOption === 'pdf' ? 'Compiling PDF...' : 'Exporting JSON...') 
+                  : (formatOption === 'pdf' ? 'Compile Case Report' : 'Export JSON Findings')}
               </button>
             )}
           </div>
