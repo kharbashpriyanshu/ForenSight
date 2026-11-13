@@ -6,7 +6,7 @@ import hmac
 import secrets
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote, urlparse
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -49,7 +49,7 @@ class MfaDisableRequest(MfaPasswordRequest):
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc)
 
 
 def _is_production() -> bool:
@@ -211,7 +211,7 @@ def _consume_mfa_code(db: Session, user: User, code: str, secret: str = None) ->
 
 
 def _make_mfa_challenge(user: User) -> str:
-    now = datetime.utcnow()
+    now = _now()
     return jwt.encode(
         {"sub": user.username, "purpose": "mfa_challenge", "exp": now + timedelta(minutes=5), "jti": secrets.token_urlsafe(16)},
         settings.SECRET_KEY,

@@ -1,6 +1,7 @@
 """Publish durable analysis outbox entries to Celery with retryable dispatch."""
 
 import datetime
+from datetime import timezone
 import uuid
 
 from typing import Optional
@@ -19,7 +20,7 @@ def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None, db: O
     published = 0
     deferred = 0
     try:
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(timezone.utc)
         query = db.query(AnalysisJobOutbox).filter(
             AnalysisJobOutbox.dispatched_at.is_(None),
             AnalysisJobOutbox.next_attempt_at <= now,
@@ -44,7 +45,7 @@ def publish_pending_analysis_jobs(limit: int = 100, outbox_id: int = None, db: O
                 )
                 row = db.query(AnalysisJobOutbox).filter(AnalysisJobOutbox.id == row.id).first()
                 if row:
-                    row.dispatched_at = datetime.datetime.utcnow()
+                    row.dispatched_at = datetime.datetime.now(timezone.utc)
                     row.last_error = None
                     db.commit()
                 published += 1

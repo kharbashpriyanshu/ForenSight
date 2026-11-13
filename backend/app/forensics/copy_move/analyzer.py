@@ -1,5 +1,6 @@
 import os
 import datetime
+from datetime import timezone
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
 from app.core.config import settings
@@ -54,7 +55,7 @@ class CopyMoveAnalyzer:
                 "artifacts": artifacts_payload
             }
             
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             
             db.commit()
             db.refresh(analysis)
@@ -63,14 +64,14 @@ class CopyMoveAnalyzer:
         except ImageProcessingError as e:
             analysis.status = "failed"
             analysis.summary = str(e)
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(str(e))
         except Exception as e:
             analysis.status = "failed"
             analysis.summary = f"Copy-Move Analysis failed: {str(e)}"
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(f"Copy-Move Analysis failed: {str(e)}")

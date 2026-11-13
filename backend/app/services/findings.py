@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -58,7 +59,7 @@ class FindingService:
                 detail=f"Invalid finding status transition from '{finding.status}' to '{status_upper}'"
             )
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(timezone.utc)
         old_status = finding.status
         finding.status = status_upper
         finding.reviewer = reviewer_user.username

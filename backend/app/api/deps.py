@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Union
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -49,7 +49,7 @@ def get_current_user(
             UserSession.session_identifier == session_id,
             UserSession.user_id == user.id,
             UserSession.revoked_at.is_(None),
-            UserSession.expires_at > datetime.utcnow(),
+            UserSession.expires_at > datetime.now(timezone.utc),
         ).first()
         if not session:
             raise credentials_exception

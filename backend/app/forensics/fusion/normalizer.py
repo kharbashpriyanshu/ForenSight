@@ -1,8 +1,11 @@
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 from app.models.domain import Analysis, EvidenceObservation
 from .adapters import ADAPTERS
 from .schemas import EvidenceSet, EvidenceObservationResponse
+
+logger = logging.getLogger(__name__)
 
 class EvidenceNormalizer:
     NORMALIZATION_VERSION = "1.0"
@@ -33,8 +36,12 @@ class EvidenceNormalizer:
                         db_obs = EvidenceObservation(**obs_dict)
                         new_observations.append(db_obs)
                 except Exception as e:
-                    # If extraction fails, log it but don't crash the fusion process
-                    pass
+                    logger.warning(
+                        "Adapter extraction failed for analysis_type=%s evidence_id=%s: %s",
+                        analysis.analysis_type,
+                        evidence_id,
+                        str(e),
+                    )
         
         if new_observations:
             db.add_all(new_observations)

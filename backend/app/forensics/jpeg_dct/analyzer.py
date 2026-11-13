@@ -1,5 +1,6 @@
 import os
 import datetime
+from datetime import timezone
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
 from app.core.config import settings
@@ -51,7 +52,7 @@ class JPEGDCTAnalyzer:
                 }
             }
             
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             
             db.commit()
             db.refresh(analysis)
@@ -60,14 +61,14 @@ class JPEGDCTAnalyzer:
         except UnsupportedFormatError as e:
             analysis.status = "failed"
             analysis.summary = str(e)
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(str(e))
         except Exception as e:
             analysis.status = "failed"
             analysis.summary = f"JPEG/DCT Analysis failed: {str(e)}"
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(f"JPEG/DCT Analysis failed: {str(e)}")

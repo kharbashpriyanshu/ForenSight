@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -37,7 +38,7 @@ class NoteService:
         if not content.strip():
             raise HTTPException(status_code=400, detail="Note content cannot be empty")
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(timezone.utc)
         note = AnalystNote(
             case_id=case.case_identifier,
             author=author_user.username,
@@ -84,7 +85,7 @@ class NoteService:
         if not content.strip():
             raise HTTPException(status_code=400, detail="Note content cannot be empty")
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(timezone.utc)
         note.content = content.strip()
         note.updated_at = now
         db.commit()

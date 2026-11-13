@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 import datetime
 
@@ -17,8 +17,7 @@ class EvidenceObservationResponse(BaseModel):
     limitations: str
     created_at: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EvidenceSet(BaseModel):
     evidence_id: int
@@ -38,8 +37,7 @@ class EvidenceRelationResponse(BaseModel):
     limitations: str
     created_at: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class EvidenceAssessmentResponse(BaseModel):
     id: int
@@ -52,8 +50,7 @@ class EvidenceAssessmentResponse(BaseModel):
     limitations: List[str]
     generated_at: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CorrelationResult(BaseModel):
     evidence_id: int

@@ -1,5 +1,6 @@
 import os
 import datetime
+from datetime import timezone
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
 from app.core.config import settings
@@ -68,7 +69,7 @@ class NoiseAnalyzer:
                 "comparative_methods": comparative_dict,
                 "artifacts": artifacts_dict
             }
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             
             db.commit()
             db.refresh(analysis)
@@ -77,7 +78,7 @@ class NoiseAnalyzer:
         except Exception as e:
             analysis.status = "failed"
             analysis.summary = f"Noise Analysis failed: {str(e)}"
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(f"Noise Analysis failed: {str(e)}")

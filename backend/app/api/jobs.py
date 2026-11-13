@@ -2,6 +2,7 @@ import hashlib
 import json
 import uuid
 import datetime
+from datetime import timezone
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -79,7 +80,7 @@ def queue_analysis_job(
     if existing_job:
         if existing_job.status == "FAILED":
             existing_job.status = "QUEUED"
-            existing_job.queued_at = datetime.datetime.utcnow()
+            existing_job.queued_at = datetime.datetime.now(timezone.utc)
             existing_job.started_at = None
             existing_job.completed_at = None
             existing_job.analysis_id = None
@@ -93,7 +94,7 @@ def queue_analysis_job(
                 db.add(outbox)
             else:
                 outbox.dispatched_at = None
-                outbox.next_attempt_at = datetime.datetime.utcnow()
+                outbox.next_attempt_at = datetime.datetime.now(timezone.utc)
                 outbox.last_error = None
             db.commit()
             publish_pending_analysis_jobs(outbox_id=outbox.id, db=db)

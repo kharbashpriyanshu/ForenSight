@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import datetime
+from datetime import timezone
 import tempfile
 import warnings
 from typing import Optional, Dict, Any
@@ -506,7 +507,7 @@ class EvidenceService:
             exists = storage.exists(target_path) if is_remote_key else os.path.exists(target_path)
             if not exists:
                 rec.resolved = True
-                rec.resolved_at = datetime.datetime.utcnow()
+                rec.resolved_at = datetime.datetime.now(timezone.utc)
                 cleaned += 1
                 continue
 
@@ -532,7 +533,7 @@ class EvidenceService:
                 else:
                     os.remove(target_path)
                 rec.resolved = True
-                rec.resolved_at = datetime.datetime.utcnow()
+                rec.resolved_at = datetime.datetime.now(timezone.utc)
                 cleaned += 1
                 logger.info(f"Successfully recovered and deleted orphaned file: {target_path}")
             except Exception as e:

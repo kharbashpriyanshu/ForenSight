@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
 from .schemas import ExtractedMetadata, MetadataFindings
@@ -64,7 +65,7 @@ class MetadataAnalyzer:
                 "findings": findings.model_dump(),
                 "extracted_metadata": raw_meta.model_dump()
             }
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             
             db.commit()
             db.refresh(analysis)
@@ -73,7 +74,7 @@ class MetadataAnalyzer:
         except Exception as e:
             analysis.status = "failed"
             analysis.summary = f"Analysis failed: {str(e)}"
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(f"Metadata extraction failed: {str(e)}")

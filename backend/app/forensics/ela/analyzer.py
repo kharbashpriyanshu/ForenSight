@@ -1,5 +1,6 @@
 import os
 import datetime
+from datetime import timezone
 from sqlalchemy.orm import Session
 from app.models.domain import Analysis, Evidence
 from app.core.config import settings
@@ -63,7 +64,7 @@ class ELAAnalyzer:
                     "recompressed": recomp_relative
                 }
             }
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             
             db.commit()
             db.refresh(analysis)
@@ -72,7 +73,7 @@ class ELAAnalyzer:
         except Exception as e:
             analysis.status = "failed"
             analysis.summary = f"ELA Analysis failed: {str(e)}"
-            analysis.completed_at = datetime.datetime.utcnow()
+            analysis.completed_at = datetime.datetime.now(timezone.utc)
             db.commit()
             db.refresh(analysis)
             raise ValueError(f"ELA Analysis failed: {str(e)}")

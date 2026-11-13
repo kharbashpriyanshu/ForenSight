@@ -1,4 +1,5 @@
 import datetime
+from datetime import timezone
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from app.models.domain import (
@@ -352,7 +353,7 @@ class CorrelationEngine:
             .first()
         )
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(timezone.utc)
         if existing:
             existing.title = title
             existing.summary = summary

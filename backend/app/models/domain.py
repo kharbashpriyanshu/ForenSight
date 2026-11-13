@@ -4,6 +4,9 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Floa
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
+def utc_now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
 def generate_case_id():
     return f"FS-CASE-{uuid.uuid4().hex[:8].upper()}"
 
@@ -21,8 +24,8 @@ class InvestigationCase(Base):
     title = Column(String, index=True)
     status = Column(String, default="Open")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # made nullable for backwards compatibility
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     owner = relationship("User", backref="cases")
 
@@ -40,7 +43,7 @@ class CaseIntakeContext(Base):
     reported_location = Column(Text, nullable=True)
     source_reference_url = Column(Text, nullable=True)
     intake_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     case = relationship("InvestigationCase", back_populates="intake_context")
 
@@ -58,7 +61,7 @@ class Evidence(Base):
     image_format = Column(String)
     width = Column(Integer)
     height = Column(Integer)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     case = relationship("InvestigationCase", back_populates="evidence_items")
     analyses = relationship("Analysis", back_populates="evidence")
@@ -81,7 +84,7 @@ class EvidenceIntakeContext(Base):
     reported_capture_time = Column(String, nullable=True)
     source_reference_url = Column(Text, nullable=True)
     intake_notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
     evidence = relationship("Evidence", back_populates="intake_context")
 
@@ -101,8 +104,8 @@ class EvidenceLineageRelation(Base):
     reviewer = Column(String, nullable=True)
     review_note = Column(Text, nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 class Analysis(Base):
     __tablename__ = "analyses"
@@ -114,7 +117,7 @@ class Analysis(Base):
     status = Column(String, default="pending")
     summary = Column(String, nullable=True)
     structured_findings = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     completed_at = Column(DateTime, nullable=True)
 
     evidence = relationship("Evidence", back_populates="analyses")
@@ -139,7 +142,7 @@ class EvidenceObservation(Base):
     interpretation = Column(String)
     limitations = Column(String)
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     evidence = relationship("Evidence", backref="observations")
     analysis = relationship("Analysis")
@@ -157,7 +160,7 @@ class EvidenceRelation(Base):
     explanation = Column(String)
     limitations = Column(String)
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     
     evidence = relationship("Evidence", backref="relations")
     observation_a = relationship("EvidenceObservation", foreign_keys=[observation_a_id])
@@ -177,7 +180,7 @@ class EvidenceAssessment(Base):
     contributing_relations = Column(JSON)
     limitations = Column(JSON)
     
-    generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    generated_at = Column(DateTime, default=utc_now)
     
     evidence = relationship("Evidence", backref="assessments")
 
@@ -201,7 +204,7 @@ class AnalysisJob(Base):
     progress_message = Column(String, nullable=True)
     attempt_count = Column(Integer, nullable=False, default=0)
     
-    queued_at = Column(DateTime, default=datetime.datetime.utcnow)
+    queued_at = Column(DateTime, default=utc_now)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
     
@@ -216,8 +219,8 @@ class AnalysisJobOutbox(Base):
 
     id = Column(Integer, primary_key=True)
     job_id = Column(Integer, ForeignKey("analysis_jobs.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    next_attempt_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow, index=True)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    next_attempt_at = Column(DateTime, nullable=False, default=utc_now, index=True)
     attempt_count = Column(Integer, nullable=False, default=0)
     dispatched_at = Column(DateTime, nullable=True)
     last_error = Column(Text, nullable=True)
@@ -231,7 +234,7 @@ class AuditEvent(Base):
     case_id = Column(String, index=True)
     evidence_id = Column(Integer, nullable=True)
     event_type = Column(String, index=True)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    timestamp = Column(DateTime, default=utc_now, index=True)
     actor = Column(String, nullable=True)
     safe_metadata = Column(String, nullable=True)
     sequence_number = Column(Integer, nullable=False)
@@ -243,7 +246,7 @@ class Report(Base):
     id = Column(Integer, primary_key=True, index=True)
     report_identifier = Column(String, unique=True, index=True)
     case_id = Column(String, index=True)
-    generated_at = Column(DateTime, default=datetime.datetime.utcnow)
+    generated_at = Column(DateTime, default=utc_now)
     rule_version = Column(String, nullable=True)
     report_type = Column(String, default="JSON")
     status = Column(String, default="COMPLETED")
@@ -255,7 +258,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     role = Column(String, default="INVESTIGATOR")
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
     totp_enabled = Column(Boolean, nullable=False, default=False)
     totp_secret_encrypted = Column(Text, nullable=True)
     totp_pending_secret_encrypted = Column(Text, nullable=True)
@@ -275,8 +278,8 @@ class UserSession(Base):
     refresh_token_hash = Column(String(64), nullable=False, unique=True, index=True)
     previous_refresh_token_hash = Column(String(64), nullable=True, index=True)
     csrf_token_hash = Column(String(64), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
-    last_used_at = Column(DateTime, nullable=False, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    last_used_at = Column(DateTime, nullable=False, default=utc_now)
     expires_at = Column(DateTime, nullable=False, index=True)
     revoked_at = Column(DateTime, nullable=True, index=True)
     user_agent = Column(String(300), nullable=True)
@@ -314,8 +317,8 @@ class Finding(Base):
     review_note = Column(String, nullable=True)
     decision = Column(String, nullable=True)
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now, index=True)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
     
     evidence = relationship("Evidence", backref="findings")
 
@@ -330,8 +333,8 @@ class AnalystNote(Base):
     target_id = Column(String, index=True)
     content = Column(String)
     
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now, index=True)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now)
 
 
 class IntakeIdempotencyRecord(Base):
@@ -346,7 +349,7 @@ class IntakeIdempotencyRecord(Base):
     case_identifier = Column(String, nullable=False)
     evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=False, index=True)
     response_payload = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=utc_now)
 
 
 class FailedCleanupRecord(Base):
@@ -359,6 +362,6 @@ class FailedCleanupRecord(Base):
     error_type = Column(String(128), nullable=False)
     resolved = Column(Boolean, default=False, nullable=False, index=True)
     retry_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=utc_now, index=True)
     resolved_at = Column(DateTime, nullable=True)
 
