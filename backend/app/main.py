@@ -55,6 +55,15 @@ async def add_security_headers(request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self' http://localhost:* http://127.0.0.1:*; "
+        "frame-ancestors 'none';"
+    )
     return response
 
 app.include_router(health_router, prefix="/api")

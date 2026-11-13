@@ -219,7 +219,11 @@ def _make_mfa_challenge(user: User) -> str:
     )
 
 
-@router.post("/login")
+@router.post(
+    "/login",
+    summary="Investigator Authentication",
+    description="Authenticates an investigator using username/password, issues rotating cookie session tokens with double-submit CSRF, or returns an MFA challenge if TOTP is active.",
+)
 def login_access_token(
     request: Request,
     response: Response,
@@ -245,7 +249,11 @@ def login_access_token(
     return _issue_session(db, user, request, response)
 
 
-@router.post("/mfa/verify")
+@router.post(
+    "/mfa/verify",
+    summary="Verify TOTP Challenge",
+    description="Validates a 6-digit TOTP token or single-use recovery code against the issued MFA challenge token to establish an investigator session.",
+)
 def verify_mfa_challenge(
     payload: MfaChallenge,
     request: Request,
@@ -277,7 +285,11 @@ def verify_mfa_challenge(
     return _issue_session(db, user, request, response)
 
 
-@router.get("/session")
+@router.get(
+    "/session",
+    summary="Current Investigator Session",
+    description="Returns authenticated investigator identity, role, and MFA activation status.",
+)
 def current_session(current_user: User = Depends(get_current_user)):
     return {
         "authenticated": True,
@@ -287,7 +299,11 @@ def current_session(current_user: User = Depends(get_current_user)):
     }
 
 
-@router.post("/refresh")
+@router.post(
+    "/refresh",
+    summary="Rotate Session Tokens",
+    description="Rotates refresh and CSRF tokens using double-submit validation, detecting token replay attacks via previous token hashes.",
+)
 def refresh_session(request: Request, response: Response, db: Session = Depends(get_db)):
     _ensure_trusted_origin(request)
     refresh = request.cookies.get(REFRESH_COOKIE, "")
@@ -339,7 +355,12 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     return {"authenticated": True}
 
 
-@router.post("/logout", status_code=204)
+@router.post(
+    "/logout",
+    status_code=204,
+    summary="Terminate Investigator Session",
+    description="Revokes active session tokens in the database and clears all authentication and CSRF cookies.",
+)
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     _ensure_trusted_origin(request)
     refresh = request.cookies.get(REFRESH_COOKIE, "")

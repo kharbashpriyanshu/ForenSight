@@ -64,6 +64,13 @@ def determine_assessment(families: Set[str], observations: List[EvidenceObservat
         if active_families == {"Compression", "File Context"}:
             level = "MODERATE_FORENSIC_CONCERN"
             summary = "Compression artifacts and editing software signatures align, strongly indicating processing history, but not definitively establishing malicious tampering."
+        elif num_active_families >= 3 or (
+            "Spatial Correspondence" in active_families
+            and ("Compression" in active_families or "Residual" in active_families)
+            and any(getattr(r, "strength", "") in ["strong", "HIGH", "high"] for r in (relations or []))
+        ):
+            level = "HIGH_FORENSIC_CONCERN"
+            summary = "Cross-modality corroboration: Multiple distinct analytical families present converging observations with strong relation correspondence. Priority forensic examination is strongly warranted."
         else:
             level = "ELEVATED_FORENSIC_CONCERN"
             summary = "Multiple distinct analytical families present active observations. Additional forensic examination is warranted."

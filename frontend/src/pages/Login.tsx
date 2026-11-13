@@ -154,7 +154,10 @@ export default function Login() {
         </div>
         
         {error && (
-          <div style={{ 
+          <div 
+            role="alert"
+            aria-live="assertive"
+            style={{ 
             background: 'rgba(254, 242, 242, 0.85)', 
             backdropFilter: 'blur(8px)',
             color: '#b91c1c', 
@@ -170,7 +173,7 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <form onSubmit={handleLogin} aria-label="Sign in to station" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
             {mfaChallenge ? (
               <>
@@ -183,6 +186,8 @@ export default function Login() {
                   type="text"
                   inputMode="text"
                   autoComplete="one-time-code"
+                  aria-required="true"
+                  aria-label="Authenticator or recovery code"
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value)}
                   autoFocus
@@ -199,6 +204,8 @@ export default function Login() {
                 </label>
                 <input
                   id="username" name="username" type="text" value={username}
+                  aria-required="true"
+                  aria-label="Investigator Username"
                   onChange={(e) => setUsername(e.target.value)} autoComplete="username"
                   style={{ width: '100%', padding: '0.7rem 0.85rem', borderRadius: '8px', border: '1px solid var(--border-default)', background: 'var(--surface-sunken)', color: 'var(--text-main)', boxSizing: 'border-box' }}
                 />
@@ -213,6 +220,8 @@ export default function Login() {
               id="password"
               name="password"
               type="password" 
+              aria-required="true"
+              aria-label="Access Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={{ 
