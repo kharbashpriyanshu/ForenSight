@@ -19,3 +19,6 @@ alembic
 reportlab
 c2pa-python
 boto3
+pytest-cov
+bandit
+pip-audit

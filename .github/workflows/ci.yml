@@ -44,10 +44,28 @@ jobs:
           cd backend
           python tests/fixtures/generate_fixtures.py
 
-      - name: Run Complete Backend Pytest Suite
+      - name: Run Bandit SAST Security Scan
         run: |
           cd backend
-          python -m pytest tests/ -v
+          bandit -r app/ -ll -x app/forensics/__pycache__,app/**/__pycache__ --skip B101,B404,B603 -f custom --msg-template "{abspath}:{line}: {test_id}[bandit]: {severity}: {msg}" || true
+
+      - name: Run pip-audit Dependency Vulnerability Scan
+        run: |
+          cd backend
+          pip-audit -r requirements.txt || true
+
+      - name: Run Complete Backend Pytest Suite with Coverage
+        run: |
+          cd backend
+          python -m pytest tests/ -v --cov=app --cov-report=xml:coverage.xml --cov-report=term-missing
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
 
       - name: Run Dedicated Security Regression Tests
         if: success() || failure()
@@ -75,6 +93,11 @@ jobs:
         run: |
           cd frontend
           npm ci
+
+      - name: Audit Frontend Dependencies
+        run: |
+          cd frontend
+          npm audit --audit-level=high || true
 
       - name: Validate TypeScript Types
         run: |
