@@ -382,7 +382,7 @@ def list_sessions(request: Request, current_user: User = Depends(get_current_use
     claims = {}
     if access:
         try:
-            claims = jwt.decode(access, settings.SECRET_KEY, algorithms=["HS256"])
+            claims = security.decode_access_token(access)
         except JWTError:
             pass
     rows = db.query(UserSession).filter(UserSession.user_id == current_user.id, UserSession.revoked_at.is_(None), UserSession.expires_at > _now()).order_by(UserSession.created_at.desc()).all()

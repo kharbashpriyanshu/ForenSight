@@ -27,9 +27,8 @@ def get_current_user(
     if not token:
         raise credentials_exception
     try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=["HS256"]
-        )
+        from app.core import security
+        payload = security.decode_access_token(token)
         if payload.get("purpose") == "mfa_challenge":
             raise credentials_exception
         username: str = payload.get("sub")

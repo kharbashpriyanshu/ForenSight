@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     ANALYSIS_JOB_SOFT_TIME_LIMIT_SECONDS: int = 300
     ANALYSIS_JOB_TIME_LIMIT_SECONDS: int = 330
     CASE_EXPORT_SIGNING_PRIVATE_KEY: str = ""
+    JWT_PRIVATE_KEY: str = ""
+    JWT_PUBLIC_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
