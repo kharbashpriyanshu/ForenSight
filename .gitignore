@@ -55,6 +55,8 @@ backend/tests/tmp/
 # Database and Storage
 forensight.db
 storage/
+datasets/controlled/
+datasets/benchmark/
 backend/datasets/external/*
 !backend/datasets/external/README.md
 !backend/datasets/external/manifest.template.json

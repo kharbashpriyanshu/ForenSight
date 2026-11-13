@@ -110,7 +110,7 @@ class AssistantService:
 
         what_found = (
             f"Case contains {total_ev} registered evidence files with {total_completed_slots} completed forensic modality analyses "
-            f"out of {total_applicable_slots} applicable ({overall_pct}% complete). " + " ".join(findings_summary_parts)
+            f"out of {total_applicable_slots} applicable ({overall_pct}% complete).\n\n" + "\n\n".join(findings_summary_parts)
         )
 
         why_matters = (
