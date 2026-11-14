@@ -60,3 +60,4 @@ datasets/benchmark/
 backend/datasets/external/*
 !backend/datasets/external/README.md
 !backend/datasets/external/manifest.template.json
+backend/benchmarks/academic_evaluation/artifacts/

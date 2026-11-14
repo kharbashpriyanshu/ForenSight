@@ -153,13 +153,7 @@ def _issue_session(db: Session, user: User, request: Request, response: Response
         extra_claims={"sid": session_id},
     )
     _set_session_cookies(response, access, refresh, csrf)
-    return {
-        "authenticated": True,
-        "username": user.username,
-        "role": user.role,
-        "mfa_enabled": user.totp_enabled,
-        "access_token": access,
-    }
+    return {"authenticated": True, "username": user.username, "role": user.role, "mfa_enabled": user.totp_enabled}
 
 
 def _encryption_box() -> Fernet:
@@ -367,7 +361,7 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     response.set_cookie(ACCESS_COOKIE, access, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, httponly=True, secure=secure, samesite=samesite, path="/")
     response.set_cookie(REFRESH_COOKIE, new_refresh, max_age=remaining, httponly=True, secure=secure, samesite=samesite, path="/")
     response.set_cookie(CSRF_COOKIE, new_csrf, max_age=remaining, httponly=False, secure=secure, samesite=samesite, path="/")
-    return {"authenticated": True, "access_token": access}
+    return {"authenticated": True}
 
 
 @router.post(
