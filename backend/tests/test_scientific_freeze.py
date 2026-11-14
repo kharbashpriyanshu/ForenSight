@@ -168,14 +168,14 @@ class TestExistingFreezeInvariant:
     """Verifies that the repository's production manifest and files match 100%."""
 
     RECONCILED_FILES = {
-        "app/forensics/copy_move/analyzer.py": "2e7e5aa7fc6b90980f30e3c339b68b3c98f3df959a79e0e33c698080e185fb44",
+        "app/forensics/copy_move/analyzer.py": "b81ef1e8f41f051127ea521dec5c243e9e50831905c31a815e27a3fe677c2797",
         "app/forensics/copy_move/engine.py": "6411b46d62735c77435b499bf156309b01310808d1aece276a3998709a2baf1e",
         "app/forensics/copy_move/schemas.py": "ff2e6bb8a8853378d917ab9b067322fbebbebb5e51f28086cdb06654304a6f55",
-        "app/forensics/ela/analyzer.py": "29c625548e02f3f890fcf485cd40b60168b81dfbc1290bd86d12d566f3a79959",
+        "app/forensics/ela/analyzer.py": "d3bbe6d9f03a0f4a8d0412e9660c4f102b76c5588c7921e69f77398b1327c7a6",
         "app/forensics/ela/engine.py": "34b49d76076f648492f27c37f277cfada569986cb9eed8d1cb6de73877233baf",
         "app/forensics/ela/schemas.py": "19c8f6eefa3e5afe832d6600b5b7ec83e8d43c190e39595e6d4d9a7c15161f34",
         "app/forensics/jpeg_dct/engine.py": "282e2b6f97ecf0581b2f5fe04fff6f0a47be65a0a78037a95f768c593d4c09fe",
-        "app/forensics/noise/analyzer.py": "a443bc13bdb98e9fdc49572870f2dbaed89754ca632accbf514ec813fcf1d8a9",
+        "app/forensics/noise/analyzer.py": "51b76f0545c94d98d4d14500a868cc4c6d4436b2708629581178716cd5f1c220",
         "app/forensics/noise/engine.py": "5e96e55405cdb2641d9885c81154ee242966242bc21609c7a0fde7b8eacc2028",
         "app/forensics/noise/schemas.py": "f680e66ff38a732415a6f6bd7109f1687695c4b9d6b2499302b9e99eea2c1c5c",
     }

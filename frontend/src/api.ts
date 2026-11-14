@@ -1,13 +1,14 @@
-const LOCALHOST_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const LOCALHOST_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i;
+const AUTH_ENDPOINTS_WITHOUT_REFRESH = ['/auth/login', '/auth/mfa/verify', '/auth/refresh', '/auth/logout'];
 
 /**
- * Resolve the API base path. Production builds never retain localhost origins
- * and always default to same-origin `/api` so Vercel rewrites proxy requests.
+ * Resolve the API base path. In development and production builds, local browser
+ * origins default to same-origin `/api` so Vite proxy (dev) and Vercel/reverse-proxy (prod)
+ * handle requests with full first-party cookie support.
  */
-export function resolveApiBase(rawApiUrl?: string, isProd = import.meta.env.PROD): string {
+export function resolveApiBase(rawApiUrl?: string, _isProd = import.meta.env.PROD): string {
   const normalized = (rawApiUrl || '').trim().replace(/\/+$/, '');
-  if (!normalized) return '/api';
-  if (isProd && LOCALHOST_ORIGIN_RE.test(normalized)) {
+  if (_isProd || !normalized || LOCALHOST_ORIGIN_RE.test(normalized)) {
     return '/api';
   }
   return `${normalized}/api`;
@@ -126,8 +127,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
         credentials: 'include',
         signal: controller.signal,
       });
-      const authWithoutRefresh = ['/auth/login', '/auth/mfa/verify', '/auth/refresh', '/auth/logout'];
-      if (response.status === 401 && !authWithoutRefresh.includes(endpoint)) {
+      if (response.status === 401 && !AUTH_ENDPOINTS_WITHOUT_REFRESH.includes(endpoint)) {
         const refreshed = await refreshApiSession();
         if (refreshed) {
           const csrf = readCsrfCookie();
@@ -156,7 +156,11 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
       }
     }
 
-    if (response.status === 401) {
+    if (
+      response.status === 401 &&
+      !AUTH_ENDPOINTS_WITHOUT_REFRESH.includes(endpoint) &&
+      !window.location.pathname.startsWith('/login')
+    ) {
       invalidateApiCache();
       window.location.href = '/login';
     }

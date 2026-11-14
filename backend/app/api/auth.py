@@ -62,12 +62,16 @@ def _ensure_trusted_origin(request: Request) -> None:
         return
     parsed = urlparse(origin)
     candidate = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}" if parsed.scheme and parsed.netloc else ""
+    if not candidate:
+        raise HTTPException(status_code=403, detail="Untrusted request origin")
+    if not _is_production() and parsed.hostname in {"localhost", "127.0.0.1"}:
+        return
     allowed = {
         f"{urlparse(value.strip()).scheme.lower()}://{urlparse(value.strip()).netloc.lower()}"
         for value in settings.BACKEND_CORS_ORIGINS.split(",")
         if value.strip()
     }
-    if not candidate or candidate not in allowed:
+    if candidate not in allowed:
         raise HTTPException(status_code=403, detail="Untrusted request origin")
 
 
