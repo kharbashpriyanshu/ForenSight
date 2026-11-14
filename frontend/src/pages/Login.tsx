@@ -36,8 +36,8 @@ export default function Login() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challenge_token: mfaChallenge, code: mfaCode }),
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Authenticator code was not accepted');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || `Authenticator code not accepted (${response.status})`);
         login();
         navigate('/cases');
       } else {
@@ -47,8 +47,8 @@ export default function Login() {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: formData,
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || 'Invalid credentials');
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.detail || `Login failed (${response.status}: ${response.statusText || 'Endpoint unreachable'})`);
         if (data.requires_mfa) {
           setMfaChallenge(data.challenge_token);
           setPassword('');
