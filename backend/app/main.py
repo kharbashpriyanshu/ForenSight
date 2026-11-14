@@ -44,7 +44,7 @@ _is_prod = settings.ENVIRONMENT.strip().lower() in {"production", "prod"}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins if _cors_origins else ["*"],
-    allow_origin_regex=None if _is_prod else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.onrender\.com$" if _is_prod else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

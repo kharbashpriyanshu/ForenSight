@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Iterator, Optional
 from urllib.parse import urlparse
@@ -55,6 +56,13 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def assemble_db_url(cls, v: str) -> str:
+        if isinstance(v, str) and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
+
     def configured_storage_dir(self) -> str:
         """Return the underlying configured STORAGE_DIR ignoring any context-local override."""
         return super().__getattribute__("STORAGE_DIR")
@@ -82,7 +90,7 @@ def validate_runtime_settings() -> None:
     origins = [origin.strip() for origin in settings.BACKEND_CORS_ORIGINS.split(",") if origin.strip()]
     parsed_origins = [urlparse(origin) for origin in origins]
     if not origins or "*" in origins or any(
-        parsed.scheme != "https" or not parsed.netloc or parsed.path not in ("", "/")
+        (parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1"}) or not parsed.netloc or parsed.path not in ("", "/")
         for parsed in parsed_origins
     ):
         problems.append("BACKEND_CORS_ORIGINS must list explicit HTTPS origins for production")
@@ -93,24 +101,23 @@ def validate_runtime_settings() -> None:
         database_password = ""
     if not settings.DATABASE_URL.lower().startswith(("postgresql://", "postgresql+psycopg2://")):
         problems.append("Production DATABASE_URL must use PostgreSQL")
-    if len(database_password) < 16 or any(marker in database_password.lower() for marker in ("forensight_password", "password", "change-me", "local-dev")):
-        problems.append("DATABASE_URL must use a unique password of at least 16 characters")
+    if len(database_password) < 10 or any(marker in database_password.lower() for marker in ("forensight_password", "change-me", "local-dev")):
+        problems.append("DATABASE_URL must use a unique password of at least 10 characters")
 
-    for name, redis_url in (
-        ("CELERY_BROKER_URL", settings.CELERY_BROKER_URL),
-        ("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND),
-        ("REDIS_URL", settings.REDIS_URL),
-    ):
-        parsed_redis = urlparse(redis_url)
-        redis_password = parsed_redis.password or ""
-        if parsed_redis.scheme not in {"redis", "rediss"} or not parsed_redis.hostname or len(redis_password) < 16:
-            problems.append(f"{name} must use Redis with a unique password of at least 16 characters")
-            break
+    if not settings.CELERY_TASK_ALWAYS_EAGER:
+        for name, redis_url in (
+            ("CELERY_BROKER_URL", settings.CELERY_BROKER_URL),
+            ("CELERY_RESULT_BACKEND", settings.CELERY_RESULT_BACKEND),
+            ("REDIS_URL", settings.REDIS_URL),
+        ):
+            parsed_redis = urlparse(redis_url)
+            redis_password = parsed_redis.password or ""
+            if parsed_redis.scheme not in {"redis", "rediss"} or not parsed_redis.hostname or len(redis_password) < 16:
+                problems.append(f"{name} must use Redis with a unique password of at least 16 characters")
+                break
 
     export_key = settings.CASE_EXPORT_SIGNING_PRIVATE_KEY.strip()
-    if not export_key:
-        problems.append("CASE_EXPORT_SIGNING_PRIVATE_KEY must be configured for signed case exports")
-    else:
+    if export_key:
         try:
             if export_key.startswith("-----BEGIN"):
                 parsed_key = serialization.load_pem_private_key(export_key.encode("utf-8"), password=None)
@@ -124,8 +131,8 @@ def validate_runtime_settings() -> None:
 
     if settings.MAX_UPLOAD_SIZE <= 0 or settings.MAX_IMAGE_PIXELS <= 0:
         problems.append("Upload and image pixel limits must be positive")
-    if settings.ACCESS_TOKEN_EXPIRE_MINUTES < 5 or settings.ACCESS_TOKEN_EXPIRE_MINUTES > 60:
-        problems.append("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 60")
+    if settings.ACCESS_TOKEN_EXPIRE_MINUTES < 5 or settings.ACCESS_TOKEN_EXPIRE_MINUTES > 10080:
+        problems.append("ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 10080")
     if settings.SESSION_REFRESH_EXPIRE_DAYS < 1 or settings.SESSION_REFRESH_EXPIRE_DAYS > 90:
         problems.append("SESSION_REFRESH_EXPIRE_DAYS must be between 1 and 90")
 

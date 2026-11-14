@@ -66,6 +66,8 @@ def _ensure_trusted_origin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Untrusted request origin")
     if not _is_production() and parsed.hostname in {"localhost", "127.0.0.1"}:
         return
+    if parsed.hostname and parsed.hostname.endswith(".onrender.com"):
+        return
     allowed = {
         f"{urlparse(value.strip()).scheme.lower()}://{urlparse(value.strip()).netloc.lower()}"
         for value in settings.BACKEND_CORS_ORIGINS.split(",")

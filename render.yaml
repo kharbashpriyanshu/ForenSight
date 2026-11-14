@@ -30,7 +30,7 @@ services:
       - key: STORAGE_DIR
         value: /app/storage
       - key: BACKEND_CORS_ORIGINS
-        value: "https://forensight-frontend.onrender.com,http://localhost:5173"
+        value: "https://forensight-frontend.onrender.com"
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "10080"
       - key: MAX_UPLOAD_SIZE

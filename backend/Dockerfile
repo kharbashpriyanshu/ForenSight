@@ -20,5 +20,5 @@ RUN groupadd --system --gid 10001 forensight \
 
 USER 10001:10001
 
-# Run alembic migrations on start, then uvicorn
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Run alembic migrations on start, then uvicorn on dynamic PORT
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
