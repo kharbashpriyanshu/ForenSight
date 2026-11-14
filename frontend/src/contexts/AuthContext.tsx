@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { API_BASE, invalidateApiCache, readCsrfCookie, refreshApiSession } from '../api';
+import { API_BASE, invalidateApiCache, readAuthToken, readCsrfCookie, refreshApiSession, setAuthToken } from '../api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -20,9 +20,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const revision = authRevision.current;
     const checkSession = async () => {
       try {
-        let response = await fetch(`${API_BASE}/auth/session`, { credentials: 'include' });
+        const token = readAuthToken();
+        const headers: Record<string, string> = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        let response = await fetch(`${API_BASE}/auth/session`, { credentials: 'include', headers });
         if (response.status === 401 && await refreshApiSession()) {
-          response = await fetch(`${API_BASE}/auth/session`, { credentials: 'include' });
+          const refreshedToken = readAuthToken();
+          const retryHeaders: Record<string, string> = {};
+          if (refreshedToken) retryHeaders['Authorization'] = `Bearer ${refreshedToken}`;
+          response = await fetch(`${API_BASE}/auth/session`, { credentials: 'include', headers: retryHeaders });
         }
         const sessionData = response.ok ? await response.json() : null;
         if (active && revision === authRevision.current) setAuthenticated(sessionData?.authenticated === true);
@@ -72,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // A failed network logout still clears the local UI session.
     } finally {
+      setAuthToken(null);
       invalidateApiCache();
       setAuthenticated(false);
       if (typeof BroadcastChannel !== 'undefined') {

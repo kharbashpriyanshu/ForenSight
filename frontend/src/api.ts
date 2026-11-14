@@ -48,16 +48,44 @@ export function readCsrfCookie(): string {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
+export function readAuthToken(): string {
+  try {
+    return localStorage.getItem('fs_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem('fs_token', token);
+    } else {
+      localStorage.removeItem('fs_token');
+    }
+  } catch {}
+}
+
 export async function refreshApiSession(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
+        const token = readAuthToken();
+        const headers: Record<string, string> = { 'X-CSRF-Token': readCsrfCookie() };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
         const response = await fetch(`${API_BASE}/auth/refresh`, {
           method: 'POST',
           credentials: 'include',
-          headers: { 'X-CSRF-Token': readCsrfCookie() },
+          headers,
         });
-        return response.ok;
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (data?.access_token) {
+            setAuthToken(data.access_token);
+          }
+          return true;
+        }
+        return false;
       } catch {
         return false;
       } finally {
@@ -110,6 +138,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
   }
   
   const headers = new Headers(options.headers || {});
+  const authToken = readAuthToken();
+  if (authToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${authToken}`);
+  }
   if (!isGet) {
     const csrf = readCsrfCookie();
     if (csrf) headers.set('X-CSRF-Token', csrf);
@@ -132,6 +164,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
         if (refreshed) {
           const csrf = readCsrfCookie();
           if (csrf) headers.set('X-CSRF-Token', csrf);
+          const newAuthToken = readAuthToken();
+          if (newAuthToken) headers.set('Authorization', `Bearer ${newAuthToken}`);
           response = await fetch(`${API_BASE}${endpoint}`, {
             ...options,
             headers,
@@ -161,6 +195,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
       !AUTH_ENDPOINTS_WITHOUT_REFRESH.includes(endpoint) &&
       !window.location.pathname.startsWith('/login')
     ) {
+      setAuthToken(null);
       invalidateApiCache();
       window.location.href = '/login';
     }

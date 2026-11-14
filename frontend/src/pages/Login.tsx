@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/layout/ThemeToggle';
 import BrandHeader from '../components/layout/BrandHeader';
-import { API_BASE } from '../api';
+import { API_BASE, setAuthToken } from '../api';
 
 
 export default function Login() {
@@ -38,6 +38,9 @@ export default function Login() {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || `Authenticator code not accepted (${response.status})`);
+        if (data?.access_token) {
+          setAuthToken(data.access_token);
+        }
         login();
         navigate('/cases');
       } else {
@@ -53,6 +56,9 @@ export default function Login() {
           setMfaChallenge(data.challenge_token);
           setPassword('');
           return;
+        }
+        if (data?.access_token) {
+          setAuthToken(data.access_token);
         }
         login();
         navigate('/cases');

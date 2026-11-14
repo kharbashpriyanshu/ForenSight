@@ -113,18 +113,20 @@ def _record_failed_mfa(db: Session, user: User) -> None:
 
 def _set_session_cookies(response: Response, access: str, refresh: str, csrf: str) -> None:
     secure = _is_production()
+    samesite = "none" if secure else "lax"
     access_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     refresh_seconds = settings.SESSION_REFRESH_EXPIRE_DAYS * 86400
-    response.set_cookie(ACCESS_COOKIE, access, max_age=access_seconds, httponly=True, secure=secure, samesite="lax", path="/")
-    response.set_cookie(REFRESH_COOKIE, refresh, max_age=refresh_seconds, httponly=True, secure=secure, samesite="lax", path="/api/auth")
-    response.set_cookie(CSRF_COOKIE, csrf, max_age=refresh_seconds, httponly=False, secure=secure, samesite="lax", path="/")
+    response.set_cookie(ACCESS_COOKIE, access, max_age=access_seconds, httponly=True, secure=secure, samesite=samesite, path="/")
+    response.set_cookie(REFRESH_COOKIE, refresh, max_age=refresh_seconds, httponly=True, secure=secure, samesite=samesite, path="/")
+    response.set_cookie(CSRF_COOKIE, csrf, max_age=refresh_seconds, httponly=False, secure=secure, samesite=samesite, path="/")
 
 
 def _clear_session_cookies(response: Response) -> None:
     secure = _is_production()
-    response.delete_cookie(ACCESS_COOKIE, path="/", secure=secure, httponly=True, samesite="lax")
-    response.delete_cookie(REFRESH_COOKIE, path="/api/auth", secure=secure, httponly=True, samesite="lax")
-    response.delete_cookie(CSRF_COOKIE, path="/", secure=secure, httponly=False, samesite="lax")
+    samesite = "none" if secure else "lax"
+    response.delete_cookie(ACCESS_COOKIE, path="/", secure=secure, httponly=True, samesite=samesite)
+    response.delete_cookie(REFRESH_COOKIE, path="/", secure=secure, httponly=True, samesite=samesite)
+    response.delete_cookie(CSRF_COOKIE, path="/", secure=secure, httponly=False, samesite=samesite)
 
 
 def _issue_session(db: Session, user: User, request: Request, response: Response) -> dict:
@@ -151,7 +153,13 @@ def _issue_session(db: Session, user: User, request: Request, response: Response
         extra_claims={"sid": session_id},
     )
     _set_session_cookies(response, access, refresh, csrf)
-    return {"authenticated": True, "username": user.username, "role": user.role, "mfa_enabled": user.totp_enabled}
+    return {
+        "authenticated": True,
+        "username": user.username,
+        "role": user.role,
+        "mfa_enabled": user.totp_enabled,
+        "access_token": access,
+    }
 
 
 def _encryption_box() -> Fernet:
@@ -355,10 +363,11 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     )
     remaining = max(1, int((session.expires_at - now).total_seconds()))
     secure = _is_production()
-    response.set_cookie(ACCESS_COOKIE, access, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, httponly=True, secure=secure, samesite="lax", path="/")
-    response.set_cookie(REFRESH_COOKIE, new_refresh, max_age=remaining, httponly=True, secure=secure, samesite="lax", path="/api/auth")
-    response.set_cookie(CSRF_COOKIE, new_csrf, max_age=remaining, httponly=False, secure=secure, samesite="lax", path="/")
-    return {"authenticated": True}
+    samesite = "none" if secure else "lax"
+    response.set_cookie(ACCESS_COOKIE, access, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, httponly=True, secure=secure, samesite=samesite, path="/")
+    response.set_cookie(REFRESH_COOKIE, new_refresh, max_age=remaining, httponly=True, secure=secure, samesite=samesite, path="/")
+    response.set_cookie(CSRF_COOKIE, new_csrf, max_age=remaining, httponly=False, secure=secure, samesite=samesite, path="/")
+    return {"authenticated": True, "access_token": access}
 
 
 @router.post(
