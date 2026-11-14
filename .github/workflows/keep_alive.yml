@@ -1,0 +1,28 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Runs every 12 minutes to keep the Render free tier awake
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping ForenSight API Health
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "BACKEND_URL secret is not set yet. Skipping ping until Render service is created."
+            exit 0
+          fi
+          # Strip trailing slashes and ensure https protocol
+          TARGET=$(echo "$BACKEND_URL" | sed 's:/*$::')
+          if [[ ! "$TARGET" =~ ^https?:// ]]; then
+            TARGET="https://$TARGET"
+          fi
+          echo "Pinging $TARGET/api/health..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$TARGET/api/health" || echo "000")
+          echo "Received HTTP status: $STATUS"

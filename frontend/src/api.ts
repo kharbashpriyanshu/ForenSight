@@ -8,10 +8,10 @@ const AUTH_ENDPOINTS_WITHOUT_REFRESH = ['/auth/login', '/auth/mfa/verify', '/aut
  */
 export function resolveApiBase(rawApiUrl?: string, _isProd = import.meta.env.PROD): string {
   const normalized = (rawApiUrl || '').trim().replace(/\/+$/, '');
-  if (_isProd || !normalized || LOCALHOST_ORIGIN_RE.test(normalized)) {
+  if (!normalized || LOCALHOST_ORIGIN_RE.test(normalized)) {
     return '/api';
   }
-  return `${normalized}/api`;
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`;
 }
 
 export const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL, import.meta.env.PROD);
