@@ -19,17 +19,49 @@ export default function Login() {
   const { isDark } = useTheme();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLogin = async (userToSubmit: string, passToSubmit: string) => {
     setError('');
     setLoading(true);
 
     try {
       const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
+      formData.append('username', userToSubmit);
+      formData.append('password', passToSubmit);
 
-      if (mfaChallenge) {
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Login failed (${response.status}: ${response.statusText || 'Endpoint unreachable'})`);
+      if (data.requires_mfa) {
+        setMfaChallenge(data.challenge_token);
+        setPassword('');
+        return;
+      }
+      if (data?.access_token) {
+        setAuthToken(data.access_token);
+      }
+      if (data?.csrf_token) {
+        setCsrfToken(data.csrf_token);
+      }
+      login();
+      navigate('/cases');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (mfaChallenge) {
+      setError('');
+      setLoading(true);
+      try {
         const response = await fetch(`${API_BASE}/auth/mfa/verify`, {
           method: 'POST',
           credentials: 'include',
@@ -46,34 +78,20 @@ export default function Login() {
         }
         login();
         navigate('/cases');
-      } else {
-        const response = await fetch(`${API_BASE}/auth/login`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.detail || `Login failed (${response.status}: ${response.statusText || 'Endpoint unreachable'})`);
-        if (data.requires_mfa) {
-          setMfaChallenge(data.challenge_token);
-          setPassword('');
-          return;
-        }
-        if (data?.access_token) {
-          setAuthToken(data.access_token);
-        }
-        if (data?.csrf_token) {
-          setCsrfToken(data.csrf_token);
-        }
-        login();
-        navigate('/cases');
+      } catch (err: any) {
+        setError(err.message || 'An error occurred during login');
+      } finally {
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
-    } finally {
-      setLoading(false);
+    } else {
+      await submitLogin(username, password);
     }
+  };
+
+  const handleQuickDemoLogin = (user: string, pass: string) => {
+    setUsername(user);
+    setPassword(pass);
+    submitLogin(user, pass);
   };
 
   return (
@@ -264,10 +282,68 @@ export default function Login() {
           </button>
         </form>
         
-        <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color-translucent)', paddingTop: '1.15rem', display: 'flex', flexDirection: 'column', gap: '0.55rem', alignItems: 'center' }}>
-          <div>
-            Instructor Demonstration Account (Synthetic Training Data): <code>demo_instructor</code>
+        <div style={{ 
+          marginTop: '1.75rem', 
+          borderTop: '1px solid var(--border-color-translucent)', 
+          paddingTop: '1.25rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '0.75rem' 
+        }}>
+          <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-body)', fontWeight: 600 }}>
+            ⚡ Instant Evaluation & Demo Access
           </div>
+
+          {/* 1-Click Instant Login Buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              data-testid="quick-demo-login"
+              onClick={() => handleQuickDemoLogin('demo_instructor', 'forensight_demo_instructor')}
+              disabled={loading}
+              style={{
+                fontSize: '0.78rem',
+                padding: '0.6rem 0.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.2rem',
+                borderRadius: '8px',
+                fontWeight: 600
+              }}
+            >
+              <span>🎓 1-Click Demo Login</span>
+              <span style={{ fontSize: '0.68rem', opacity: 0.9 }}>demo_instructor</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-testid="quick-admin-login"
+              onClick={() => handleQuickDemoLogin('admin', 'forensight_admin')}
+              disabled={loading}
+              style={{
+                fontSize: '0.78rem',
+                padding: '0.6rem 0.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.2rem',
+                borderRadius: '8px',
+                fontWeight: 600
+              }}
+            >
+              <span>🛡️ 1-Click Admin Login</span>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>admin</span>
+            </button>
+          </div>
+
+          <div style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            Single click fills credentials and signs directly into the station.
+          </div>
+
+          {/* Fill-only Button for automated test compatibility & manual inspection */}
           <button
             type="button"
             className="btn btn-secondary"
@@ -276,7 +352,14 @@ export default function Login() {
               setUsername('demo_instructor');
               setPassword('forensight_demo_instructor');
             }}
-            style={{ fontSize: '0.74rem', padding: '0.35rem 0.75rem' }}
+            style={{ 
+              fontSize: '0.72rem', 
+              padding: '0.35rem 0.65rem', 
+              alignSelf: 'center',
+              color: 'var(--text-muted)',
+              border: '1px dashed var(--border-default)',
+              background: 'transparent'
+            }}
           >
             Use Instructor Demo Credentials
           </button>
