@@ -16,19 +16,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "evidence_blobs",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("evidence_id", sa.Integer(), sa.ForeignKey("evidence.id", ondelete="CASCADE"), unique=True, nullable=False),
-        sa.Column("file_data", sa.LargeBinary(), nullable=False),
-        sa.Column("sha256_hash", sa.String(length=64), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
-    )
-    op.create_index("ix_evidence_blobs_id", "evidence_blobs", ["id"])
-    op.create_index("ix_evidence_blobs_evidence_id", "evidence_blobs", ["evidence_id"])
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+    if "evidence_blobs" not in tables:
+        op.create_table(
+            "evidence_blobs",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("evidence_id", sa.Integer(), sa.ForeignKey("evidence.id", ondelete="CASCADE"), unique=True, nullable=False),
+            sa.Column("file_data", sa.LargeBinary(), nullable=False),
+            sa.Column("sha256_hash", sa.String(length=64), nullable=False),
+            sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        )
+        op.create_index("ix_evidence_blobs_id", "evidence_blobs", ["id"])
+        op.create_index("ix_evidence_blobs_evidence_id", "evidence_blobs", ["evidence_id"])
 
 
 def downgrade() -> None:
-    op.drop_index("ix_evidence_blobs_evidence_id", table_name="evidence_blobs")
-    op.drop_index("ix_evidence_blobs_id", table_name="evidence_blobs")
-    op.drop_table("evidence_blobs")
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    tables = inspector.get_table_names()
+    if "evidence_blobs" in tables:
+        op.drop_index("ix_evidence_blobs_evidence_id", table_name="evidence_blobs")
+        op.drop_index("ix_evidence_blobs_id", table_name="evidence_blobs")
+        op.drop_table("evidence_blobs")
