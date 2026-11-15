@@ -25,10 +25,41 @@ from app.api.case_exports import router as case_exports_router
 from app.db.database import engine, Base
 
 
+def ensure_default_identities():
+    try:
+        from app.db.database import SessionLocal
+        from app.models.domain import User
+        from app.core.security import get_password_hash, verify_password
+        with SessionLocal() as db:
+            default_identities = [
+                ("admin", "forensight_admin", "ADMIN"),
+                ("demo_instructor", "forensight_demo_instructor", "INVESTIGATOR"),
+            ]
+            for username, plain_pass, role in default_identities:
+                user = db.query(User).filter(User.username == username).first()
+                if not user:
+                    user = User(
+                        username=username,
+                        hashed_password=get_password_hash(plain_pass),
+                        role=role,
+                    )
+                    db.add(user)
+                    db.commit()
+                elif not verify_password(plain_pass, user.hashed_password):
+                    user.hashed_password = get_password_hash(plain_pass)
+                    user.auth_failed_attempts = 0
+                    user.auth_locked_until = None
+                    db.commit()
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(f"Default user initialization skipped: {exc}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_runtime_settings()
     Base.metadata.create_all(bind=engine)
+    ensure_default_identities()
     yield
 
 

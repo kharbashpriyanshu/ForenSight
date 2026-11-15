@@ -17,6 +17,12 @@ DEMO_USERS = [
         "case_title": "Recruiter Demonstration Case"
     },
     {
+        "username": "demo_instructor",
+        "password": "forensight_demo_instructor",
+        "role": "INVESTIGATOR",
+        "case_title": "Faculty Demonstration Case"
+    },
+    {
         "username": "user_a",
         "password": "forensight_user_a",
         "role": "INVESTIGATOR",
