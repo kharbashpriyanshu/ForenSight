@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   FileUp, 
   CheckCircle2, 
@@ -50,6 +50,8 @@ interface IngestSuccessData {
 
 export default function EvidenceIntake() {
   const { caseId: paramCaseId } = useParams<{ caseId?: string }>();
+  const [searchParams] = useSearchParams();
+  const targetCaseId = searchParams.get('case_id') || searchParams.get('caseId') || paramCaseId || '';
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -63,10 +65,10 @@ export default function EvidenceIntake() {
   );
 
   // Case association state
-  const [activeCaseIdentifier, setActiveCaseIdentifier] = useState<string>(paramCaseId || '');
+  const [activeCaseIdentifier, setActiveCaseIdentifier] = useState<string>(targetCaseId);
   const [activeCaseTitle, setActiveCaseTitle] = useState<string>('');
   const [availableCases, setAvailableCases] = useState<CaseItem[]>([]);
-  const [caseMode, setCaseMode] = useState<'existing' | 'new'>(paramCaseId ? 'existing' : 'new');
+  const [caseMode, setCaseMode] = useState<'existing' | 'new'>(targetCaseId ? 'existing' : 'new');
   const [newCaseTitle, setNewCaseTitle] = useState<string>('');
 
   // Optional Provenance / Context
@@ -99,9 +101,10 @@ export default function EvidenceIntake() {
 
   // Load case details or list of cases
   useEffect(() => {
-    if (paramCaseId) {
-      setActiveCaseIdentifier(paramCaseId);
-      fetchApi(`/cases/${paramCaseId}`)
+    if (targetCaseId) {
+      setActiveCaseIdentifier(targetCaseId);
+      setCaseMode('existing');
+      fetchApi(`/cases/${targetCaseId}`)
         .then(res => res.ok ? res.json() : null)
         .then(data => {
           if (data && data.title) {
@@ -124,7 +127,7 @@ export default function EvidenceIntake() {
         })
         .catch(err => console.error("Error loading case list:", err));
     }
-  }, [paramCaseId]);
+  }, [targetCaseId]);
 
   // Update default case title when file is selected in "new" mode
   useEffect(() => {

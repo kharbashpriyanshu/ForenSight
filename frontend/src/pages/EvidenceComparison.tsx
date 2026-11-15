@@ -292,6 +292,63 @@ const EvidenceComparison: React.FC = () => {
       {loading && <GraphWorkspaceSkeleton />}
       {error && <div className="error-banner">{error}</div>}
 
+      {!loading && !error && !comparisonData && (
+        <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', background: '#faf8f5', borderRadius: '12px' }}>
+          <div style={{ maxWidth: '540px', margin: '0 auto' }}>
+            <div style={{
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              background: 'rgba(184, 135, 42, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 1.25rem',
+              color: 'var(--accent-color, #b8872a)'
+            }}>
+              <Columns2 size={28} />
+            </div>
+            {evidenceList.length < 2 ? (
+              <>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.6rem', color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
+                  Comparison Requires At Least Two Evidence Items
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                  This investigation currently contains only <strong>1 evidence item</strong>. To compare evidence side-by-side or inspect compression matrix differences, please upload a second image (e.g. an authentic reference, altered copy, or alternate capture) and attach it to this case.
+                </p>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => navigate(`/cases/intake?case_id=${caseId}`)}
+                    style={{ fontSize: '0.85rem', padding: '0.6rem 1.25rem' }}
+                  >
+                    + Add Second Evidence Image to this Case
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => navigate(`/cases/${caseId}/evidence`)}
+                    style={{ fontSize: '0.85rem', padding: '0.6rem 1.25rem' }}
+                  >
+                    View Case Evidence Library
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.6rem', color: 'var(--text-main)', fontFamily: 'var(--font-display)' }}>
+                  Select Two Different Evidence Items
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                  Both dropdowns above currently select the same file (<strong>#{selectedA}</strong>). Choose a different item in <strong>EVIDENCE ITEM B</strong> to begin comparing pixels, metadata, and compression matrices.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {comparisonData && !loading && (
         <>
           {/* Scientific Disclaimer */}
