@@ -125,11 +125,13 @@ export function prefetchApi(endpoint: string, options: RequestInit = {}): void {
   fetchApi(endpoint, options).catch(() => {});
 }
 
-export async function fetchApi(endpoint: string, options: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+export async function fetchApi(endpoint: string, options: RequestInit = {}, timeoutMs?: number): Promise<Response> {
   const method = (options.method || 'GET').toUpperCase();
   const isGet = method === 'GET';
   const isJobPoll = endpoint.includes('/jobs/');
   const isNoStore = options.cache === 'no-store' || (options as any).bypassCache || isJobPoll;
+  const isHeavyOperation = endpoint.includes('/jobs') || endpoint.includes('/analysis') || endpoint.includes('/reports') || endpoint.includes('/intake') || endpoint.includes('/batch');
+  const effectiveTimeout = timeoutMs ?? (isHeavyOperation ? 120000 : 60000);
 
   // Invalidate cache on write operations
   if (!isGet) {
@@ -150,7 +152,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
   }
 
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  const timeoutId = window.setTimeout(() => controller.abort(), effectiveTimeout);
   const abortFromCaller = () => controller.abort(options.signal?.reason);
 
   if (options.signal?.aborted) {
@@ -198,7 +200,7 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}, time
       }
     } catch (error) {
       if (controller.signal.aborted && !options.signal?.aborted) {
-        throw new Error(`The request timed out after ${Math.ceil(timeoutMs / 1000)} seconds. Retry when the service is available.`);
+        throw new Error(`The request timed out after ${Math.ceil(effectiveTimeout / 1000)} seconds. Retry when the service is available.`);
       }
       if (error instanceof TypeError) {
         throw new Error('Cannot reach the ForenSight API. Check that the backend is running, then retry.');

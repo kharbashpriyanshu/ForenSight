@@ -4,7 +4,7 @@ import uuid
 import datetime
 from datetime import timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import text
@@ -31,6 +31,7 @@ def _engine_version(analysis_type: str) -> str:
 def queue_analysis_job(
     evidence_id: int,
     analysis_type: str,
+    background_tasks: BackgroundTasks,
     request: Optional[AnalysisJobCreate] = Body(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -97,7 +98,7 @@ def queue_analysis_job(
                 outbox.next_attempt_at = datetime.datetime.now(timezone.utc)
                 outbox.last_error = None
             db.commit()
-            publish_pending_analysis_jobs(outbox_id=outbox.id, db=db)
+            background_tasks.add_task(publish_pending_analysis_jobs, outbox_id=outbox.id)
             db.refresh(existing_job)
             return existing_job
         return existing_job
@@ -128,7 +129,7 @@ def queue_analysis_job(
     case = db.query(InvestigationCase).filter(InvestigationCase.id == evidence.case_id).first()
     if case:
         AuditService.log_event(db, case.case_identifier, "ANALYSIS_QUEUED", evidence.id, actor=current_user.username, metadata={"analysis_type": analysis_type, "engine_version": engine_version, "request_hash": request_hash, "job_id": job.job_identifier})
-    publish_pending_analysis_jobs(outbox_id=outbox.id, db=db)
+    background_tasks.add_task(publish_pending_analysis_jobs, outbox_id=outbox.id)
     db.refresh(job)
 
     return job

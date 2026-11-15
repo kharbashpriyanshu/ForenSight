@@ -327,6 +327,47 @@ export default function EvidenceDetail() {
     }
   }, [evidenceId]);
 
+  // Automatically poll any jobs that are in RUNNING or QUEUED state
+  useEffect(() => {
+    const activeJobs: [string, any][] = (Object.entries(jobs) as [string, any][]).filter(
+      ([_, j]) => j && (j.status === 'RUNNING' || j.status === 'QUEUED')
+    );
+    if (activeJobs.length === 0) return;
+
+    const timer = setInterval(async () => {
+      for (const [analysisType, jobObj] of activeJobs) {
+        const j = jobObj as any;
+        try {
+          const pollRes = await fetchApi(`/jobs/${j.id}`);
+          if (pollRes.ok) {
+            const updated = await pollRes.json();
+            if (updated.status !== j.status) {
+              setJobs((prev: any) => ({ ...prev, [analysisType]: updated }));
+              if (updated.status === 'COMPLETED' && updated.analysis_id) {
+                const resultRes = await fetchApi(`/analysis/${updated.analysis_id}`);
+                if (resultRes.ok) {
+                  const resData = await resultRes.json();
+                  const key = analysisType.toLowerCase();
+                  const hypKey = key.replace(/_/g, '-');
+                  setResults((prev: any) => ({ ...prev, [key]: resData, [hypKey]: resData }));
+                }
+                if (uploadResult?.id) {
+                  fetchApi(`/evidence/${uploadResult.id}/heatmap`)
+                    .then(r => r.json())
+                    .then(h => setHeatmap(h))
+                    .catch(() => {});
+                  runFusionSync(uploadResult.id);
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+    }, 2000);
+
+    return () => clearInterval(timer);
+  }, [jobs, uploadResult?.id]);
+
   const runAsyncJob = async (analysisType: string) => {
     setJobErrors(prev => ({ ...prev, [analysisType]: '' }));
     try {
