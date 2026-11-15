@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/layout/ThemeToggle';
 import BrandHeader from '../components/layout/BrandHeader';
-import { API_BASE, setAuthToken } from '../api';
+import { API_BASE, setAuthToken, setCsrfToken } from '../api';
 
 
 export default function Login() {
@@ -41,6 +41,9 @@ export default function Login() {
         if (data?.access_token) {
           setAuthToken(data.access_token);
         }
+        if (data?.csrf_token) {
+          setCsrfToken(data.csrf_token);
+        }
         login();
         navigate('/cases');
       } else {
@@ -59,6 +62,9 @@ export default function Login() {
         }
         if (data?.access_token) {
           setAuthToken(data.access_token);
+        }
+        if (data?.csrf_token) {
+          setCsrfToken(data.csrf_token);
         }
         login();
         navigate('/cases');

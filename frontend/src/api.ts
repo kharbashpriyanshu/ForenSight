@@ -43,9 +43,28 @@ export function invalidateApiCache(filterPattern?: string) {
   }
 }
 
+let memoryCsrfToken = '';
+
+export function setCsrfToken(token: string | null): void {
+  memoryCsrfToken = token || '';
+  try {
+    if (token) {
+      localStorage.setItem('fs_csrf', token);
+    } else {
+      localStorage.removeItem('fs_csrf');
+    }
+  } catch {}
+}
+
 export function readCsrfCookie(): string {
   const match = document.cookie.match(/(?:^|;\s*)fs_csrf=([^;]*)/);
-  return match ? decodeURIComponent(match[1]) : '';
+  if (match) return decodeURIComponent(match[1]);
+  if (memoryCsrfToken) return memoryCsrfToken;
+  try {
+    return localStorage.getItem('fs_csrf') || '';
+  } catch {
+    return '';
+  }
 }
 
 export function readAuthToken(): string {
@@ -82,6 +101,9 @@ export async function refreshApiSession(): Promise<boolean> {
           const data = await response.json().catch(() => ({}));
           if (data?.access_token) {
             setAuthToken(data.access_token);
+          }
+          if (data?.csrf_token) {
+            setCsrfToken(data.csrf_token);
           }
           return true;
         }

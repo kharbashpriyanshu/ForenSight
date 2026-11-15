@@ -547,6 +547,10 @@ def test_cli_subcommands():
     from app.benchmark.cli import main
     import sys
 
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    env = os.environ.copy()
+    env["PYTHONPATH"] = base_dir + os.pathsep + env.get("PYTHONPATH", "")
+
     with tempfile.TemporaryDirectory() as tmp:
         # 1. Test generate subcommand via subprocess
         cmd_gen = [
@@ -561,7 +565,7 @@ def test_cli_subcommands():
             "--seed",
             "42",
         ]
-        res_gen = subprocess.run(cmd_gen, capture_output=True, text=True)
+        res_gen = subprocess.run(cmd_gen, capture_output=True, text=True, cwd=base_dir, env=env)
         assert res_gen.returncode == 0
         assert os.path.exists(os.path.join(tmp, "manifest.json"))
 
@@ -580,7 +584,7 @@ def test_cli_subcommands():
             out_bench,
             "--no-determinism",
         ]
-        res_run = subprocess.run(cmd_run, capture_output=True, text=True)
+        res_run = subprocess.run(cmd_run, capture_output=True, text=True, cwd=base_dir, env=env)
         assert res_run.returncode == 0
         assert os.path.exists(os.path.join(out_bench, "benchmark_results.json"))
 
@@ -591,36 +595,19 @@ def test_cli_subcommands():
 def test_frozen_core_integrity():
     """
     Enforces the frozen core boundary: backend/app/forensics/ (38 files)
-    must remain byte-for-byte identical to the frozen baseline.
+    must remain byte-for-byte identical to the frozen baseline manifest.
     """
-    check_rev = subprocess.run(["git", "cat-file", "-e", "259251b^{commit}"], capture_output=True)
-    if check_rev.returncode == 0:
-        cmd = ["git", "diff", "259251b", "--", "backend/app/forensics/"]
-        res = subprocess.run(cmd, capture_output=True, text=True)
-        assert res.returncode == 0
-        assert len(res.stdout.strip()) == 0, (
-            f"CRITICAL VIOLATION: backend/app/forensics/ has been modified!\n{res.stdout}"
-        )
-    else:
-        # Fallback to cryptographic manifest verification for shallow checkouts
-        manifest_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "forensics_freeze_manifest.json")
-        assert os.path.exists(manifest_path), f"Freeze manifest not found at {manifest_path}"
-        with open(manifest_path, "r", encoding="utf-8") as f:
-            expected = json.load(f)
-        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        forensics_dir = os.path.join(base_dir, "app", "forensics")
-        current = {}
-        for root, _, files in os.walk(forensics_dir):
-            for file in sorted(files):
-                if file.endswith(".py"):
-                    full_p = os.path.join(root, file)
-                    rel_p = os.path.relpath(full_p, base_dir).replace("\\", "/")
-                    h = hashlib.sha256()
-                    with open(full_p, "rb") as fp:
-                        while chunk := fp.read(8192):
-                            h.update(chunk)
-                    current[rel_p] = h.hexdigest()
-        assert current == expected, "Cryptographic manifest mismatch on forensics core files!"
+    from scripts.verify_scientific_freeze import (
+        scan_forensics_directory,
+        load_manifest_with_duplicate_check,
+        verify_freeze_integrity,
+        MANIFEST_FILE,
+        EXPECTED_PROTECTED_FILES,
+    )
+    current = scan_forensics_directory()
+    committed = load_manifest_with_duplicate_check(MANIFEST_FILE)
+    discrepancies = verify_freeze_integrity(current, committed, EXPECTED_PROTECTED_FILES)
+    assert not discrepancies, f"Freeze verification discrepancies found: {discrepancies}"
 
 
 def test_benchmark_latest_endpoints_return_structured_empty_state(tmp_path, monkeypatch):

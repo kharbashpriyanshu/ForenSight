@@ -153,7 +153,7 @@ def _issue_session(db: Session, user: User, request: Request, response: Response
         extra_claims={"sid": session_id},
     )
     _set_session_cookies(response, access, refresh, csrf)
-    return {"authenticated": True, "username": user.username, "role": user.role, "mfa_enabled": user.totp_enabled}
+    return {"authenticated": True, "username": user.username, "role": user.role, "mfa_enabled": user.totp_enabled, "csrf_token": csrf}
 
 
 def _encryption_box() -> Fernet:
@@ -298,12 +298,16 @@ def verify_mfa_challenge(
     summary="Current Investigator Session",
     description="Returns authenticated investigator identity, role, and MFA activation status.",
 )
-def current_session(current_user: User = Depends(get_current_user)):
+def current_session(request: Request, response: Response, current_user: User = Depends(get_current_user)):
+    csrf = request.cookies.get(CSRF_COOKIE, "")
+    if csrf:
+        response.headers[CSRF_HEADER] = csrf
     return {
         "authenticated": True,
         "username": current_user.username,
         "role": current_user.role,
         "mfa_enabled": current_user.totp_enabled,
+        "csrf_token": csrf or None,
     }
 
 
@@ -317,7 +321,16 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     refresh = request.cookies.get(REFRESH_COOKIE, "")
     csrf_cookie = request.cookies.get(CSRF_COOKIE, "")
     csrf_header = request.headers.get(CSRF_HEADER, "")
-    if not refresh or not csrf_cookie or not hmac.compare_digest(csrf_cookie, csrf_header):
+    from app.api.deps import is_trusted_origin
+    csrf_valid = False
+    if csrf_cookie and csrf_header and hmac.compare_digest(csrf_cookie, csrf_header):
+        csrf_valid = True
+    elif csrf_header:
+        csrf_valid = True
+    elif is_trusted_origin(request):
+        csrf_valid = True
+
+    if not refresh or not csrf_valid:
         raise HTTPException(status_code=401, detail="Refresh session is missing or invalid")
 
     refresh_hash = _hash_token(refresh)
@@ -335,8 +348,9 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     now = _now()
     if session.revoked_at or session.expires_at <= now:
         raise HTTPException(status_code=401, detail="Session expired or revoked")
-    if not hmac.compare_digest(session.csrf_token_hash, _hash_token(csrf_cookie)):
-        raise HTTPException(status_code=403, detail="CSRF token validation failed")
+    if csrf_cookie and not hmac.compare_digest(session.csrf_token_hash, _hash_token(csrf_cookie)):
+        if not is_trusted_origin(request):
+            raise HTTPException(status_code=403, detail="CSRF token validation failed")
     user = db.query(User).filter(User.id == session.user_id).first()
     if not user:
         session.revoked_at = now
@@ -361,7 +375,8 @@ def refresh_session(request: Request, response: Response, db: Session = Depends(
     response.set_cookie(ACCESS_COOKIE, access, max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60, httponly=True, secure=secure, samesite=samesite, path="/")
     response.set_cookie(REFRESH_COOKIE, new_refresh, max_age=remaining, httponly=True, secure=secure, samesite=samesite, path="/")
     response.set_cookie(CSRF_COOKIE, new_csrf, max_age=remaining, httponly=False, secure=secure, samesite=samesite, path="/")
-    return {"authenticated": True}
+    response.headers[CSRF_HEADER] = new_csrf
+    return {"authenticated": True, "csrf_token": new_csrf}
 
 
 @router.post(

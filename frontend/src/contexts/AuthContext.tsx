@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { API_BASE, invalidateApiCache, readAuthToken, readCsrfCookie, refreshApiSession, setAuthToken } from '../api';
+import { API_BASE, invalidateApiCache, readAuthToken, readCsrfCookie, refreshApiSession, setAuthToken, setCsrfToken } from '../api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -31,6 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           response = await fetch(`${API_BASE}/auth/session`, { credentials: 'include', headers: retryHeaders });
         }
         const sessionData = response.ok ? await response.json() : null;
+        if (sessionData?.csrf_token) {
+          setCsrfToken(sessionData.csrf_token);
+        }
         if (active && revision === authRevision.current) setAuthenticated(sessionData?.authenticated === true);
       } catch {
         if (active && revision === authRevision.current) setAuthenticated(false);
@@ -79,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // A failed network logout still clears the local UI session.
     } finally {
       setAuthToken(null);
+      setCsrfToken(null);
       invalidateApiCache();
       setAuthenticated(false);
       if (typeof BroadcastChannel !== 'undefined') {

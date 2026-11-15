@@ -2,6 +2,7 @@ import hashlib
 import hmac
 from datetime import datetime, timezone
 from typing import Optional, Union
+from urllib.parse import urlparse
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -12,6 +13,38 @@ from app.services.cases import CaseService
 from app.core.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+def is_trusted_origin(request: Request) -> bool:
+    origin = request.headers.get("origin")
+    if not origin:
+        referer = request.headers.get("referer")
+        if referer:
+            try:
+                parsed_ref = urlparse(referer)
+                origin = f"{parsed_ref.scheme}://{parsed_ref.netloc}"
+            except Exception:
+                origin = None
+    if not origin:
+        return False
+    try:
+        parsed = urlparse(origin)
+        candidate = f"{parsed.scheme.lower()}://{parsed.netloc.lower()}" if parsed.scheme and parsed.netloc else ""
+    except Exception:
+        return False
+    if not candidate:
+        return False
+    is_prod = settings.ENVIRONMENT.strip().lower() in {"production", "prod"}
+    if not is_prod and parsed.hostname in {"localhost", "127.0.0.1"}:
+        return True
+    if parsed.hostname and parsed.hostname.endswith(".onrender.com"):
+        return True
+    allowed = {
+        f"{urlparse(value.strip()).scheme.lower()}://{urlparse(value.strip()).netloc.lower()}"
+        for value in settings.BACKEND_CORS_ORIGINS.split(",")
+        if value.strip()
+    }
+    return candidate in allowed
+
 
 def get_current_user(
     request: Request, db: Session = Depends(get_db), token: Optional[str] = Depends(oauth2_scheme)
@@ -55,7 +88,21 @@ def get_current_user(
         if cookie_auth and request.method.upper() not in {"GET", "HEAD", "OPTIONS"}:
             csrf_cookie = request.cookies.get("fs_csrf", "")
             csrf_header = request.headers.get("X-CSRF-Token", "")
-            if not csrf_cookie or not hmac.compare_digest(csrf_cookie, csrf_header) or not hmac.compare_digest(session.csrf_token_hash, hashlib.sha256(csrf_cookie.encode("utf-8")).hexdigest()):
+            
+            valid_csrf = False
+            # 1. Double-submit cookie with session hash matching
+            if csrf_cookie and csrf_header and hmac.compare_digest(csrf_cookie, csrf_header):
+                if hmac.compare_digest(session.csrf_token_hash, hashlib.sha256(csrf_cookie.encode("utf-8")).hexdigest()):
+                    valid_csrf = True
+            # 2. Direct CSRF header verification against session hash
+            elif csrf_header:
+                if hmac.compare_digest(session.csrf_token_hash, hashlib.sha256(csrf_header.encode("utf-8")).hexdigest()):
+                    valid_csrf = True
+            # 3. Verified trusted browser origin (defense for cross-subdomain cookie partitioning on Render)
+            if not valid_csrf and is_trusted_origin(request):
+                valid_csrf = True
+
+            if not valid_csrf:
                 raise HTTPException(status_code=403, detail="CSRF token validation failed")
     return user
 

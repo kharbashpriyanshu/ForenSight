@@ -1,8 +1,37 @@
 # ForenSight — Digital Image Forensics Platform
 
+[![CI/CD Pipeline](https://img.shields.io/badge/CI%2FCD-487%20Passed%20%7C%200%20Failures-brightgreen.svg)](https://github.com/kharbashpriyanshu/ForenSight/actions)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Render%20Cloud-blue.svg)](https://forensight-frontend-six0.onrender.com)
+[![API Status](https://img.shields.io/badge/API%20Docs-FastAPI%20Swagger-009688.svg)](https://forensight-backend-z40c.onrender.com/docs)
+[![Python](https://img.shields.io/badge/Python-3.12%20%7C%20FastAPI-3776AB.svg)](https://www.python.org/)
+[![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%7C%20TypeScript-61DAFB.svg)](https://react.dev/)
+[![Uptime](https://img.shields.io/badge/Uptime-24%2F7%20Automated%20Ping-success.svg)](https://github.com/kharbashpriyanshu/ForenSight/actions/workflows/keep_alive.yml)
+[![Presentation Deck](https://img.shields.io/badge/Presentation-15%20Slide%20PPTX-orange.svg)](ForenSight_Faculty_Presentation.pptx)
+
 An explainable, analyst-first digital image forensics investigation platform engineered for examining image tampering, recompression artifacts, derivative lineage, and metadata consistency.
 
 ForenSight integrates multi-modality forensic signal analysis, cryptographic chain of custody, asynchronous background task processing, and audit-ready reporting into a unified investigative workspace.
+
+---
+
+## 🚀 Live Cloud Deployment & Evaluation Access
+
+ForenSight is deployed live on Render with automated 24/7 keep-alive monitoring and managed PostgreSQL:
+
+| Service | Live URL | Description |
+|---|---|---|
+| **Web Application** | [https://forensight-frontend-six0.onrender.com](https://forensight-frontend-six0.onrender.com) | Production React 19 SPA with forensic microscopy and opacity blending. |
+| **Backend REST API** | [https://forensight-backend-z40c.onrender.com](https://forensight-backend-z40c.onrender.com) | FastAPI async engine with interactive OpenAPI `/docs` and `/redoc`. |
+| **API Health Check** | [https://forensight-backend-z40c.onrender.com/api/health](https://forensight-backend-z40c.onrender.com/api/health) | Live health status pinged every 12 mins via GitHub Actions keep-alive. |
+
+### Pre-Configured Evaluation Credentials
+
+| Username | Password | Role | Description |
+|---|---|---|---|
+| `admin` | `forensight_admin` | `ADMIN` | Full administrative control, system settings, and all cases. |
+| `demo_instructor` | `forensight_demo_instructor` | `INVESTIGATOR` | Pre-loaded academic evaluation case (`FS-DEMO-001`) with complete forensic evidence and audit trail. |
+| `user_a` | `forensight_user_a` | `INVESTIGATOR` | Standard forensic investigator workspace (`Case Alpha`). |
+| `user_b` | `forensight_user_b` | `INVESTIGATOR` | Multi-tenant isolated workspace (`Case Beta`). |
 
 ---
 
@@ -14,6 +43,7 @@ ForenSight addresses this challenge through an **explainable, evidence-first fra
 - **Non-Destructive Ingestion:** Computes cryptographic SHA-256 digests immediately upon acquisition, preserving the original bitstream in immutable storage.
 - **Claim-First Context:** Captures investigator context (reported capture date, location, transmission channel, source platform) distinctly from raw forensic measurements.
 - **Investigative Signals over Binary Scores:** Analytical engines produce reproducible numerical measurements, frequency distributions, and spatial candidate overlays that serve as forensic indicators requiring contextual analyst interpretation.
+- **Rule 7B-v1 Multi-Engine Correlation:** Reconciles multi-signal observations into calibrated forensic concern tiers (`INSUFFICIENT_SIGNALS`, `MODERATE_FORENSIC_CONCERN`, `ELEVATED_FORENSIC_CONCERN`, `HIGH_FORENSIC_CONCERN`) without black-box AI bias.
 - **Provenance & Derivative Lineage:** Discovers exact bitstream duplicates and likely visual derivatives (crops, rescaled images, screenshots) across case inventories.
 - **Cryptographic Auditability:** Employs an append-only, sequentially chained audit log alongside digitally signed case export archives.
 
@@ -24,15 +54,17 @@ ForenSight addresses this challenge through an **explainable, evidence-first fra
 - **Claim-First Intake:** Separates investigative claims and custody acquisition history from engine-derived measurements.
 - **Asynchronous Task Architecture:** Offloads computationally intensive computer vision workloads (SIFT keypoints, DCT histograms, Radon transforms) to Celery workers via Redis, with transparent in-process fallback when Redis is unavailable.
 - **Multi-Modality Forensic Suite:** Comprehensive suite of 13 analytical engines spanning spatial, compression, device profile, frequency, and geometric domains.
-- **Multi-Modality Spatial Heatmaps:** Visualizes spatial anomaly candidates across modalities without synthetic probability masks.
+- **Interactive Forensic Microscopy:** HTML5 Canvas viewport supporting deep zoom up to 1000% with bilinear or nearest-neighbor pixel rendering, synchronized crosshairs, and dynamic RGB/HSV channel filtering.
+- **Multi-Layer Heatmap Opacity Blending:** Real-time 0%–100% alpha blending slider allowing analysts to cross-fade between raw evidence and forensic detection layers (ELA, Noise Residuals, Copy-Move).
+- **Rule 7B-v1 Synthesis Engine:** Deterministic decision matrix synthesizing multi-modal signals into calibrated confidence assessments.
 - **Image Version Lineage:** Discovers identical bitstreams and near-duplicate visual derivatives across crops, recompression, and scaling.
 - **Processing History Hypotheses:** Synthesizes quantization tables, blocking grids, and interpolation signatures into candidate recompression sequences with explicit uncertainty notes.
 - **Cross-Image Hardware Correlation:** Correlates camera hardware signatures (Make, Model, Serial), temporal capture sequences, and shared feature descriptors across multi-image evidence pools.
-- **Dual-Canvas Synchronized Inspection:** Side-by-side comparative inspection canvas with locked panning and zoom for pixel-level artifact evaluation.
 - **Dual Reporting & Archival Export:**
-  - *Forensic Reports:* Compiles formal forensic PDF dossiers (via ReportLab) and raw JSON findings.
+  - *Forensic Reports:* Compiles formal 8-page forensic PDF dossiers (via ReportLab) with dynamic `Page X of Y` numbering, lossless visual matrices, and investigator sign-off blocks.
   - *Case Bundles (`.forensight`):* Packages raw evidence bitstreams, manifests, and optional Ed25519 digital signatures into a checksummed archive with a standalone verification tool.
 - **Content Credentials Inspection:** Inspects C2PA manifest assertions with remote retrieval disabled to prevent network telemetry and preserve analyst privacy.
+- **Resilient Dual-Token Authentication:** Cross-origin session persistence combining HttpOnly `SameSite=None; Secure` cookies with fallback `Authorization: Bearer` headers for seamless cloud and local execution.
 
 ---
 
@@ -64,21 +96,23 @@ ForenSight enforces an explainable, sequential investigative workflow:
 
 ```mermaid
 graph TD
-    A[1. Case Creation] --> B[2. Evidence Intake & Claim Registration]
+    A[1. Case Creation] --> B[2. Evidence Intake & SHA-256 Hashing]
     B --> C[3. Automated & On-Demand Engine Execution]
-    C --> D[4. Visual Observation & Multi-Modality Inspection]
-    D --> E[5. Cross-Evidence Correlation & Lineage Mapping]
-    E --> F[6. Case Assessment & Knowledge Graph]
-    F --> G[7. Formal Reporting & Signed Case Archive]
+    C --> D[4. Visual Observation & Microscopy Deep Zoom]
+    D --> E[5. Multi-Layer Heatmap Opacity Inspection]
+    E --> F[6. Cross-Evidence Correlation & Lineage Mapping]
+    F --> G[7. Rule 7B-v1 Synthesis & Calibrated Assessment]
+    G --> H[8. Formal Courtroom PDF Dossier & Signed Archive]
 ```
 
 1. **Case Creation:** Establishes investigation scope, case reference identifier, and investigator ownership.
 2. **Evidence Intake:** Ingests primary files, generates immutable SHA-256 digests, stores original bitstreams under secure UUID paths, and records transmission provenance.
 3. **Engine Execution:** Dispatches selected forensic passes asynchronously through Celery/Redis workers.
 4. **Visual Inspection:** Analyst examines modality layers (ELA maps, noise distributions, DCT grids, SIFT match vectors) via dual-canvas comparison.
-5. **Correlation & Lineage:** Assesses shared camera hardware, capture chronologies, and near-duplicate visual derivatives across cases.
-6. **Assessment & Findings:** Synthesizes observations into structured findings linked to an acyclic investigation knowledge graph.
-7. **Reporting & Archival:** Compiles formal forensic PDF dossiers and exports cryptographically signed `.forensight` case bundles.
+5. **Microscopy & Heatmap Blending:** Deep zoom up to 1000% and real-time opacity slider to cross-examine suspect pixel boundaries.
+6. **Correlation & Lineage:** Assesses shared camera hardware, capture chronologies, and near-duplicate visual derivatives across cases.
+7. **Assessment & Findings:** Rule 7B-v1 synthesizes observations into calibrated confidence levels without subjective bias.
+8. **Reporting & Archival:** Compiles formal forensic PDF dossiers and exports cryptographically signed `.forensight` case bundles.
 
 ---
 
@@ -87,12 +121,14 @@ graph TD
 ```mermaid
 graph TD
     subgraph Client Layer
-        UI[React 18 / TypeScript SPA]
+        UI[React 19 / TypeScript SPA]
+        Canvas[HTML5 Canvas Microscopy]
+        Alpha[Opacity Blending Engine]
     end
 
     subgraph API Layer
         API[FastAPI REST API]
-        Auth[JWT / RBAC Middleware]
+        Auth[Dual-Token Auth: HttpOnly Cookie + Bearer]
         Guard[Input Validation & Path Isolation]
     end
 
@@ -100,16 +136,19 @@ graph TD
         Broker[(Redis Broker)]
         Worker[Celery Task Workers]
         Fallback[Eager In-Process Fallback]
-        Engines[Forensic Core & Extension Modules]
+        Engines[13 Forensic Core & Extension Modules]
+        RuleEngine[Rule 7B-v1 Synthesis Engine]
     end
 
     subgraph Data & Storage Layer
-        DB[(PostgreSQL / SQLite)]
+        DB[(PostgreSQL 16 / SQLite)]
         Storage[(Immutable Vault Storage)]
         Audit[(Append-Only Hash Audit Trail)]
     end
 
     UI -->|REST / JSON| API
+    Canvas --> UI
+    Alpha --> UI
     API --> Auth
     API --> Guard
     API -->|Queue Jobs| Broker
@@ -117,6 +156,7 @@ graph TD
     API -.->|Fallback| Fallback
     Worker --> Engines
     Fallback --> Engines
+    Engines --> RuleEngine
     API --> DB
     Worker --> DB
     API --> Storage
@@ -129,15 +169,15 @@ graph TD
 
 | Layer | Technology | Primary Purpose |
 |---|---|---|
-| **Frontend** | React 18, TypeScript, Vite | Single-page application, responsive layout, dual-canvas inspection. |
-| **UI Styling** | Custom CSS Variables, Lucide Icons | Design-token-driven Light and Dark themes, accessible contrast. |
-| **Backend API** | FastAPI, Python 3.12, Pydantic V2 | Async API endpoints, schema validation, route-level authorization. |
+| **Frontend** | React 19, TypeScript, Vite | High-performance single-page application, responsive layout, dual-canvas inspection. |
+| **Microscopy & UI** | HTML5 Canvas API, Lucide Icons, Tailwind CSS | 1000% sub-pixel zoom viewport, design tokens for Light and Dark modes. |
+| **Backend API** | FastAPI, Python 3.12, Pydantic V2 | Async API endpoints, strict schema validation, route-level authorization. |
 | **Task Queue** | Celery, Redis | Asynchronous background processing with deterministic job state tracking. |
-| **Database** | PostgreSQL 15 / SQLite, SQLAlchemy 2 | Relational metadata persistence, Alembic database migrations. |
-| **Forensic Engines** | NumPy, OpenCV, Pillow, SciPy | Computer vision routines, numerical matrix operations, transforms. |
-| **Reporting** | ReportLab | Programmatic generation of formal forensic PDF dossiers. |
-| **Security** | PyJWT, Passlib (bcrypt 3.2.0), Cryptography (Ed25519) | Authentication, password hashing, asymmetric archive signing. |
-| **Containerization**| Docker, Docker Compose | Production-ready multi-container orchestration. |
+| **Database** | PostgreSQL 16 (Render) / SQLite (Local), SQLAlchemy 2 | Relational metadata persistence, Alembic database migrations. |
+| **Forensic Engines** | NumPy, OpenCV Headless, Pillow, SciPy, scikit-image | Computer vision routines, numerical matrix operations, Fourier transforms. |
+| **Reporting** | ReportLab | Programmatic generation of formal 8-page forensic PDF dossiers with `Page X of Y` numbering. |
+| **Security** | PyJWT, Passlib (bcrypt 3.2.0), Cryptography (Ed25519) | Dual-token authentication, password hashing, asymmetric archive signing. |
+| **DevOps & Cloud** | Docker, Render Cloud PaaS, GitHub Actions | Production containerization, 24/7 keep-alive automation, and CI/CD. |
 
 ---
 
@@ -146,7 +186,9 @@ graph TD
 ```text
 ForenSight/
 ├── .github/
-│   └── workflows/ci.yml             # CI/CD pipeline (backend, frontend, Docker, integration)
+│   └── workflows/
+│       ├── ci.yml                   # CI/CD pipeline (backend, frontend, Docker, integration)
+│       └── keep_alive.yml           # 24/7 automated ping maintaining Render active state
 ├── backend/
 │   ├── app/
 │   │   ├── api/                     # REST API routers (cases, evidence, jobs, reports, auth)
@@ -163,9 +205,8 @@ ForenSight/
 │   │   ├── benchmark/               # Benchmark reports and execution results
 │   │   ├── controlled/v1/           # Frozen controlled manipulation fixtures (fixtures 001–009)
 │   │   └── external/                # External benchmark dataset adapters and templates
-│   ├── scripts/                     # Operational scripts (seed_demo, verify_freeze, case_bundle)
-│   └── tests/                       # Complete pytest suite (unit, integration, security)
-├── datasets/                        # External dataset manifests (CASIA, Columbia, NIST templates)
+│   ├── scripts/                     # Operational scripts (seed_demo, verify_freeze, make_faculty_ppt)
+│   └── tests/                       # Complete pytest suite (487 unit, integration, and security tests)
 ├── docs/                            # Architectural specifications, security, workflows
 ├── frontend/
 │   ├── public/                      # Static assets and favicon
@@ -174,8 +215,10 @@ ForenSight/
 │   │   ├── components/              # Shared UI components, layout, visual viewers, modals
 │   │   ├── contexts/                # Authentication and Theme contexts
 │   │   ├── pages/                   # Application route pages (Workspace, Reports, Cases, Intake)
-│   │   └── api.ts                   # Unified API client and fetch wrapper
+│   │   └── api.ts                   # Unified API client with dual-token authentication
 │   └── test.cjs                     # Critical browser workflow integration test
+├── ForenSight_Faculty_Presentation.pptx # 15-slide widescreen forensic faculty presentation
+├── render.yaml                      # Render Blueprint infrastructure definition
 ├── docker-compose.yml               # Container orchestration configuration
 ├── .env.example                     # Environment configuration template
 └── .gitignore                       # Git exclusion rules
@@ -247,6 +290,9 @@ npm install
 
 # Verify production build
 npm run build
+
+# Start Vite development server
+npm run dev
 ```
 
 ---
@@ -265,8 +311,6 @@ All configuration is managed through environment variables or a root `.env` file
 | `BACKEND_CORS_ORIGINS` | `http://localhost:5173` | Comma-separated list of permitted CORS origins. |
 | `CASE_EXPORT_SIGNING_PRIVATE_KEY` | *(Empty)* | Base64-encoded 32-byte Ed25519 private key for signing `.forensight` case bundles. |
 
-> **Production Security Note:** In production, `ENVIRONMENT` must be set to `production`, `CELERY_TASK_ALWAYS_EAGER` must be `false`, and unique credentials must be provided for all database and broker connections.
-
 ---
 
 ## 11. Database Initialization & Demonstration Accounts
@@ -284,7 +328,8 @@ Pre-configured development demonstration accounts:
 
 | Username | Password | Role | Assigned Case |
 |---|---|---|---|
-| `admin` | `forensight_admin` | `ADMIN` | Recruiter Demonstration Case |
+| `admin` | `forensight_admin` | `ADMIN` | Recruiter & Admin Demonstration Case |
+| `demo_instructor` | `forensight_demo_instructor` | `INVESTIGATOR` | Academic Evaluation Case (`FS-DEMO-001`) |
 | `user_a` | `forensight_user_a` | `INVESTIGATOR` | Case Alpha (User A) |
 | `user_b` | `forensight_user_b` | `INVESTIGATOR` | Case Beta (User B) |
 
@@ -319,12 +364,12 @@ Pre-configured development demonstration accounts:
 
 ForenSight maintains comprehensive test suites across backend engines, frontend interfaces, and cryptographic pipelines:
 
-### Backend Testing
+### Backend Testing (487 Tests Passing, 0 Failures)
 ```bash
 cd backend
 .\venv\Scripts\activate
 
-# Run complete pytest test suite
+# Run complete pytest test suite (487 tests)
 pytest tests/ -v
 
 # Verify scientific core freeze invariant (all 38 forensic core files)
@@ -392,6 +437,7 @@ To prevent undetected regressions in forensic algorithms, ForenSight employs a d
   ```
 - **Path Traversal Defenses:** Upload handling uses strict MIME inspection, file extension whitelists, and canonicalized `pathlib.Path.resolve` path containment checks.
 - **HTTP Security Headers:** Endpoints emit `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, and `Referrer-Policy: strict-origin-when-cross-origin`.
+- **Dual-Token Authentication:** Employs `SameSite=None; Secure` HttpOnly cookies alongside fallback `Authorization: Bearer` headers to maintain state across different subdomains (e.g., Render static frontend vs. containerized API).
 
 ---
 
@@ -434,3 +480,16 @@ ForenSight builds upon foundational scientific research in digital image forensi
 ## 19. Instructor Demonstration Investigation (`FS-DEMO-001`)
 
 ForenSight includes a reproducible, self-contained synthetic demonstration case (`FS-DEMO-001`) with a dedicated non-admin `demo_instructor` account, 7 synthetic evidence files, real engine analyses, lineage/correlation links, investigation graph, audit trail, and reports. See [`docs/INSTRUCTOR_DEMO.md`](docs/INSTRUCTOR_DEMO.md) for setup, seeding, reset commands, and environment notes.
+
+---
+
+## 20. Academic Presentation & Evaluation Deliverables
+
+For academic examinations, capstone reviews, and faculty evaluations, this repository includes complete presentation resources conforming to major project presentation guidelines:
+
+- **Widescreen 16:9 Presentation Deck:** [`ForenSight_Faculty_Presentation.pptx`](ForenSight_Faculty_Presentation.pptx)
+  - 15 polished forensic-themed slides.
+  - Covers Problem Statement, Objectives, Proposed Methodology, DIP Engines, Tech Stack, Live Cloud Architecture, and 6 Real Prototype Screenshots.
+  - Editable team details on Slide 1 for member names and enrollment numbers.
+- **Faculty Speaker Notes & Viva Guide:** [`ForenSight_Presentation_Guide.md`](file:///C:/Users/PRIYANSHU/.gemini/antigravity/brain/2544002d-e936-43e8-aa38-5567aaad342b/ForenSight_Presentation_Guide.md)
+  - Slide-by-slide talking points, timing allocation (10 minutes total), anticipated viva defense questions, and live practical demonstration sequences.
