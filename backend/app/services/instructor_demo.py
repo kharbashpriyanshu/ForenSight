@@ -332,6 +332,8 @@ def reset_instructor_demo(db: Session) -> Dict[str, Any]:
         db.query(AnalysisJob).filter(AnalysisJob.evidence_id.in_(evidence_ids)).delete(synchronize_session=False)
         db.query(Analysis).filter(Analysis.evidence_id.in_(evidence_ids)).delete(synchronize_session=False)
         db.query(EvidenceIntakeContext).filter(EvidenceIntakeContext.evidence_id.in_(evidence_ids)).delete(synchronize_session=False)
+        from app.models.domain import EvidenceBlob
+        db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id.in_(evidence_ids)).delete(synchronize_session=False)
 
     db.query(EvidenceLineageRelation).filter(EvidenceLineageRelation.case_id == case.id).delete(synchronize_session=False)
     db.query(Finding).filter((Finding.case_id == case.case_identifier) | (Finding.case_id == str(case.id))).delete(synchronize_session=False)

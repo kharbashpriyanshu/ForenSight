@@ -157,55 +157,71 @@ def ensure_evidence_file_on_disk(db: Session, evidence: Evidence) -> Optional[st
     raw bytes from the PostgreSQL `evidence_blobs` table and writes them back to disk.
     Returns the resolved local file path if present or restored; None if unavailable.
     """
-    if not evidence or not evidence.stored_path:
+    if not evidence or not getattr(evidence, "stored_path", None):
         return None
 
+    try:
+        storage = get_storage_backend()
+        if storage.is_remote:
+            return None
+    except Exception:
+        pass
+
     # 1. Check if present on disk and non-empty
-    if os.path.isfile(evidence.stored_path) and os.path.getsize(evidence.stored_path) > 0:
-        return evidence.stored_path
+    stored_path = str(evidence.stored_path)
+    if os.path.isfile(stored_path) and os.path.getsize(stored_path) > 0:
+        return stored_path
 
     # Check common fallback locations
     candidate_paths = [
-        evidence.stored_path,
-        os.path.join(settings.STORAGE_DIR, evidence.stored_path),
-        os.path.join(settings.STORAGE_DIR, os.path.basename(evidence.stored_path)),
+        stored_path,
+        os.path.join(settings.STORAGE_DIR, stored_path),
+        os.path.join(settings.STORAGE_DIR, os.path.basename(stored_path)),
     ]
     for cp in candidate_paths:
         if os.path.isfile(cp) and os.path.getsize(cp) > 0:
             return cp
 
     # 2. File missing on disk. Restore from PostgreSQL blob
+    ev_id = getattr(evidence, "id", None)
     blob = getattr(evidence, "blob", None)
-    if not blob:
+    file_data = getattr(blob, "file_data", None)
+
+    if not file_data and ev_id is not None:
         if db is not None:
-            blob = db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == evidence.id).first()
+            try:
+                db_blob = db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == ev_id).first()
+                file_data = getattr(db_blob, "file_data", None)
+            except Exception:
+                file_data = None
         else:
             try:
                 with SessionLocal() as session:
-                    blob = session.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == evidence.id).first()
+                    db_blob = session.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == ev_id).first()
+                    file_data = getattr(db_blob, "file_data", None)
             except Exception:
-                blob = None
+                file_data = None
 
-    if blob and blob.file_data:
+    if file_data:
         try:
-            target_path = evidence.stored_path
+            target_path = stored_path
             target_dir = os.path.dirname(target_path)
             if target_dir:
                 os.makedirs(target_dir, exist_ok=True)
             with open(target_path, "wb") as f:
-                f.write(blob.file_data)
-            logger.info(f"Restored evidence {evidence.id} ({len(blob.file_data)} bytes) to {target_path} from database blob.")
+                f.write(file_data)
+            logger.info(f"Restored evidence {ev_id} ({len(file_data)} bytes) to {target_path} from database blob.")
             return target_path
         except Exception as e:
-            logger.error(f"Failed to restore evidence {evidence.id} to {evidence.stored_path}: {e}")
+            logger.error(f"Failed to restore evidence {ev_id} to {stored_path}: {e}")
             try:
-                fallback_path = os.path.join(settings.STORAGE_DIR, os.path.basename(evidence.stored_path))
+                fallback_path = os.path.join(settings.STORAGE_DIR, os.path.basename(stored_path))
                 os.makedirs(settings.STORAGE_DIR, exist_ok=True)
                 with open(fallback_path, "wb") as f:
-                    f.write(blob.file_data)
+                    f.write(file_data)
                 return fallback_path
             except Exception as fe:
-                logger.error(f"Fallback restoration failed for evidence {evidence.id}: {fe}")
+                logger.error(f"Fallback restoration failed for evidence {ev_id}: {fe}")
                 return None
 
     return None
@@ -303,11 +319,16 @@ class EvidenceService:
             try:
                 with open(final_path, "rb") as f:
                     raw_blob_bytes = f.read()
-                db.add(EvidenceBlob(
-                    evidence_id=db_evidence.id,
-                    file_data=raw_blob_bytes,
-                    sha256_hash=db_evidence.sha256_hash,
-                ))
+                existing_blob = db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == db_evidence.id).first()
+                if existing_blob:
+                    existing_blob.file_data = raw_blob_bytes
+                    existing_blob.sha256_hash = db_evidence.sha256_hash
+                else:
+                    db.add(EvidenceBlob(
+                        evidence_id=db_evidence.id,
+                        file_data=raw_blob_bytes,
+                        sha256_hash=db_evidence.sha256_hash,
+                    ))
             except Exception as blob_err:
                 logger.warning(f"Failed to persist EvidenceBlob for evidence {db_evidence.id}: {blob_err}")
 
@@ -497,11 +518,16 @@ class EvidenceService:
             try:
                 with open(final_path, "rb") as f:
                     raw_blob_bytes = f.read()
-                db.add(EvidenceBlob(
-                    evidence_id=db_evidence.id,
-                    file_data=raw_blob_bytes,
-                    sha256_hash=file_sha256,
-                ))
+                existing_blob = db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == db_evidence.id).first()
+                if existing_blob:
+                    existing_blob.file_data = raw_blob_bytes
+                    existing_blob.sha256_hash = file_sha256
+                else:
+                    db.add(EvidenceBlob(
+                        evidence_id=db_evidence.id,
+                        file_data=raw_blob_bytes,
+                        sha256_hash=file_sha256,
+                    ))
             except Exception as blob_err:
                 logger.warning(f"Failed to persist EvidenceBlob for evidence {db_evidence.id}: {blob_err}")
 
