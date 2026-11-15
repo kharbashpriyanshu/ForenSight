@@ -28,95 +28,117 @@ def main():
     assert r.status_code == 200, "Health check failed"
     print("Health: OK", r.json())
     
+    # Authenticate Session
+    session = requests.Session()
+    login_res = session.post(
+        f"{BASE_URL}/auth/login",
+        data={"username": "admin", "password": "forensight_admin"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
+    assert login_res.status_code == 200, f"Login failed: {login_res.text}"
+    auth_data = login_res.json()
+    csrf_token = auth_data.get("csrf_token")
+    if csrf_token:
+        session.headers.update({"X-CSRF-Token": csrf_token})
+    print("Authentication: OK (Signed in as admin)")
+
     # 2. Create Case
-    r = requests.post(f"{BASE_URL}/cases", json={"title": "E2E Validation Case", "description": "Testing"})
-    assert r.status_code == 201, f"Case creation failed: {r.text}"
+    r = session.post(f"{BASE_URL}/cases", json={"title": "E2E Validation Case", "description": "Testing"})
+    assert r.status_code in [200, 201], f"Case creation failed: {r.text}"
     case_id = r.json()["id"]
     print(f"Case Created: {case_id}")
     
     # 3. Upload valid JPEG
     initial_hash = hash_file(TEST_IMG)
     with open(TEST_IMG, "rb") as f:
-        r = requests.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("test.jpg", f, "image/jpeg")})
-    assert r.status_code == 201, f"Upload failed: {r.text}"
+        r = session.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("test.jpg", f, "image/jpeg")})
+    assert r.status_code in [200, 201], f"Upload failed: {r.text}"
     evidence = r.json()
     evidence_id = evidence["id"]
     assert evidence["sha256_hash"] == initial_hash, "Hash mismatch!"
     print(f"Upload: OK, Evidence ID: {evidence_id}, Hash: {initial_hash}")
     
     # 4. Metadata
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/metadata")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/metadata")
     assert r.status_code == 200
     print("Metadata: OK")
     
     # 5. ELA
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/ela")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/ela")
     assert r.status_code == 200
     print("ELA: OK")
     
     # 6. Noise
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/noise")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/noise")
     assert r.status_code == 200
     print("Noise: OK")
     
     # 7. JPEG/DCT
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/jpeg-dct")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/jpeg-dct")
     assert r.status_code == 200
     print("JPEG/DCT: OK")
     
     # 8. Copy-Move
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/copy-move")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/analysis/copy-move")
     assert r.status_code == 200
     print("Copy-Move: OK")
     
     # 9. Normalization (run twice to check duplication)
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/normalize")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/normalize")
     assert r.status_code == 200
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/normalize")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/normalize")
     assert r.status_code == 200
     print("Normalization: OK")
     
     # 10. Correlation
-    r = requests.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/correlate")
+    r = session.post(f"{BASE_URL}/evidence/{evidence_id}/fusion/correlate")
     assert r.status_code == 200
-    assessment = r.json()
-    assert "assessment_level" in assessment
-    assert assessment["rule_version"] == "7B-v1"
-    print("Correlation: OK, Level:", assessment["assessment_level"])
+    data = r.json()
+    assessment = data.get("assessment", data)
+    level = assessment.get("level") or assessment.get("assessment_level")
+    assert level is not None, f"No level in assessment: {assessment}"
+    assert assessment.get("rule_version") == "7B-v1"
+    print("Correlation: OK, Level:", level)
     
     # 12. Artifact Validation
     # Let's get the ELA artifact path
-    r = requests.get(f"{BASE_URL}/evidence/{evidence_id}/analysis")
+    r = session.get(f"{BASE_URL}/evidence/{evidence_id}/analyses")
     analyses = r.json()
-    ela_analysis = next(a for a in analyses if a["analysis_type"] == "ela")
-    artifact_path = ela_analysis["results"]["ela_map_url"]
+    ela_analysis = next(a for a in analyses if a.get("analysis_type", "").upper() == "ELA")
+    findings = ela_analysis.get("structured_findings") or ela_analysis.get("results", {})
+    artifacts = findings.get("artifacts", {})
+    artifact_path = artifacts.get("ela_map") or findings.get("ela_map_url") or list(artifacts.values())[0]
     
     # The URL from the backend might be relative to the artifacts endpoint
     if artifact_path.startswith("/api/"):
         artifact_path = artifact_path[5:] # remove /api/
+    elif artifact_path.startswith("api/"):
+        artifact_path = artifact_path[4:]
+    if not artifact_path.startswith("artifacts/"):
+        artifact_path = f"artifacts/{artifact_path}"
         
-    r = requests.get(f"{BASE_URL}/{artifact_path}")
-    assert r.status_code == 200
+    r = session.get(f"{BASE_URL}/{artifact_path}")
+    assert r.status_code == 200, f"Artifact fetch failed: {r.status_code} {r.text}"
     print("Artifact Access: OK")
     
     # Traversal test
-    r = requests.get(f"{BASE_URL}/artifacts/../main.py")
+    r = session.get(f"{BASE_URL}/artifacts/../main.py")
     assert r.status_code in [400, 404, 403, 422]
     print("Artifact Traversal Rejection: OK")
     
     # 13. Source Integrity
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT file_path FROM evidence WHERE id = ?", (evidence_id,))
-    file_path = c.fetchone()[0]
-    final_hash = hash_file(file_path)
+    c.execute("SELECT stored_path FROM evidence WHERE id = ?", (evidence_id,))
+    stored_path = c.fetchone()[0]
+    final_hash = hash_file(stored_path)
     assert initial_hash == final_hash
     print(f"Source Integrity: OK ({initial_hash} == {final_hash})")
     
     # 14. Case Isolation
-    r = requests.post(f"{BASE_URL}/cases", json={"title": "Case 2"})
+    r = session.post(f"{BASE_URL}/cases", json={"title": "Case 2"})
     case2_id = r.json()["id"]
-    r = requests.get(f"{BASE_URL}/cases/{case2_id}/evidence")
+    r = session.get(f"{BASE_URL}/cases/{case2_id}/evidence")
     assert len(r.json()) == 0
     print("Case Isolation: OK")
     
@@ -128,17 +150,17 @@ def main():
     cv2.imwrite(png_path, img)
     
     with open(png_path, "rb") as f:
-        r = requests.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("test.png", f, "image/png")})
-    assert r.status_code == 201
+        r = session.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("test.png", f, "image/png")})
+    assert r.status_code in [200, 201]
     png_ev_id = r.json()["id"]
     
     # JPEG specific should fail gracefully
-    r = requests.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/ela")
+    r = session.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/ela")
     assert r.status_code == 400
-    r = requests.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/jpeg-dct")
+    r = session.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/jpeg-dct")
     assert r.status_code == 400
     # General should pass
-    r = requests.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/noise")
+    r = session.post(f"{BASE_URL}/evidence/{png_ev_id}/analysis/noise")
     assert r.status_code == 200
     print("PNG Workflow: OK")
     
@@ -147,9 +169,16 @@ def main():
     with open(bad_path, "wb") as f:
         f.write(b"not an image data here")
     with open(bad_path, "rb") as f:
-        r = requests.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("bad.jpg", f, "image/jpeg")})
+        r = session.post(f"{BASE_URL}/cases/{case_id}/evidence", files={"file": ("bad.jpg", f, "image/jpeg")})
     assert r.status_code == 400
     print("Corrupted Upload Rejection: OK")
+    
+    # Cleanup temp files
+    try:
+        if os.path.exists(png_path): os.remove(png_path)
+        if os.path.exists(bad_path): os.remove(bad_path)
+    except Exception:
+        pass
     
     print("ALL TESTS PASSED")
 

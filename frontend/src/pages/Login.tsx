@@ -14,7 +14,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState('');
   const [mfaCode, setMfaCode] = useState('');
-  
+
   const { login } = useAuth();
   const { isDark } = useTheme();
   const navigate = useNavigate();
@@ -47,7 +47,11 @@ export default function Login() {
       if (data?.csrf_token) {
         setCsrfToken(data.csrf_token);
       }
-      login();
+      login({
+        username: data?.username || username,
+        role: data?.role || 'INVESTIGATOR',
+        mfa_enabled: false,
+      });
       navigate('/cases');
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
@@ -76,7 +80,11 @@ export default function Login() {
         if (data?.csrf_token) {
           setCsrfToken(data.csrf_token);
         }
-        login();
+        login({
+          username: data?.username || username,
+          role: data?.role || 'INVESTIGATOR',
+          mfa_enabled: true,
+        });
         navigate('/cases');
       } catch (err: any) {
         setError(err.message || 'An error occurred during login');
@@ -95,12 +103,12 @@ export default function Login() {
   };
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      minHeight: '100vh', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      background: 'radial-gradient(circle at 20% 20%, rgba(212, 160, 67, 0.12) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(184, 135, 42, 0.08) 0%, transparent 50%), var(--surface-canvas)', 
+    <div style={{
+      display: 'flex',
+      minHeight: '100vh',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'radial-gradient(circle at 20% 20%, rgba(212, 160, 67, 0.12) 0%, transparent 45%), radial-gradient(circle at 80% 80%, rgba(184, 135, 42, 0.08) 0%, transparent 50%), var(--surface-canvas)',
       padding: '1.5rem',
       position: 'relative',
       overflow: 'hidden'
@@ -151,13 +159,13 @@ export default function Login() {
         pointerEvents: 'none'
       }} />
 
-      <div className="card" style={{ 
-        width: '100%', 
-        maxWidth: '430px', 
-        padding: '2.75rem 2.25rem', 
-        borderRadius: '16px', 
-        boxShadow: 'var(--shadow-xl)', 
-        background: 'var(--surface-color)', 
+      <div className="card" style={{
+        width: '100%',
+        maxWidth: '430px',
+        padding: '2.75rem 2.25rem',
+        borderRadius: '16px',
+        boxShadow: 'var(--shadow-xl)',
+        background: 'var(--surface-color)',
         backdropFilter: 'blur(20px) saturate(160%)',
         WebkitBackdropFilter: 'blur(20px) saturate(160%)',
         border: '1px solid var(--border-default)',
@@ -165,40 +173,40 @@ export default function Login() {
         animation: 'pageFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-          <img 
-            src={isDark ? "/forensight-logo-dark.svg" : "/forensight-logo.svg"} 
-            alt="ForenSight - Digital Image Forensics Platform" 
-            style={{ 
-              width: '100%', 
-              maxWidth: '280px', 
+          <img
+            src={isDark ? "/forensight-logo-dark.svg" : "/forensight-logo.svg"}
+            alt="ForenSight - Digital Image Forensics Platform"
+            style={{
+              width: '100%',
+              maxWidth: '280px',
               height: 'auto',
               marginBottom: '0.5rem',
-              filter: isDark 
-                ? 'drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4))' 
+              filter: isDark
+                ? 'drop-shadow(0 4px 16px rgba(0, 0, 0, 0.4))'
                 : 'drop-shadow(0 4px 12px rgba(28, 43, 58, 0.12))'
-            }} 
+            }}
           />
           <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.25rem', lineHeight: 1.45 }}>
             Preserve evidence • Measure forensic signals • Cryptographic chain of custody
           </p>
         </div>
-        
+
         {error && (
-          <div 
+          <div
             role="alert"
             aria-live="assertive"
-            style={{ 
-            background: 'rgba(254, 242, 242, 0.85)', 
-            backdropFilter: 'blur(8px)',
-            color: '#b91c1c', 
-            border: '1px solid rgba(254, 202, 202, 0.9)', 
-            padding: '0.75rem 1rem', 
-            borderRadius: '8px', 
-            marginBottom: '1.25rem', 
-            fontSize: '0.85rem', 
-            fontWeight: 500,
-            boxShadow: '0 2px 8px rgba(185, 28, 28, 0.06)'
-          }}>
+            style={{
+              background: 'rgba(254, 242, 242, 0.85)',
+              backdropFilter: 'blur(8px)',
+              color: '#b91c1c',
+              border: '1px solid rgba(254, 202, 202, 0.9)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              marginBottom: '1.25rem',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(185, 28, 28, 0.06)'
+            }}>
             {error}
           </div>
         )}
@@ -246,49 +254,49 @@ export default function Login() {
             <label htmlFor="password" style={{ display: 'block', marginBottom: '0.45rem', color: 'var(--text-body)', fontSize: '0.825rem', fontWeight: 600 }}>
               Access Password
             </label>
-            <input 
+            <input
               id="password"
               name="password"
-              type="password" 
+              type="password"
               aria-required="true"
               aria-label="Access Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ 
-                width: '100%', 
-                padding: '0.7rem 0.85rem', 
-                borderRadius: '8px', 
-                border: '1px solid var(--border-default)', 
-                background: 'var(--surface-sunken)', 
-                color: 'var(--text-main)', 
-                boxSizing: 'border-box' 
+              style={{
+                width: '100%',
+                padding: '0.7rem 0.85rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border-default)',
+                background: 'var(--surface-sunken)',
+                color: 'var(--text-main)',
+                boxSizing: 'border-box'
               }}
             />
           </div>}
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ 
-              width: '100%', 
-              marginTop: '0.5rem', 
-              padding: '0.8rem', 
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{
+              width: '100%',
+              marginTop: '0.5rem',
+              padding: '0.8rem',
               borderRadius: '8px',
               fontSize: '0.925rem',
               fontWeight: 600
-            }} 
+            }}
             disabled={loading}
           >
             {loading ? 'Authenticating Investigator...' : mfaChallenge ? 'Verify and Sign In' : 'Sign In to Station'}
           </button>
         </form>
-        
-        <div style={{ 
-          marginTop: '1.75rem', 
-          borderTop: '1px solid var(--border-color-translucent)', 
-          paddingTop: '1.25rem', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '0.75rem' 
+
+        <div style={{
+          marginTop: '1.75rem',
+          borderTop: '1px solid var(--border-color-translucent)',
+          paddingTop: '1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem'
         }}>
           <div style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-body)', fontWeight: 600 }}>
             ⚡ Instant Evaluation & Demo Access
@@ -352,9 +360,9 @@ export default function Login() {
               setUsername('demo_instructor');
               setPassword('forensight_demo_instructor');
             }}
-            style={{ 
-              fontSize: '0.72rem', 
-              padding: '0.35rem 0.65rem', 
+            style={{
+              fontSize: '0.72rem',
+              padding: '0.35rem 0.65rem',
               alignSelf: 'center',
               color: 'var(--text-muted)',
               border: '1px dashed var(--border-default)',

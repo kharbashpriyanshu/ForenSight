@@ -1,11 +1,12 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
-import { Activity, FolderOpen, FlaskConical, Menu, X } from 'lucide-react';
+import { Activity, FolderOpen, FlaskConical, Menu, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 import ThemeToggle from './ThemeToggle';
 import Breadcrumbs from './Breadcrumbs';
 import BrandHeader from './BrandHeader';
+import DemoGuidedTour from '../demo/DemoGuidedTour';
 import { PageShellSkeleton } from '../common/LoadingStates';
 
 interface AppLayoutProps {
@@ -18,9 +19,25 @@ export interface AppLayoutContext {
 }
 
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  const isDemoUser = user?.username === 'demo_instructor';
+
+  // Automatically launch demo guided tour only once on first demo login
+  useEffect(() => {
+    if (isDemoUser) {
+      try {
+        const dismissed = localStorage.getItem('forensight_demo_tour_dismissed');
+        if (!dismissed) {
+          localStorage.setItem('forensight_demo_tour_dismissed', 'true');
+          setTourOpen(true);
+        }
+      } catch {}
+    }
+  }, [isDemoUser]);
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -57,6 +74,33 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           <span className={`context-pill ${isCaseWorkspace ? 'context-pill-case' : 'context-pill-station'}`}>
             {isCaseWorkspace ? 'INVESTIGATION WORKSPACE' : 'INVESTIGATION DIRECTORY'}
           </span>
+
+          {/* Interactive Demonstration Guided Tour Trigger (Demo Instructor Only) */}
+          {isDemoUser && (
+            <button
+              type="button"
+              className="btn-demo-tour-launch"
+              onClick={() => setTourOpen(true)}
+              title="Open Interactive Demonstration Walkthrough"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                borderRadius: '8px',
+                background: 'rgba(184, 135, 42, 0.14)',
+                color: 'var(--accent-color, #b8872a)',
+                border: '1px solid var(--accent-border, rgba(184, 135, 42, 0.35))',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease-in-out',
+              }}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              <span>Demo Tour</span>
+            </button>
+          )}
 
           {/* Theme Toggle (Light / Dark) */}
           <ThemeToggle />
@@ -162,6 +206,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </Suspense>
         )}
       </div>
+
+      {/* Guided Tour Modal for Demonstration Users */}
+      {isDemoUser && (
+        <DemoGuidedTour
+          isOpen={tourOpen}
+          onClose={() => setTourOpen(false)}
+        />
+      )}
     </div>
   );
 };
