@@ -53,14 +53,34 @@ class V4EngineRunner:
         db.refresh(analysis)
 
         try:
+            from app.services.evidence import ensure_evidence_file_on_disk
+            restored_path = ensure_evidence_file_on_disk(db, evidence)
+            effective_path = restored_path or evidence.stored_path
+
+            if not effective_path or not os.path.isfile(effective_path) or os.path.getsize(effective_path) == 0:
+                analysis.status = "failed"
+                analysis.summary = (
+                    "Evidence file was stored on an ephemeral server instance that has restarted, "
+                    "and no database backup blob was available. Please re-upload this evidence image to run analysis."
+                )
+                analysis.structured_findings = {
+                    "error": "EPHEMERAL_FILE_MISSING",
+                    "detail": f"Evidence physical file '{evidence.stored_path}' is missing and has no database backup.",
+                    "remedy": "Re-upload this evidence image to run forensic analysis."
+                }
+                analysis.completed_at = datetime.datetime.now(datetime.timezone.utc)
+                db.commit()
+                db.refresh(analysis)
+                return analysis
+
             slug = engine_id.lower().replace("-", "_")
             storage = get_storage_backend()
             if storage.is_remote:
                 out_ctx = tempfile.TemporaryDirectory(prefix=f"forensight-{slug}-")
-                ev_ctx = storage.local_file_path(evidence.stored_path)
+                ev_ctx = storage.local_file_path(effective_path)
             else:
                 out_ctx = nullcontext(os.path.join(settings.STORAGE_DIR, "analyses", slug))
-                ev_ctx = nullcontext(evidence.stored_path)
+                ev_ctx = nullcontext(effective_path)
 
             with out_ctx as storage_output_dir, ev_ctx as local_evidence_path:
                 context = ExecutionContext(

@@ -13,7 +13,15 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import FlushError
-from app.models.domain import Evidence, EvidenceIntakeContext, InvestigationCase, IntakeIdempotencyRecord, FailedCleanupRecord, User
+from app.models.domain import (
+    Evidence,
+    EvidenceBlob,
+    EvidenceIntakeContext,
+    InvestigationCase,
+    IntakeIdempotencyRecord,
+    FailedCleanupRecord,
+    User,
+)
 from app.db.database import SessionLocal
 from app.services.audit import AuditService
 from app.services.storage import get_storage_backend
@@ -140,7 +148,71 @@ def _record_failed_cleanup(path: str, stage: str, exc: Exception, db: Optional[S
     except Exception as log_err:
         logger.error(f"Failed to persist FailedCleanupRecord for {path}: {log_err}")
 
+
+def ensure_evidence_file_on_disk(db: Session, evidence: Evidence) -> Optional[str]:
+    """
+    Guarantees that the physical evidence file exists on disk.
+    If running on an ephemeral environment (e.g. Render) where the local container
+    filesystem was wiped following a restart or redeployment, this retrieves the
+    raw bytes from the PostgreSQL `evidence_blobs` table and writes them back to disk.
+    Returns the resolved local file path if present or restored; None if unavailable.
+    """
+    if not evidence or not evidence.stored_path:
+        return None
+
+    # 1. Check if present on disk and non-empty
+    if os.path.isfile(evidence.stored_path) and os.path.getsize(evidence.stored_path) > 0:
+        return evidence.stored_path
+
+    # Check common fallback locations
+    candidate_paths = [
+        evidence.stored_path,
+        os.path.join(settings.STORAGE_DIR, evidence.stored_path),
+        os.path.join(settings.STORAGE_DIR, os.path.basename(evidence.stored_path)),
+    ]
+    for cp in candidate_paths:
+        if os.path.isfile(cp) and os.path.getsize(cp) > 0:
+            return cp
+
+    # 2. File missing on disk. Restore from PostgreSQL blob
+    blob = getattr(evidence, "blob", None)
+    if not blob:
+        if db is not None:
+            blob = db.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == evidence.id).first()
+        else:
+            try:
+                with SessionLocal() as session:
+                    blob = session.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == evidence.id).first()
+            except Exception:
+                blob = None
+
+    if blob and blob.file_data:
+        try:
+            target_path = evidence.stored_path
+            target_dir = os.path.dirname(target_path)
+            if target_dir:
+                os.makedirs(target_dir, exist_ok=True)
+            with open(target_path, "wb") as f:
+                f.write(blob.file_data)
+            logger.info(f"Restored evidence {evidence.id} ({len(blob.file_data)} bytes) to {target_path} from database blob.")
+            return target_path
+        except Exception as e:
+            logger.error(f"Failed to restore evidence {evidence.id} to {evidence.stored_path}: {e}")
+            try:
+                fallback_path = os.path.join(settings.STORAGE_DIR, os.path.basename(evidence.stored_path))
+                os.makedirs(settings.STORAGE_DIR, exist_ok=True)
+                with open(fallback_path, "wb") as f:
+                    f.write(blob.file_data)
+                return fallback_path
+            except Exception as fe:
+                logger.error(f"Fallback restoration failed for evidence {evidence.id}: {fe}")
+                return None
+
+    return None
+
+
 class EvidenceService:
+    ensure_file_on_disk = staticmethod(ensure_evidence_file_on_disk)
     @staticmethod
     def process_and_store_evidence(db: Session, case_id: int, file: UploadFile, intake_context: dict = None) -> Evidence:
         case = db.query(InvestigationCase).filter(InvestigationCase.id == case_id).first()
@@ -227,6 +299,18 @@ class EvidenceService:
             )
             db.add(db_evidence)
             db.flush()
+
+            try:
+                with open(final_path, "rb") as f:
+                    raw_blob_bytes = f.read()
+                db.add(EvidenceBlob(
+                    evidence_id=db_evidence.id,
+                    file_data=raw_blob_bytes,
+                    sha256_hash=db_evidence.sha256_hash,
+                ))
+            except Exception as blob_err:
+                logger.warning(f"Failed to persist EvidenceBlob for evidence {db_evidence.id}: {blob_err}")
+
             safe_context = intake_context or {}
             if any(value and str(value).strip() for value in safe_context.values()):
                 db.add(EvidenceIntakeContext(evidence_id=db_evidence.id, **safe_context))
@@ -409,6 +493,17 @@ class EvidenceService:
             )
             db.add(db_evidence)
             db.flush()
+
+            try:
+                with open(final_path, "rb") as f:
+                    raw_blob_bytes = f.read()
+                db.add(EvidenceBlob(
+                    evidence_id=db_evidence.id,
+                    file_data=raw_blob_bytes,
+                    sha256_hash=file_sha256,
+                ))
+            except Exception as blob_err:
+                logger.warning(f"Failed to persist EvidenceBlob for evidence {db_evidence.id}: {blob_err}")
 
             safe_context = intake_context or {}
             if any(value and str(value).strip() for value in safe_context.values()):

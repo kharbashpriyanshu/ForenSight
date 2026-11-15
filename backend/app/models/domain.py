@@ -1,6 +1,6 @@
 import datetime
 import uuid
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, UniqueConstraint, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Float, Text, UniqueConstraint, Boolean, LargeBinary
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -66,10 +66,23 @@ class Evidence(Base):
     case = relationship("InvestigationCase", back_populates="evidence_items")
     analyses = relationship("Analysis", back_populates="evidence")
     intake_context = relationship("EvidenceIntakeContext", back_populates="evidence", uselist=False, cascade="all, delete-orphan")
+    blob = relationship("EvidenceBlob", back_populates="evidence", uselist=False, cascade="all, delete-orphan")
 
     @property
     def case_identifier(self):
         return self.case.case_identifier if self.case else None
+
+
+class EvidenceBlob(Base):
+    __tablename__ = "evidence_blobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    evidence_id = Column(Integer, ForeignKey("evidence.id", ondelete="CASCADE"), unique=True, nullable=False, index=True)
+    file_data = Column(LargeBinary, nullable=False)
+    sha256_hash = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+
+    evidence = relationship("Evidence", back_populates="blob")
 
 
 class EvidenceIntakeContext(Base):

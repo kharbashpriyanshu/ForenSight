@@ -183,6 +183,9 @@ def read_evidence_raw(evidence_id: int, db: Session = Depends(get_db), current_u
     if current_user.role != "ADMIN" and case.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this evidence")
     
+    from app.services.evidence import ensure_evidence_file_on_disk
+    ensure_evidence_file_on_disk(db, evidence)
+
     raw_path = evidence.stored_path or ""
     storage = get_storage_backend()
     if not storage.is_remote:
@@ -199,7 +202,10 @@ def read_evidence_raw(evidence_id: int, db: Session = Depends(get_db), current_u
                 break
 
         if not resolved_path:
-            raise HTTPException(status_code=404, detail="Evidence physical bitstream not found on disk")
+            raise HTTPException(
+                status_code=404,
+                detail="Evidence physical bitstream was stored on an ephemeral server instance that has restarted. Please re-upload this evidence image in Evidence Intake."
+            )
 
         return FileResponse(
             path=str(resolved_path),

@@ -66,6 +66,20 @@ def run_analysis_task(self, job_id: int):
             job.safe_error_message = "The evidence record for this analysis no longer exists."
             db.commit()
             return {"status": "failed", "job_id": job.id}
+
+        from app.services.evidence import ensure_evidence_file_on_disk
+        restored_path = ensure_evidence_file_on_disk(db, evidence)
+        effective_path = restored_path or evidence.stored_path
+        if not effective_path or not os.path.isfile(effective_path) or os.path.getsize(effective_path) == 0:
+            job.status = "FAILED"
+            job.completed_at = datetime.datetime.now(timezone.utc).replace(tzinfo=None)
+            job.progress_message = "Evidence file missing from ephemeral storage"
+            job.safe_error_message = (
+                "The physical evidence file was stored on an ephemeral server instance that has restarted. "
+                "Please re-upload this evidence image in Evidence Intake to run analysis."
+            )
+            db.commit()
+            return {"status": "failed", "job_id": job.id, "error": job.safe_error_message}
         case = db.query(InvestigationCase).filter(InvestigationCase.id == evidence.case_id).first()
         
         analysis_type = job.analysis_type.lower()

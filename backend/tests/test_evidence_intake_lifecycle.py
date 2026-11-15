@@ -5,9 +5,9 @@ import concurrent.futures
 import threading
 from PIL import Image
 from sqlalchemy.orm import Session
-from app.models.domain import InvestigationCase, Evidence, AuditEvent, IntakeIdempotencyRecord, FailedCleanupRecord, User
+from app.models.domain import InvestigationCase, Evidence, EvidenceBlob, AuditEvent, IntakeIdempotencyRecord, FailedCleanupRecord, User
 from app.services.audit import GENESIS_HASH, audit_event_hash
-from app.services.evidence import EvidenceService
+from app.services.evidence import EvidenceService, ensure_evidence_file_on_disk
 from app.api.deps import get_current_user
 from app.main import app
 
@@ -758,3 +758,39 @@ def test_recovery_safety_guard_does_not_delete_committed_evidence(client, db_ses
     db_session.refresh(bad_cleanup_rec)
     assert bad_cleanup_rec.resolved is False
     assert "SAFETY GUARD" in bad_cleanup_rec.error_message
+
+
+def test_ephemeral_container_recovery_from_database_blob(client, db_session: Session):
+    """
+    Verifies that evidence files are backed up to the `evidence_blobs` table on intake,
+    and automatically restored to disk bit-for-bit if ephemeral container restart wipes the filesystem.
+    """
+    img_bytes = _create_sample_png(24, 24, color="magenta")
+    expected_sha256 = hashlib.sha256(img_bytes).hexdigest()
+    files = {"file": ("ephemeral_test.png", img_bytes, "image/png")}
+    res = client.post("/api/cases/intake", files=files, data={"case_title": "Ephemeral Test"})
+    assert res.status_code == 200
+    ev_id = res.json()["id"]
+
+    # 1. Verify EvidenceBlob is saved in the database
+    evidence = db_session.query(Evidence).filter(Evidence.id == ev_id).first()
+    assert evidence is not None
+    blob = db_session.query(EvidenceBlob).filter(EvidenceBlob.evidence_id == ev_id).first()
+    assert blob is not None
+    assert blob.file_data == img_bytes
+    assert blob.sha256_hash == expected_sha256
+
+    # 2. Simulate ephemeral container wipe (delete file from disk)
+    disk_path = evidence.stored_path
+    assert os.path.exists(disk_path)
+    os.remove(disk_path)
+    assert not os.path.exists(disk_path)
+
+    # 3. Call ensure_evidence_file_on_disk to trigger auto-restoration
+    restored_path = ensure_evidence_file_on_disk(db_session, evidence)
+    assert restored_path is not None
+    assert os.path.exists(restored_path)
+    with open(restored_path, "rb") as f:
+        restored_bytes = f.read()
+    assert restored_bytes == img_bytes
+    assert hashlib.sha256(restored_bytes).hexdigest() == expected_sha256

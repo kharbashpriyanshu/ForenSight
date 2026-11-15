@@ -208,8 +208,10 @@ class CrossCorrelationService:
 
         # Precompute descriptors
         storage = get_storage_backend()
+        from app.services.evidence import ensure_evidence_file_on_disk
         descriptors_map: Dict[int, Any] = {}
         for ev in evidence_items:
+            ensure_evidence_file_on_disk(None, ev)
             if ev.stored_path and storage.exists(ev.stored_path):
                 with storage.local_file_path(ev.stored_path) as local_path:
                     img = cv2.imread(str(local_path), cv2.IMREAD_GRAYSCALE)

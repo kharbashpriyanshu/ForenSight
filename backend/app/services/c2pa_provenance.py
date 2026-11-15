@@ -22,6 +22,9 @@ def inspect_c2pa(evidence: Evidence) -> Dict[str, Any]:
             "manifest": None,
         }
 
+    from app.services.evidence import ensure_evidence_file_on_disk
+    ensure_evidence_file_on_disk(None, evidence)
+
     storage = get_storage_backend()
     if storage.is_remote:
         if not evidence.stored_path or not storage.exists(evidence.stored_path):

@@ -22,6 +22,9 @@ MAX_ANALYSIS_EDGE = 1600
 class LineageService:
     @staticmethod
     def _safe_image_path(evidence: Evidence) -> Path:
+        from app.services.evidence import ensure_evidence_file_on_disk
+        ensure_evidence_file_on_disk(None, evidence)
+
         root = Path(settings.STORAGE_DIR).resolve()
         path = Path(evidence.stored_path).resolve()
         try:

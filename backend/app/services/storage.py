@@ -538,15 +538,19 @@ def run_legacy_analyzer_with_storage(
     `JPEGDCTAnalyzer`, `CopyMoveAnalyzer`) seamlessly against either local or remote storage
     without modifying the frozen analyzer source files.
     """
-    storage = get_storage_backend()
-    if not storage.is_remote:
-        return analyzer_cls.run_analysis(db, evidence_id, **kwargs)
-
     from app.models.domain import Evidence
+    from app.services.evidence import ensure_evidence_file_on_disk
 
     evidence = db.query(Evidence).filter(Evidence.id == evidence_id).first()
     if not evidence:
         raise ValueError("Evidence not found")
+
+    ensure_evidence_file_on_disk(db, evidence)
+
+    storage = get_storage_backend()
+    if not storage.is_remote:
+        return analyzer_cls.run_analysis(db, evidence_id, **kwargs)
+
     if not evidence.stored_path or not storage.exists(evidence.stored_path):
         raise ValueError("Evidence file is missing on disk")
 

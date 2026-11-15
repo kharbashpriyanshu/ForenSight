@@ -22,6 +22,9 @@ class CustodyService:
         verifier: str = "System"
     ) -> CustodyVerificationResult:
         now = datetime.datetime.now(datetime.timezone.utc)
+        from app.services.evidence import ensure_evidence_file_on_disk
+        ensure_evidence_file_on_disk(db, evidence)
+
         stored_path = evidence.stored_path or ""
         storage = get_storage_backend()
         file_exists = bool(stored_path) and storage.exists(stored_path)
