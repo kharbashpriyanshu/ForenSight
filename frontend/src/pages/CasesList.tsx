@@ -183,7 +183,7 @@ export default function CasesList() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div data-tour-target="demo-tour-entry-options" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {/* Action 1: Examine an Image */}
           <div style={{ 
             background: 'var(--surface-color-light)', 

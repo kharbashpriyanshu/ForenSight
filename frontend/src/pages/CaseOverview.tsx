@@ -319,7 +319,7 @@ const CaseOverview: React.FC = () => {
               </span>
             </div>
 
-            <h1 style={{ 
+            <h1 style={{
               fontSize: '1.65rem', 
               fontWeight: 800, 
               margin: '0.2rem 0 0.4rem', 
@@ -367,6 +367,7 @@ const CaseOverview: React.FC = () => {
             <button 
               type="button"
               className="btn btn-primary"
+              data-tour-target="open-evidence"
               onClick={() => navigate(`/cases/${caseId}/evidence`)}
               style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}
             >

@@ -823,11 +823,11 @@ export default function UnifiedForensicResults({
       </div>
 
       {/* Metrics Banner */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
-        gap: '0.65rem', 
-        marginBottom: '1.25rem' 
+      <div data-tour-target="lab-results-metrics" style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+        gap: '0.65rem',
+        marginBottom: '1.25rem'
       }}>
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>COMPLETED</div>
@@ -876,6 +876,7 @@ export default function UnifiedForensicResults({
       <div 
         role="tablist" 
         aria-label="Forensic Result Views"
+        data-tour-target="lab-results-views"
         style={{ 
           display: 'flex', 
           gap: '0.4rem', 

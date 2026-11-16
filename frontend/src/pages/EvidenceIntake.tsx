@@ -597,7 +597,7 @@ export default function EvidenceIntake() {
           )}
 
           {/* SECTION 1: FILE SELECTION & PREVIEW */}
-          <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <div className="card" data-tour-target="image-intake-upload" style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h2 className="card-title" style={{ margin: 0, fontSize: '1rem' }}>
                 1. Evidence File Selection <span style={{ color: '#ef4444' }}>*</span>
@@ -741,7 +741,7 @@ export default function EvidenceIntake() {
           </div>
 
           {/* SECTION 2: CASE ASSOCIATION */}
-          <div className="card" style={{ marginBottom: '1.25rem' }}>
+          <div className="card" data-tour-target="image-intake-case" style={{ marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
               <h2 className="card-title" style={{ margin: 0, fontSize: '1rem' }}>
                 2. Investigation Case Association <span style={{ color: '#ef4444' }}>*</span>
@@ -859,7 +859,7 @@ export default function EvidenceIntake() {
           </div>
 
           {/* SECTION 3: OPTIONAL PROVENANCE & CONTEXT */}
-          <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div className="card" data-tour-target="image-intake-context" style={{ marginBottom: '1.5rem' }}>
             <button 
               type="button" 
               onClick={() => setShowOptionalContext(!showOptionalContext)}

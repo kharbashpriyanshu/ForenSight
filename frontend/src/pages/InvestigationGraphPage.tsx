@@ -1026,6 +1026,7 @@ const InvestigationGraphPage: React.FC = () => {
       {/* ===================================================================== */}
       <div 
         ref={containerRef}
+        data-tour-target="investigation-graph"
         className="card" 
         style={{ 
           flex: 1, 

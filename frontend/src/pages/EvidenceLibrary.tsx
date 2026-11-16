@@ -338,12 +338,13 @@ const EvidenceLibrary: React.FC = () => {
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
-          {evidenceList.map(item => {
+          {evidenceList.map((item, index) => {
             const isSelected = selectedForCompare.includes(item.id);
             return (
               <div 
                 key={item.id}
                 className="card"
+                data-tour-target={index === 0 ? 'evidence-library' : undefined}
                 onMouseEnter={() => {
                   prefetchApi(`/evidence/${item.id}`);
                   prefetchApi(`/evidence/${item.id}/analyses`);

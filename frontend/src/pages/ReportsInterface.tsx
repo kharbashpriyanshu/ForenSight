@@ -159,7 +159,7 @@ export default function ReportsInterface() {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div>
-            <h2 className="card-title" style={{ margin: 0 }}>Forensic Investigation Reports</h2>
+            <h2 data-tour-target="forensic-reports" className="card-title" style={{ margin: 0 }}>Forensic Investigation Reports</h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
               Generate formal forensic PDF dossiers or export reproducible JSON examination records for analyst review
             </div>

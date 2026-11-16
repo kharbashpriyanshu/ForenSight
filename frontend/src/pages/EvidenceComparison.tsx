@@ -153,7 +153,7 @@ const EvidenceComparison: React.FC = () => {
                 Forensic Correlation Lab
               </span>
             </div>
-            <h2 className="card-title" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>
+            <h2 data-tour-target="evidence-comparison" className="card-title" style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.35rem' }}>
               Comparative Evidence Analysis (Compare Mode)
             </h2>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.84rem', marginTop: '0.25rem' }}>

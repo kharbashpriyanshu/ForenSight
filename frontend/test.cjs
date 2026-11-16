@@ -582,6 +582,13 @@ async function main() {
   await page.waitForFunction(() => document.body.innerText.includes('Chain of Custody & Storage Verification'));
   assert.equal(state.evidenceUploaded, true, 'evidence upload endpoint was called');
 
+  await page.waitForSelector('button[aria-label="Close Forensic Lab tour"]', { timeout: 5000 });
+  assert.ok(
+    (await page.$eval('[role="dialog"] h2', (element) => element.textContent)).includes('Choose a working style'),
+    'first visit should open the Forensic Lab tour at its first step',
+  );
+  await page.click('button[aria-label="Close Forensic Lab tour"]');
+
   await clickButton(page, 'Core DIP Engines');
   await clickButton(page, 'Queue Analysis', true);
   await page.waitForFunction(() => document.body.innerText.includes('Mock analysis completed.'));

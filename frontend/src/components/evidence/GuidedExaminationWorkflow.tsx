@@ -642,6 +642,7 @@ export default function GuidedExaminationWorkflow({
         <div 
           role="tablist" 
           aria-label="Examination Workflow Mode"
+          data-tour-target="lab-mode-switch"
           style={{ 
             display: 'inline-flex', 
             background: 'var(--bg-canvas, var(--surface-raised))', 
@@ -705,11 +706,11 @@ export default function GuidedExaminationWorkflow({
       </div>
 
       {/* EVIDENCE SUMMARY & FORMAT CONTEXT BANNER */}
-      <div style={{ 
-        margin: '1rem 0', 
-        padding: '0.75rem 1rem', 
-        background: 'var(--surface-raised)', 
-        borderRadius: '8px', 
+      <div data-tour-target="lab-evidence-summary" style={{
+        margin: '1rem 0',
+        padding: '0.75rem 1rem',
+        background: 'var(--surface-raised)',
+        borderRadius: '8px',
         border: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'space-between',
@@ -788,10 +789,10 @@ export default function GuidedExaminationWorkflow({
       {examinationMode === 'guided' && (
         <div role="tabpanel" id="panel-guided" aria-labelledby="tab-guided">
           {/* Scientific Recommendation Explanation Banner */}
-          <div style={{ 
-            padding: '0.85rem 1rem', 
-            background: 'rgba(37, 99, 235, 0.05)', 
-            border: '1px solid rgba(37, 99, 235, 0.25)', 
+          <div data-tour-target="lab-suggested-exams" style={{
+            padding: '0.85rem 1rem',
+            background: 'rgba(37, 99, 235, 0.05)',
+            border: '1px solid rgba(37, 99, 235, 0.25)',
             borderRadius: '8px', 
             marginBottom: '1rem',
             fontSize: '0.825rem',
@@ -859,7 +860,7 @@ export default function GuidedExaminationWorkflow({
           </div>
 
           {/* GUIDED EXAMINATION CARDS GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
+          <div data-tour-target="lab-engine-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
             {FORENSIC_EXAMINATION_CATALOGUE.map(exam => {
               const compatible = isCompatible(exam);
               const isSelected = selectedEngines.has(exam.id);

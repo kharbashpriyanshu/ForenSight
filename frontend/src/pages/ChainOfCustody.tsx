@@ -94,7 +94,7 @@ const ChainOfCustody: React.FC = () => {
                 {data.total_evidence_items} Registered Evidence Items
               </span>
             </div>
-            <h1 style={{ fontSize: '1.5rem', margin: '0.25rem 0' }}>Chain of Custody & Cryptographic Ledger</h1>
+            <h1 data-tour-target="chain-of-custody" style={{ fontSize: '1.5rem', margin: '0.25rem 0' }}>Chain of Custody & Cryptographic Ledger</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, maxWidth: '800px' }}>
               Immutable cryptographic ledger tracking digital evidence from initial acquisition and SHA-256 ingestion hashing through analysis, analyst review, and courtroom export.
             </p>

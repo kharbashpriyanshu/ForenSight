@@ -23,7 +23,8 @@ const CameraIdViewer = lazy(() => import('../components/evidence/CameraIdViewer'
 const InteractiveVisualInspection = lazy(() => import('../components/evidence/InteractiveVisualInspection'));
 const PerspectiveForensicsViewer = lazy(() => import('../components/evidence/PerspectiveForensicsViewer').then((m) => ({ default: m.PerspectiveForensicsViewer })));
 const LightingSolarForensicsViewer = lazy(() => import('../components/evidence/LightingSolarForensicsViewer').then((m) => ({ default: m.LightingSolarForensicsViewer })));
-import { X, Table, RefreshCw, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, ArrowRight, Info, GitMerge, History } from 'lucide-react';
+import { X, Table, RefreshCw, ShieldCheck, ShieldAlert, AlertTriangle, Cpu, ArrowRight, Info, GitMerge, History, Sparkles } from 'lucide-react';
+import ForensicLabTour from '../components/evidence/ForensicLabTour';
 
 interface HeatmapRegion {
   modality: string;
@@ -60,6 +61,14 @@ export default function EvidenceDetail() {
   const { caseId, evidenceId } = useParams<{ caseId: string, evidenceId: string }>();
   const navigate = useNavigate();
   const [uploadResult, setUploadResult] = useState<any | null>(null);
+  const [forensicLabTourOpen, setForensicLabTourOpen] = useState(() => {
+    try {
+      return localStorage.getItem('forensight_forensic_lab_tour_seen') !== 'true';
+    } catch (error) {
+      console.warn('Could not read Forensic Lab tour preference from browser storage.', error);
+      return true;
+    }
+  });
   
   const [jobs, setJobs] = useState<any>({});
   const [results, setResults] = useState<any>({});
@@ -308,6 +317,15 @@ export default function EvidenceDetail() {
       .catch(() => {});
   };
 
+  const closeForensicLabTour = () => {
+    setForensicLabTourOpen(false);
+    try {
+      localStorage.setItem('forensight_forensic_lab_tour_seen', 'true');
+    } catch (error) {
+      console.warn('Could not save Forensic Lab tour preference to browser storage.', error);
+    }
+  };
+
   const handleAnalysisResult = (slug: string, data: any) => {
     const key = slug.toLowerCase();
     const hypKey = key.replace(/_/g, '-');
@@ -500,7 +518,15 @@ export default function EvidenceDetail() {
 
       {uploadResult && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setForensicLabTourOpen(true)}
+            >
+              <Sparkles size={15} style={{ verticalAlign: 'middle', marginRight: '0.35rem' }} />
+              Forensic Lab Tour
+            </button>
             <button
               className="secondary-button"
               onClick={() => navigate(`/cases/${caseId}/evidence/${uploadResult.id}/history`)}
@@ -612,7 +638,7 @@ export default function EvidenceDetail() {
           />
 
           {/* Categorized Forensic Workbench Navigation */}
-          <div id="workbench-nav" className="workbench-nav-container">
+          <div id="workbench-nav" data-tour-target="lab-workbench-navigation" className="workbench-nav-container">
             {workbenchTabs.map(t => {
               const isActive = workbenchTab === t.id;
               return (
@@ -652,7 +678,7 @@ export default function EvidenceDetail() {
           {/* TAB 1: OVERVIEW & MULTI-MODALITY HEATMAP */}
           {(workbenchTab === 'overview' || workbenchTab === 'all') && heatmap && (
             <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+              <div data-tour-target="lab-heatmap-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
@@ -2322,6 +2348,7 @@ export default function EvidenceDetail() {
             </div>,
             document.body
           )}
+          <ForensicLabTour isOpen={forensicLabTourOpen} onClose={closeForensicLabTour} />
         </>
       )}
     </div>

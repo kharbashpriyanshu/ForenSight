@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Sparkles, 
-  Layers, 
-  ShieldCheck, 
-  Cpu, 
-  SplitSquareVertical, 
-  Network, 
-  FileText, 
-  ChevronRight, 
-  ChevronLeft, 
-  X, 
-  ExternalLink,
-  CheckCircle2
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Compass,
+  FileText,
+  FileUp,
+  Layers,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  SplitSquareVertical,
+  X,
 } from 'lucide-react';
 
 interface DemoGuidedTourProps {
@@ -20,487 +20,579 @@ interface DemoGuidedTourProps {
   onClose: () => void;
 }
 
+type TourFlow = 'workspace' | 'image';
+
 interface TourStep {
   id: string;
-  badge: string;
   category: string;
   title: string;
-  subtitle: string;
   description: string;
   icon: React.ReactNode;
-  highlights: { title: string; desc: string }[];
-  actionLabel?: string;
-  actionRoute?: string;
+  route?: string;
+  target?: string;
 }
 
-const TOUR_STEPS: TourStep[] = [
+interface TargetRect {
+  target: string;
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+const WELCOME_STEP: TourStep = {
+  id: 'welcome',
+  category: 'WELCOME',
+  title: 'Welcome to ForenSight',
+  description: 'Take a quick tour of the demo, or choose how you want to begin.',
+  icon: <Sparkles size={18} />,
+};
+
+const CHOICE_STEP: TourStep = {
+  id: 'choice',
+  category: 'CHOOSE A PATH',
+  title: 'Where would you like to begin?',
+  description: 'Continue an existing demo investigation, or start with an image of your own.',
+  icon: <Compass size={18} />,
+  route: '/cases',
+  target: 'demo-tour-entry-options',
+};
+
+const WORKSPACE_STEPS: TourStep[] = [
   {
-    id: 'dossier',
-    badge: 'CASE FS-DEMO-001 • INSTRUCTOR AUDIT',
-    category: 'CASE DOSSIER',
-    title: 'Investigation Dossier: Operation Mirrored Echo',
-    subtitle: 'Synthetic Corporate Campaign Integrity Examination',
-    description: 
-      'Welcome to ForenSight. You are logged into the interactive demonstration environment pre-loaded with Case FS-DEMO-001. This investigation probes visual asset manipulation across a distributed multi-asset media campaign.',
-    icon: <Layers size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Authentic Reference Master', desc: '1 unaltered studio camera capture with pristine sensor PRNU and CFA demosaicing.' },
-      { title: '6 Spliced & Manipulated Assets', desc: 'Realistically modified files containing copy-move clones, spliced badges, and recompressed social media uploads.' },
-      { title: 'Isolated Sandbox', desc: 'Safe deterministic testing environment with zero interference to active investigations.' }
-    ],
-    actionLabel: 'Explore Case Dossier',
-    actionRoute: '/cases/FS-DEMO-001',
+    id: 'overview',
+    category: 'CASE OVERVIEW',
+    title: 'Start with the case dossier',
+    description: 'The demo case keeps its summary, status, and key actions together. Open its evidence when you are ready to examine files.',
+    icon: <Layers size={18} />,
+    route: '/cases/FS-DEMO-001',
+    target: 'open-evidence',
+  },
+  {
+    id: 'evidence',
+    category: 'EVIDENCE LIBRARY',
+    title: 'Review the evidence',
+    description: 'Check registered images, integrity hashes, and analysis status. Select an item to inspect its results.',
+    icon: <Sparkles size={18} />,
+    route: '/cases/FS-DEMO-001/evidence',
+    target: 'evidence-library',
   },
   {
     id: 'custody',
-    badge: 'ISO/IEC 27037 • EVIDENCE INTEGRITY',
     category: 'CHAIN OF CUSTODY',
-    title: 'Cryptographic Custody & Bitstream Hashing',
-    subtitle: 'Mathematical Immutability from Ingestion to Courtroom',
-    description: 
-      'Digital evidence handling requires verifiable mathematical immutability. Upon intake, ForenSight immediately fingerprints every visual bitstream with SHA-256 and logs chronological custody events.',
-    icon: <ShieldCheck size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Immutable SHA-256 Fingerprint', desc: 'Calculated at the exact millisecond of upload. Any subsequent bit modification invalidates the custody log.' },
-      { title: 'Self-Healing Cloud Storage', desc: 'Binary payloads persist in PostgreSQL bytea tables with automatic on-disk restoration across ephemeral container redeploys.' },
-      { title: 'Forensic Audit Timeline', desc: 'Chronological tracking of every analyst access, verification decision, and processing event.' }
-    ],
-    actionLabel: 'Inspect Chain of Custody',
-    actionRoute: '/cases/FS-DEMO-001/custody',
+    title: 'Verify evidence integrity',
+    description: 'Trace acquisition and analyst actions in the custody ledger, and verify evidence hashes.',
+    icon: <ShieldCheck size={18} />,
+    route: '/cases/FS-DEMO-001/custody',
+    target: 'chain-of-custody',
   },
   {
-    id: 'engines',
-    badge: '23 ENGINES • 6 EPISTEMIC CATEGORIES',
-    category: 'FORENSIC WORKBENCH',
-    title: 'Multi-Modal Scientific Analysis',
-    subtitle: 'Comprehensive Signal Extraction without Black-Box Guesswork',
-    description: 
-      'ForenSight computes 23 deterministic mathematical and physical forensic signals across 6 epistemic categories, enabling thorough empirical examination rather than unexplainable neural guesswork.',
-    icon: <Cpu size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Container & Compression', desc: 'Double-JPEG compression ghosting, Quantization matrix analysis, and EXIF provenance extraction.' },
-      { title: 'Color & Spectrum', desc: 'Color Filter Array (CFA) demosaicing residuals and 2D FFT 4-quadrant power spectrum analysis.' },
-      { title: 'Noise & Resampling', desc: 'Median filter residual analysis, Laplacian noise variance, and Radon transform interpolation detection.' },
-      { title: 'Sensor & Camera PRNU', desc: 'Photo-Response Non-Uniformity sensor noise fingerprint identification across camera hardware.' },
-      { title: 'Copy-Move & Clone Detection', desc: 'Dense DCT sliding-window block matching and ORB keypoint affine RANSAC consensus.' },
-      { title: 'Physical & Lighting Geometry', desc: 'NOAA solar ephemeris astronomical azimuth calculation and 3D vanishing point perspective geometry.' }
-    ],
-    actionLabel: 'Examine Evidence Items',
-    actionRoute: '/cases/FS-DEMO-001/evidence',
-  },
-  {
-    id: 'microscopy',
-    badge: 'SYNCHRONIZED LAB • DELTA WIPE SLIDER',
+    id: 'comparison',
     category: 'COMPARATIVE ANALYSIS',
-    title: 'Interactive Microscopy & Comparative Lab',
-    subtitle: 'Synchronized Multi-Scale Loupe & Wipe Differences',
-    description: 
-      'Pinpointing subtle manipulation boundaries requires comparing suspicious imagery against authentic reference baselines in an synchronized comparative viewport.',
-    icon: <SplitSquareVertical size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Dual Viewport Pan & Zoom', desc: 'Synchronized cursor navigation with high-magnification sub-pixel inspection loupe.' },
-      { title: 'Interactive Wipe Slider', desc: 'Real-time horizontal wipe reveals localized pixel deltas and spliced boundary transitions.' },
-      { title: 'Artifact Discrepancy Overlay', desc: 'Visualizes clone displacement vectors, noise inconsistencies, and compression boundary misalignments.' }
-    ],
-    actionLabel: 'Open Comparative Lab',
-    actionRoute: '/cases/FS-DEMO-001/compare',
+    title: 'Compare evidence side by side',
+    description: 'Use synchronized zoom and the wipe control to inspect differences between two evidence items.',
+    icon: <SplitSquareVertical size={18} />,
+    route: '/cases/FS-DEMO-001/compare',
+    target: 'evidence-comparison',
   },
   {
     id: 'graph',
-    badge: 'FORCE-DIRECTED GRAPH • LINEAGE DAG',
-    category: 'RELATIONSHIP MAPPING',
-    title: 'Investigation Knowledge Graph & Lineage',
-    subtitle: 'Multi-Evidence Derivation Trees & Camera Clusters',
-    description: 
-      'Digital evidence rarely exists in isolation. ForenSight maps the entire case ecosystem into an interactive force-directed epistemic graph to uncover hidden connections.',
-    icon: <Network size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Hierarchical DAG Mode', desc: 'Traces parent-to-child derivation lineage (Master → Cropped Banner → Spliced Composite).' },
-      { title: 'Evidence Clusters Mode', desc: 'Clusters assets automatically by camera PRNU sensor signatures and compression profiles.' },
-      { title: 'Interactive Node Inspector', desc: 'Click any node to view connected links, scientific observations, and evidentiary findings.' }
-    ],
-    actionLabel: 'Explore Knowledge Graph',
-    actionRoute: '/cases/FS-DEMO-001/graph',
+    category: 'INVESTIGATION GRAPH',
+    title: 'Explore evidence relationships',
+    description: 'Pan and zoom the graph to follow relationships between case evidence, findings, and reports.',
+    icon: <Network size={18} />,
+    route: '/cases/FS-DEMO-001/graph',
+    target: 'investigation-graph',
   },
   {
-    id: 'fusion',
-    badge: 'SCIENTIFIC AXIOM • OBSERVATION ≠ PROOF',
-    category: 'EPISTEMIC SYNTHESIS',
-    title: 'Multi-Modal Epistemic Fusion & Court Reports',
-    subtitle: 'Calibrated Confidence Scoring & Tamper-Evident Export',
-    description: 
-      'In forensic science, a single anomaly is merely an observation. ForenSight synthesizes all 23 analytical signals into an overarching calibrated confidence assessment and generates court-ready reports.',
-    icon: <FileText size={22} className="tour-step-icon" />,
-    highlights: [
-      { title: 'Observation ≠ Proof Axiom', desc: 'Cross-validates physical lighting, sensor PRNU, and compression artifacts to eliminate false positives.' },
-      { title: 'Calibrated Epistemic Scale', desc: 'Standardized assessment levels: Nominal, Inconclusive, Suspicious, Confirmed Anomaly.' },
-      { title: 'ISO/IEC 27037 Court Reports', desc: 'One-click export of tamper-evident PDF investigation dossiers complete with SHA-256 hashes and analyst signatures.' }
-    ],
-    actionLabel: 'View Forensic Reports',
-    actionRoute: '/cases/FS-DEMO-001/reports',
+    id: 'reports',
+    category: 'REPORTS & EXPORTS',
+    title: 'Create a case report',
+    description: 'Generate a forensic PDF dossier or export structured examination data for review.',
+    icon: <FileText size={18} />,
+    route: '/cases/FS-DEMO-001/reports',
+    target: 'forensic-reports',
   },
 ];
 
+const IMAGE_STEPS: TourStep[] = [
+  {
+    id: 'image-upload',
+    category: 'IMAGE INTAKE',
+    title: 'Choose an image to examine',
+    description: 'ForenSight preserves the original file and calculates its SHA-256 fingerprint during intake.',
+    icon: <FileUp size={18} />,
+    route: '/cases/intake',
+    target: 'image-intake-upload',
+  },
+  {
+    id: 'image-case',
+    category: 'CASE ASSOCIATION',
+    title: 'Choose where the evidence belongs',
+    description: 'Associate the image with an existing investigation or create a case. You can add acquisition details before submitting.',
+    icon: <Layers size={18} />,
+    route: '/cases/intake',
+    target: 'image-intake-case',
+  },
+  {
+    id: 'image-context',
+    category: 'ACQUISITION CONTEXT',
+    title: 'Record optional context',
+    description: 'Add reported capture or transmission details separately from the forensic measurements.',
+    icon: <FileText size={18} />,
+    route: '/cases/intake',
+    target: 'image-intake-context',
+  },
+];
+
+const SPOTLIGHT_PADDING = 8;
+
 export default function DemoGuidedTour({ isOpen, onClose }: DemoGuidedTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [flow, setFlow] = useState<TourFlow | null>(null);
+  const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const [popoverPosition, setPopoverPosition] = useState<{ target: string; left: number; top: number } | null>(null);
+  const popoverRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Keyboard navigation
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!isOpen) return;
-    if (e.key === 'Escape') {
-      handleDismiss();
-    } else if (e.key === 'ArrowRight') {
-      setCurrentStep(prev => Math.min(prev + 1, TOUR_STEPS.length - 1));
-    } else if (e.key === 'ArrowLeft') {
-      setCurrentStep(prev => Math.max(prev - 1, 0));
+  const flowSteps = flow === 'workspace' ? WORKSPACE_STEPS : IMAGE_STEPS;
+  const steps = [WELCOME_STEP, CHOICE_STEP, ...flowSteps];
+  const step = steps[currentStep] ?? WELCOME_STEP;
+  const activeTargetRect = targetRect?.target === step.target ? targetRect : null;
+  const activePopoverPosition = popoverPosition?.target === step.target ? popoverPosition : null;
+  const isWelcome = currentStep === 0;
+  const isPathChoice = currentStep === 1;
+  const isFirstStep = isWelcome;
+  const isLastStep = flow !== null && currentStep === steps.length - 1;
+  const stepLabel = isWelcome || isPathChoice
+    ? `Getting started · ${currentStep + 1} of 2`
+    : `${flow === 'workspace' ? 'Workspace' : 'Image intake'} · ${currentStep - 1} of ${flowSteps.length}`;
+
+  const handleDismiss = useCallback(() => {
+    try {
+      localStorage.setItem('forensight_demo_tour_dismissed', 'true');
+    } catch {
+      // The tour can still be dismissed when browser storage is unavailable.
     }
-  }, [isOpen]);
+    setCurrentStep(0);
+    setFlow(null);
+    onClose();
+  }, [onClose]);
+
+  const changeStep = useCallback((nextStep: number) => {
+    const lastStep = flow ? flowSteps.length + 1 : 1;
+    setCurrentStep(Math.max(0, Math.min(nextStep, lastStep)));
+  }, [flow, flowSteps.length]);
+
+  const chooseFlow = useCallback((selectedFlow: TourFlow) => {
+    setFlow(selectedFlow);
+    setCurrentStep(2);
+    navigate(selectedFlow === 'workspace' ? WORKSPACE_STEPS[0].route! : IMAGE_STEPS[0].route!);
+  }, [navigate]);
+
+  const handleNext = useCallback(() => {
+    if (isWelcome) {
+      changeStep(1);
+      if (location.pathname !== '/cases') navigate('/cases');
+    } else if (isLastStep) {
+      handleDismiss();
+    } else if (!isPathChoice) {
+      changeStep(currentStep + 1);
+    }
+  }, [changeStep, currentStep, handleDismiss, isLastStep, isPathChoice, isWelcome, location.pathname, navigate]);
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!isOpen) return;
+    if (event.key === 'Escape') {
+      handleDismiss();
+    } else if (event.key === 'ArrowRight' && !isPathChoice) {
+      handleNext();
+    } else if (event.key === 'ArrowLeft') {
+      changeStep(currentStep - 1);
+    }
+  }, [changeStep, currentStep, handleDismiss, handleNext, isOpen, isPathChoice]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    if (isOpen && step.route && location.pathname !== step.route) {
+      navigate(step.route);
+    }
+  }, [isOpen, location.pathname, navigate, step.route]);
+
+  useEffect(() => {
+    if (!isOpen || !step.target) return;
+
+    const targetName = step.target;
+    let frameId = 0;
+    const selector = `[data-tour-target="${targetName}"]`;
+    const updateTarget = () => {
+      const target = document.querySelector<HTMLElement>(selector);
+      if (!target) {
+        setTargetRect(null);
+        return;
+      }
+
+      const rect = target.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0 || rect.bottom <= 0 || rect.top >= window.innerHeight) {
+        setTargetRect(previous => previous?.target === targetName ? null : previous);
+        return;
+      }
+
+      setTargetRect({
+        target: targetName,
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+
+    const observer = new MutationObserver(() => {
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(updateTarget);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    frameId = window.requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(selector);
+      target?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+      updateTarget();
+    });
+    window.addEventListener('resize', updateTarget);
+    window.addEventListener('scroll', updateTarget, true);
+
+    return () => {
+      observer.disconnect();
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', updateTarget);
+      window.removeEventListener('scroll', updateTarget, true);
+    };
+  }, [isOpen, location.pathname, step.target]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !activeTargetRect || !step.target || !popoverRef.current) return;
+
+    const popover = popoverRef.current.getBoundingClientRect();
+    const margin = 16;
+    const isLargeTarget = activeTargetRect.width > window.innerWidth * 0.6;
+    let left: number;
+    let top: number;
+
+    if (isLargeTarget) {
+      left = window.innerWidth - popover.width - margin;
+      top = Math.min(activeTargetRect.top + margin, window.innerHeight - popover.height - margin);
+    } else if (window.innerWidth - activeTargetRect.right >= popover.width + margin * 2) {
+      left = activeTargetRect.right + margin;
+      top = activeTargetRect.top + activeTargetRect.height / 2 - popover.height / 2;
+    } else if (activeTargetRect.left >= popover.width + margin * 2) {
+      left = activeTargetRect.left - popover.width - margin;
+      top = activeTargetRect.top + activeTargetRect.height / 2 - popover.height / 2;
+    } else {
+      left = Math.max(margin, Math.min(activeTargetRect.left, window.innerWidth - popover.width - margin));
+      top = activeTargetRect.bottom + margin;
+      if (top + popover.height > window.innerHeight - margin) {
+        top = activeTargetRect.top - popover.height - margin;
+      }
+    }
+
+    setPopoverPosition({
+      target: step.target,
+      left: Math.max(margin, Math.min(left, window.innerWidth - popover.width - margin)),
+      top: Math.max(margin, Math.min(top, window.innerHeight - popover.height - margin)),
+    });
+  }, [activeTargetRect, currentStep, isOpen, step.target]);
+
   if (!isOpen) return null;
 
-  const step = TOUR_STEPS[currentStep];
-  const isFirstStep = currentStep === 0;
-  const isLastStep = currentStep === TOUR_STEPS.length - 1;
+  const spotlight = activeTargetRect ? {
+    top: Math.max(0, activeTargetRect.top - SPOTLIGHT_PADDING),
+    left: Math.max(0, activeTargetRect.left - SPOTLIGHT_PADDING),
+    right: Math.min(window.innerWidth, activeTargetRect.right + SPOTLIGHT_PADDING),
+    bottom: Math.min(window.innerHeight, activeTargetRect.bottom + SPOTLIGHT_PADDING),
+  } : null;
 
-  const handleDismiss = () => {
-    try {
-      localStorage.setItem('forensight_demo_tour_dismissed', 'true');
-    } catch {}
-    onClose();
-  };
-
-  const handleNext = () => {
-    if (isLastStep) {
-      handleDismiss();
-    } else {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 0));
-  };
-
-  const handleActionClick = (route?: string) => {
-    handleDismiss();
-    if (route) {
-      navigate(route);
-    }
+  const backdropStyle: React.CSSProperties = {
+    position: 'fixed',
+    zIndex: 1200,
+    background: 'rgba(10, 14, 20, 0.64)',
   };
 
   return (
-    <div 
+    <div
       className="demo-tour-overlay"
       role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) handleDismiss();
-      }}
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 1200,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-        background: 'rgba(10, 14, 20, 0.72)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
+        background: spotlight ? 'transparent' : 'rgba(10, 14, 20, 0.64)',
         animation: 'demoFadeIn 0.2s ease-out',
       }}
     >
-      <div 
+      {spotlight && (
+        <>
+          <div aria-hidden="true" style={{ ...backdropStyle, top: 0, left: 0, width: '100vw', height: spotlight.top }} />
+          <div aria-hidden="true" style={{ ...backdropStyle, top: spotlight.bottom, left: 0, width: '100vw', height: Math.max(0, window.innerHeight - spotlight.bottom) }} />
+          <div aria-hidden="true" style={{ ...backdropStyle, top: spotlight.top, left: 0, width: spotlight.left, height: spotlight.bottom - spotlight.top }} />
+          <div aria-hidden="true" style={{ ...backdropStyle, top: spotlight.top, left: spotlight.right, width: Math.max(0, window.innerWidth - spotlight.right), height: spotlight.bottom - spotlight.top }} />
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'fixed',
+              top: spotlight.top,
+              left: spotlight.left,
+              width: spotlight.right - spotlight.left,
+              height: spotlight.bottom - spotlight.top,
+              border: '2px solid var(--accent-color, #b8872a)',
+              borderRadius: '8px',
+              boxShadow: '0 0 0 2px rgba(184, 135, 42, 0.2)',
+              pointerEvents: 'none',
+              zIndex: 1201,
+            }}
+          />
+        </>
+      )}
+
+      <section
+        ref={popoverRef}
         className="demo-tour-modal card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="demo-tour-title"
+        aria-describedby="demo-tour-description"
         style={{
-          width: '100%',
-          maxWidth: '680px',
-          maxHeight: '90vh',
+          position: 'fixed',
+          zIndex: 1202,
+          width: 'min(360px, calc(100vw - 2rem))',
+          maxHeight: 'calc(100vh - 2rem)',
+          overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--surface-color-solid, #ffffff)',
           border: '1px solid var(--accent-border, rgba(184, 135, 42, 0.35))',
-          borderRadius: '16px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--border-subtle)',
-          overflow: 'hidden',
-          animation: 'demoSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          borderRadius: '14px',
+          boxShadow: '0 18px 45px rgba(0, 0, 0, 0.28)',
+          animation: 'demoSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+          ...(activePopoverPosition
+            ? { left: activePopoverPosition.left, top: activePopoverPosition.top }
+            : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }),
         }}
       >
-        {/* MODAL HEADER */}
         <div style={{
-          padding: '1.25rem 1.5rem 1rem 1.5rem',
-          borderBottom: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
+          padding: '0.8rem 0.9rem',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          borderBottom: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
           background: 'var(--surface-raised, #faf8f3)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
             <span style={{
+              width: '30px',
+              height: '30px',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '32px',
-              height: '32px',
+              flexShrink: 0,
               borderRadius: '8px',
               background: 'rgba(184, 135, 42, 0.15)',
               color: 'var(--accent-color, #b8872a)',
             }}>
-              <Sparkles size={18} />
+              {step.icon}
             </span>
             <div>
               <div style={{
-                fontSize: '0.68rem',
+                fontSize: '0.66rem',
                 fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
                 color: 'var(--accent-color, #b8872a)',
               }}>
-                {step.badge}
+                {step.category}
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Interactive Forensic Tour • Step {currentStep + 1} of {TOUR_STEPS.length}
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Demo tour · {stepLabel}
               </div>
             </div>
           </div>
-
           <button
             type="button"
             className="btn btn-secondary"
             onClick={handleDismiss}
             aria-label="Close tour"
-            title="Dismiss guided tour (reopen anytime via 'Demo Tour' in topbar)"
-            style={{
-              padding: '0.35rem',
-              borderRadius: '8px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ padding: '0.3rem', display: 'inline-flex', borderRadius: '7px' }}
           >
-            <X size={16} />
+            <X size={15} />
           </button>
         </div>
 
-        {/* MODAL BODY */}
-        <div style={{
-          padding: '1.5rem',
-          overflowY: 'auto',
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.25rem',
-        }}>
-          {/* Step Title Area */}
-          <div>
-            <div style={{
-              display: 'inline-block',
-              fontSize: '0.7rem',
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
-              padding: '0.15rem 0.5rem',
-              borderRadius: '4px',
-              background: 'rgba(184, 135, 42, 0.10)',
-              color: 'var(--accent-text, #8c6214)',
-              marginBottom: '0.4rem',
-            }}>
-              {step.category}
-            </div>
-            <h2 id="demo-tour-title" style={{
-              margin: '0 0 0.35rem 0',
-              fontSize: '1.35rem',
-              fontWeight: 700,
-              color: 'var(--text-main)',
-              lineHeight: 1.3,
-            }}>
-              {step.title}
-            </h2>
-            <div style={{ fontSize: '0.88rem', color: 'var(--accent-text, #8c6214)', fontWeight: 500 }}>
-              {step.subtitle}
-            </div>
-          </div>
-
-          {/* Description */}
-          <p style={{
+        <div style={{ padding: '1rem' }}>
+          <h2 id="demo-tour-title" style={{
             margin: 0,
-            fontSize: '0.92rem',
-            lineHeight: 1.6,
+            fontSize: '1.05rem',
+            lineHeight: 1.35,
             color: 'var(--text-main)',
-            opacity: 0.9,
+          }}>
+            {step.title}
+          </h2>
+          <p id="demo-tour-description" style={{
+            margin: '0.45rem 0 0',
+            fontSize: '0.84rem',
+            lineHeight: 1.5,
+            color: 'var(--text-muted)',
           }}>
             {step.description}
           </p>
 
-          {/* Highlights Box */}
-          <div style={{
-            background: 'var(--surface-sunken, #f4efe4)',
-            border: '1px solid var(--border-default)',
-            borderLeft: '4px solid var(--accent-color, #b8872a)',
-            borderRadius: '10px',
-            padding: '1rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.65rem',
-          }}>
-            <div style={{
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              color: 'var(--text-muted)',
-              marginBottom: '0.2rem',
-            }}>
-              Core Capabilities & Highlights
-            </div>
-            {step.highlights.map((h, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
-                <CheckCircle2 size={16} style={{ color: 'var(--accent-color, #b8872a)', flexShrink: 0, marginTop: '2px' }} />
-                <div style={{ fontSize: '0.84rem', lineHeight: 1.45 }}>
-                  <strong style={{ color: 'var(--text-main)' }}>{h.title}: </strong>
-                  <span style={{ color: 'var(--text-muted)' }}>{h.desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Action Link to direct workspace view */}
-          {step.actionRoute && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0.85rem 1rem',
-              background: 'rgba(184, 135, 42, 0.07)',
-              border: '1px dashed var(--accent-border, rgba(184, 135, 42, 0.35))',
-              borderRadius: '8px',
-            }}>
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Directly explore this feature in the current demo workspace:
-              </div>
+          {isPathChoice && (
+            <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.9rem' }}>
               <button
                 type="button"
-                className="btn btn-secondary"
-                onClick={() => handleActionClick(step.actionRoute)}
+                onClick={() => chooseFlow('workspace')}
                 style={{
-                  fontSize: '0.82rem',
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.35rem 0.75rem',
-                  color: 'var(--accent-text, #8c6214)',
-                  borderColor: 'var(--accent-border)',
+                  gap: '0.65rem',
+                  width: '100%',
+                  padding: '0.7rem',
+                  border: '1px solid var(--accent-border)',
+                  borderRadius: '9px',
+                  background: 'var(--surface-raised, #faf8f3)',
+                  color: 'var(--text-main)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
                 }}
               >
-                <span>{step.actionLabel || 'Jump to Feature'}</span>
-                <ExternalLink size={13} />
+                <Layers size={17} color="var(--accent-color, #b8872a)" />
+                <span style={{ flex: 1 }}>
+                  <strong style={{ display: 'block', fontSize: '0.82rem' }}>Continue with active workspace</strong>
+                  <span style={{ display: 'block', marginTop: '0.15rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    Explore demo case FS-DEMO-001
+                  </span>
+                </span>
+                <ArrowRight size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseFlow('image')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem',
+                  width: '100%',
+                  padding: '0.7rem',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: '9px',
+                  background: 'var(--surface-color-solid, #ffffff)',
+                  color: 'var(--text-main)',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                <FileUp size={17} color="var(--accent-color, #b8872a)" />
+                <span style={{ flex: 1 }}>
+                  <strong style={{ display: 'block', fontSize: '0.82rem' }}>Start with an image</strong>
+                  <span style={{ display: 'block', marginTop: '0.15rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    See the evidence intake workflow
+                  </span>
+                </span>
+                <ArrowRight size={15} />
               </button>
             </div>
           )}
         </div>
 
-        {/* MODAL FOOTER */}
         <div style={{
-          padding: '1rem 1.5rem',
+          padding: '0.7rem 0.9rem',
           borderTop: '1px solid var(--border-subtle, rgba(0, 0, 0, 0.08))',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: '0.5rem',
           background: 'var(--surface-raised, #faf8f3)',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
         }}>
-          {/* Skip / Close option */}
           <button
             type="button"
             className="btn btn-secondary"
             onClick={handleDismiss}
             style={{
-              fontSize: '0.84rem',
+              fontSize: '0.78rem',
               color: 'var(--text-muted)',
               border: 'none',
               background: 'transparent',
-              padding: '0.4rem 0.6rem',
-              cursor: 'pointer',
+              padding: '0.35rem 0.45rem',
             }}
           >
-            Skip Tour
+            Skip tour
           </button>
 
-          {/* Step Indicator Dots */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            {TOUR_STEPS.map((s, idx) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setCurrentStep(idx)}
-                aria-label={`Jump to step ${idx + 1}: ${s.title}`}
-                title={`Step ${idx + 1}: ${s.category}`}
-                style={{
-                  width: idx === currentStep ? '22px' : '8px',
-                  height: '8px',
-                  borderRadius: '999px',
-                  border: 'none',
-                  padding: 0,
-                  cursor: 'pointer',
-                  background: idx === currentStep 
-                    ? 'var(--accent-color, #b8872a)' 
-                    : 'var(--border-default, #ccc)',
-                  transition: 'all 0.2s ease',
-                }}
-              />
-            ))}
-          </div>
+          {flow && currentStep >= 2 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              {flowSteps.map((tourStep, index) => (
+                <button
+                  key={tourStep.id}
+                  type="button"
+                  onClick={() => changeStep(index + 2)}
+                  aria-label={`Go to step ${index + 1}: ${tourStep.category}`}
+                  aria-current={index + 2 === currentStep ? 'step' : undefined}
+                  style={{
+                    width: index + 2 === currentStep ? '18px' : '6px',
+                    height: '6px',
+                    border: 0,
+                    borderRadius: '999px',
+                    padding: 0,
+                    cursor: 'pointer',
+                    background: index + 2 === currentStep ? 'var(--accent-color, #b8872a)' : 'var(--border-default, #ccc)',
+                    transition: 'all 0.2s ease',
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Navigation Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={handlePrev}
+              onClick={() => changeStep(currentStep - 1)}
               disabled={isFirstStep}
-              style={{
-                fontSize: '0.85rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                opacity: isFirstStep ? 0.4 : 1,
-                cursor: isFirstStep ? 'not-allowed' : 'pointer',
-              }}
+              aria-label="Previous tour step"
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '0.35rem', opacity: isFirstStep ? 0.45 : 1 }}
             >
               <ChevronLeft size={16} />
-              <span>Back</span>
             </button>
-
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleNext}
-              style={{
-                fontSize: '0.85rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                background: 'var(--accent-color, #b8872a)',
-                borderColor: 'var(--accent-color, #b8872a)',
-                color: '#ffffff',
-                fontWeight: 600,
-              }}
-            >
-              <span>{isLastStep ? 'Finish & Explore Station' : 'Next Step'}</span>
-              {isLastStep ? <CheckCircle2 size={15} /> : <ChevronRight size={16} />}
-            </button>
+            {!isPathChoice && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleNext}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  padding: '0.4rem 0.65rem',
+                  fontSize: '0.8rem',
+                  background: 'var(--accent-color, #b8872a)',
+                  borderColor: 'var(--accent-color, #b8872a)',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                }}
+              >
+                <span>{isLastStep ? 'Done' : 'Next'}</span>
+                {!isLastStep && <ChevronRight size={15} />}
+              </button>
+            )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
