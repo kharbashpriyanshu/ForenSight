@@ -447,6 +447,19 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
     setPan({ x: 0, y: 0 });
   };
 
+  const handleViewportKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const panStep = event.shiftKey ? 50 : 20;
+    if (event.key === 'ArrowLeft') setPan(current => ({ ...current, x: current.x + panStep }));
+    else if (event.key === 'ArrowRight') setPan(current => ({ ...current, x: current.x - panStep }));
+    else if (event.key === 'ArrowUp') setPan(current => ({ ...current, y: current.y + panStep }));
+    else if (event.key === 'ArrowDown') setPan(current => ({ ...current, y: current.y - panStep }));
+    else if (event.key === '+' || event.key === '=') setScale(current => Math.min(16, current * 1.3));
+    else if (event.key === '-') setScale(current => Math.max(0.2, current / 1.3));
+    else if (event.key === 'Home') resetView();
+    else return;
+    event.preventDefault();
+  };
+
   // 7. Export Snapshot
   const handleExportSnapshot = () => {
     const canvas = mainCanvasRef.current;
@@ -528,6 +541,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             className="btn btn-secondary"
             onClick={() => setScale(s => Math.min(16, s * 1.3))}
             title="Zoom In"
+            aria-label="Zoom in"
             style={{ padding: '0.4rem 0.65rem' }}
           >
             <ZoomIn size={15} />
@@ -536,6 +550,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             className="btn btn-secondary"
             onClick={() => setScale(s => Math.max(0.2, s / 1.3))}
             title="Zoom Out"
+            aria-label="Zoom out"
             style={{ padding: '0.4rem 0.65rem' }}
           >
             <ZoomOut size={15} />
@@ -544,6 +559,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             className="btn btn-secondary"
             onClick={resetView}
             title="Reset Pan & Zoom"
+            aria-label={`Reset pan and zoom, current zoom ${Math.round(scale * 100)} percent`}
             style={{ padding: '0.4rem 0.65rem', gap: '0.3rem', fontSize: '0.75rem' }}
           >
             <RotateCcw size={14} /> {Math.round(scale * 100)}%
@@ -583,6 +599,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                 type="button"
                 onClick={() => setFilterMode(m.id as FilterMode)}
                 className={`microscopy-btn ${isSel ? 'active' : ''}`}
+                aria-pressed={isSel}
               >
                 <Icon size={13} /> {m.label}
               </button>
@@ -605,6 +622,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                 type="range" 
                 min="0" 
                 max="255" 
+                aria-label="Minimum luminance level"
                 value={levelMin} 
                 onChange={e => {
                   const val = parseInt(e.target.value) || 0;
@@ -621,6 +639,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                 type="range" 
                 min="0" 
                 max="255" 
+                aria-label="Maximum luminance level"
                 value={levelMax} 
                 onChange={e => {
                   const val = parseInt(e.target.value) || 0;
@@ -636,6 +655,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
               <input 
                 type="color" 
                 value={levelHighlightColor} 
+                aria-label="Level sweep highlight color"
                 onChange={e => setLevelHighlightColor(e.target.value)}
                 style={{ width: '28px', height: '24px', padding: 0, border: '1px solid var(--border-color)', cursor: 'pointer', borderRadius: '4px' }}
                 title="Change Level Sweep Highlight Color"
@@ -683,6 +703,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
               type="button"
               className="btn btn-secondary"
               onClick={() => setAutoSweepActive(a => !a)}
+              aria-pressed={autoSweepActive}
               style={{ padding: '0.3rem 0.75rem', fontSize: '0.75rem', gap: '0.35rem' }}
             >
               {autoSweepActive ? <Pause size={13} color="#ef4444" /> : <Play size={13} color="#10b981" />}
@@ -700,6 +721,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                 type="button"
                 onClick={() => setBitPlane(b)}
                 className={`microscopy-chip-btn ${bitPlane === b ? 'active' : ''}`}
+                aria-pressed={bitPlane === b}
               >
                 Bit {b} {b === 0 ? '(LSB)' : b === 7 ? '(MSB)' : ''}
               </button>
@@ -727,6 +749,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                 type="button"
                 onClick={() => setSelectedChannel(c.id as ColorChannel)}
                 className={`microscopy-chip-btn ${selectedChannel === c.id ? 'active' : ''}`}
+                aria-pressed={selectedChannel === c.id}
               >
                 {c.label}
               </button>
@@ -738,7 +761,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Sobel Noise Gate:</span>
             <input 
-              type="range" min="0" max="150" value={sobelThreshold} 
+              type="range" min="0" max="150" value={sobelThreshold} aria-label="Sobel noise gate threshold"
               onChange={e => setSobelThreshold(parseInt(e.target.value))}
               style={{ width: '120px', accentColor: 'var(--accent-color)' }}
             />
@@ -753,7 +776,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', paddingTop: '0.3rem', borderTop: '1px dashed var(--border-color)' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-main)' }}>Gamma Adjustment:</span>
             <input 
-              type="range" min="0.5" max="5.0" step="0.1" value={contrastBoost} 
+              type="range" min="0.5" max="5.0" step="0.1" value={contrastBoost} aria-label="Gamma adjustment"
               onChange={e => setContrastBoost(parseFloat(e.target.value))}
               style={{ width: '120px', accentColor: 'var(--accent-color)' }}
             />
@@ -779,7 +802,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
             {splitWipeActive && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-main)' }}>
                 <input 
-                  type="range" min="5" max="95" value={splitPosition} 
+                  type="range" min="5" max="95" value={splitPosition} aria-label="Split curtain position"
                   onChange={e => setSplitPosition(parseInt(e.target.value))} 
                   style={{ width: '100px', accentColor: 'var(--accent-color)' }}
                 />
@@ -808,6 +831,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                     type="button"
                     onClick={() => setLoupePower(p)}
                     className={`microscopy-chip-btn ${loupePower === p ? 'active' : ''}`}
+                    aria-pressed={loupePower === p}
                   >
                     {p}x
                   </button>
@@ -820,6 +844,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                     type="button"
                     onClick={() => setLoupeSize(s)}
                     className={`microscopy-chip-btn ${loupeSize === s ? 'active' : ''}`}
+                    aria-pressed={loupeSize === s}
                   >
                     {s}px
                   </button>
@@ -830,6 +855,7 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
                   value={loupeFilter} 
                   onChange={e => setLoupeFilter(e.target.value as FilterMode)}
                   className="microscopy-select"
+                  aria-label="Loupe filter"
                 >
                   <option value="original">Raw Pixels</option>
                   <option value="level_sweep">Level Sweep</option>
@@ -846,10 +872,15 @@ export const InteractiveVisualInspection: React.FC<InteractiveVisualInspectionPr
       {/* Main Interactive Canvas Viewport */}
       <div 
         ref={containerRef}
+        role="region"
+        aria-label="Image inspection viewport. Use arrow keys to pan, plus and minus to zoom, and Home to reset. Hold Shift with an arrow key to pan farther."
+        aria-keyshortcuts="ArrowLeft ArrowRight ArrowUp ArrowDown + - Home"
+        tabIndex={0}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
+        onKeyDown={handleViewportKeyDown}
         style={{
           position: 'relative',
           width: '100%',

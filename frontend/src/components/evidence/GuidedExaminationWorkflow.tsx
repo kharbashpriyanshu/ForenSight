@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, type KeyboardEvent } from 'react';
 import { 
   ChevronDown, 
   ChevronUp, 
@@ -452,7 +452,8 @@ export default function GuidedExaminationWorkflow({
   onBatchQueue,
   onViewResults
 }: GuidedExaminationWorkflowProps) {
-  const [examinationMode, setExaminationMode] = useState<'guided' | 'analyst'>('guided');
+  const [examinationMode, setExaminationMode] = useState<'guided' | 'analyst'>('analyst');
+  const modeTabRefs = useRef<Partial<Record<'guided' | 'analyst', HTMLButtonElement | null>>>({});
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -471,6 +472,14 @@ export default function GuidedExaminationWorkflow({
 
   // Selected engine IDs state — initialized with sensible recommended baseline
   const [selectedEngines, setSelectedEngines] = useState<Set<string>>(() => new Set(recommendedBaselineIds));
+
+  const handleModeTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentMode: 'guided' | 'analyst') => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const nextMode = currentMode === 'guided' ? 'analyst' : 'guided';
+    setExaminationMode(nextMode);
+    modeTabRefs.current[nextMode]?.focus();
+  };
 
   // Determine engine compatibility
   const isCompatible = useCallback((exam: ForensicExaminationDefinition) => {
@@ -595,7 +604,7 @@ export default function GuidedExaminationWorkflow({
   return (
     <section 
       aria-label="Forensic Examination & Engine Selection"
-      className="card" 
+      className="card forensic-lab-shell"
       style={{ 
         padding: '1.25rem',
         marginBottom: '1rem',
@@ -604,7 +613,7 @@ export default function GuidedExaminationWorkflow({
       }}
     >
       {/* SECTION HEADER & MODE SWITCHER */}
-      <div style={{ 
+      <div className="forensic-lab-section-header" style={{
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
@@ -614,27 +623,19 @@ export default function GuidedExaminationWorkflow({
         borderBottom: '1px solid var(--border-color)'
       }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-            <span style={{ 
-              fontSize: '0.7rem', 
-              fontWeight: 800, 
-              color: 'var(--primary-color)', 
-              background: 'var(--primary-light)', 
-              padding: '0.15rem 0.5rem', 
-              borderRadius: '4px',
-              letterSpacing: '0.04em'
-            }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+            <span className="forensic-lab-eyebrow">
               FORENSIC EXAMINATION
             </span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              Target: Evidence #{evidence.id} ({rawFormat || 'IMAGE'})
+            <span className="forensic-lab-context-tag">
+              Evidence #{evidence.id} · {rawFormat || 'IMAGE'}
             </span>
           </div>
           <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-main)' }}>
-            Guided Examination & Transparent Engine Selection
+            Forensic Analyst Workbench
           </h2>
           <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.825rem', color: 'var(--text-muted)' }}>
-            Choose between beginner-friendly guided examination with suggested starting examinations, or full analyst control over individual forensic engines.
+            Search, filter, and run compatible examinations; switch to Guided Investigation for a suggested starting set.
           </p>
         </div>
 
@@ -654,9 +655,13 @@ export default function GuidedExaminationWorkflow({
           <button
             type="button"
             role="tab"
+            ref={element => { modeTabRefs.current.guided = element; }}
             aria-selected={examinationMode === 'guided'}
+            aria-controls="panel-guided"
+            tabIndex={examinationMode === 'guided' ? 0 : -1}
             id="tab-guided"
             onClick={() => setExaminationMode('guided')}
+            onKeyDown={event => handleModeTabKeyDown(event, 'guided')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -680,9 +685,13 @@ export default function GuidedExaminationWorkflow({
           <button
             type="button"
             role="tab"
+            ref={element => { modeTabRefs.current.analyst = element; }}
             aria-selected={examinationMode === 'analyst'}
+            aria-controls="panel-analyst"
+            tabIndex={examinationMode === 'analyst' ? 0 : -1}
             id="tab-analyst"
             onClick={() => setExaminationMode('analyst')}
+            onKeyDown={event => handleModeTabKeyDown(event, 'analyst')}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -706,68 +715,45 @@ export default function GuidedExaminationWorkflow({
       </div>
 
       {/* EVIDENCE SUMMARY & FORMAT CONTEXT BANNER */}
-      <div data-tour-target="lab-evidence-summary" style={{
-        margin: '1rem 0',
-        padding: '0.75rem 1rem',
-        background: 'var(--surface-raised)',
-        borderRadius: '8px',
-        border: '1px solid var(--border-color)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '0.75rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <div style={{ 
-            fontSize: '0.8rem', 
-            fontWeight: 700, 
-            background: 'var(--surface-base)', 
-            padding: '0.3rem 0.6rem', 
-            borderRadius: '4px', 
-            border: '1px solid var(--border-color)' 
-          }}>
-            📁 {evidence.original_filename}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            Container: <strong>{rawFormat || 'UNKNOWN'}</strong>
-            {evidence.width && evidence.height && <> · {evidence.width}×{evidence.height}px</>}
-            {evidence.file_size > 0 && <> · {(evidence.file_size / 1024).toFixed(1)} KB</>}
-          </div>
-          <div style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-            SHA-256: {evidence.sha256_hash.substring(0, 16)}…
-          </div>
+      <div data-tour-target="lab-evidence-summary" className="forensic-lab-evidence-strip">
+        <div className="forensic-lab-meta-item forensic-lab-evidence-file">
+          <span className="forensic-lab-meta-label">Evidence file</span>
+          <strong className="forensic-lab-meta-value" title={evidence.original_filename}>
+            {evidence.original_filename}
+          </strong>
+        </div>
+        <div className="forensic-lab-meta-item">
+          <span className="forensic-lab-meta-label">Container</span>
+          <strong className="forensic-lab-meta-value">{rawFormat || 'UNKNOWN'}</strong>
+        </div>
+        <div className="forensic-lab-meta-item">
+          <span className="forensic-lab-meta-label">Image dimensions</span>
+          <strong className="forensic-lab-meta-value">
+            {evidence.width && evidence.height ? `${evidence.width} × ${evidence.height} px` : 'Not available'}
+          </strong>
+        </div>
+        <div className="forensic-lab-meta-item">
+          <span className="forensic-lab-meta-label">File size</span>
+          <strong className="forensic-lab-meta-value">
+            {evidence.file_size > 0 ? `${(evidence.file_size / 1024).toFixed(1)} KB` : 'Not available'}
+          </strong>
+        </div>
+        <div className="forensic-lab-meta-item">
+          <span className="forensic-lab-meta-label">Intake SHA-256</span>
+          <code className="forensic-lab-meta-value" title={evidence.sha256_hash}>
+            {evidence.sha256_hash.substring(0, 16)}…
+          </code>
         </div>
 
-        {/* PROGRESS SUMMARY BADGES */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ 
-            fontSize: '0.75rem', 
-            fontWeight: 700, 
-            padding: '0.25rem 0.55rem', 
-            borderRadius: '4px',
-            background: completedCount > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(156, 163, 175, 0.12)',
-            color: completedCount > 0 ? '#10b981' : 'var(--text-muted)',
-            border: `1px solid ${completedCount > 0 ? 'rgba(16, 185, 129, 0.3)' : 'var(--border-color)'}`
-          }}>
-            ✓ {completedCount} Completed
+        <div className="forensic-lab-run-status" role="group" aria-label="Examination run status">
+          <span className={`forensic-lab-tag ${completedCount > 0 ? 'forensic-lab-tag--success' : ''}`}>
+            {completedCount} completed
           </span>
 
           {runningCount > 0 && (
-            <span style={{ 
-              fontSize: '0.75rem', 
-              fontWeight: 700, 
-              padding: '0.25rem 0.55rem', 
-              borderRadius: '4px',
-              background: 'rgba(59, 130, 246, 0.12)',
-              color: '#3b82f6',
-              border: '1px solid rgba(59, 130, 246, 0.3)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.3rem'
-            }}>
+            <span className="forensic-lab-tag forensic-lab-tag--info">
               <RefreshCw size={12} className="spin" />
-              {runningCount} Running
+              {runningCount} running
             </span>
           )}
 
@@ -787,45 +773,32 @@ export default function GuidedExaminationWorkflow({
 
       {/* GUIDED INVESTIGATION MODE */}
       {examinationMode === 'guided' && (
-        <div role="tabpanel" id="panel-guided" aria-labelledby="tab-guided">
+        <div role="tabpanel" id="panel-guided" aria-labelledby="tab-guided" tabIndex={0}>
           {/* Scientific Recommendation Explanation Banner */}
-          <div data-tour-target="lab-suggested-exams" style={{
-            padding: '0.85rem 1rem',
-            background: 'rgba(37, 99, 235, 0.05)',
-            border: '1px solid rgba(37, 99, 235, 0.25)',
-            borderRadius: '8px', 
-            marginBottom: '1rem',
-            fontSize: '0.825rem',
-            color: 'var(--text-main)'
-          }}>
+          <div data-tour-target="lab-suggested-exams" className="forensic-lab-recommendation">
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
               <Shield size={18} style={{ color: 'var(--primary-color)', flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <strong style={{ color: 'var(--primary-color)' }}>
+                <span className="forensic-lab-tag forensic-lab-tag--accent">Suggested starting set</span>
+                <strong style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.35rem' }}>
                   {isJpeg 
                     ? 'Suggested Starting Examinations for JPEG Evidence'
                     : 'Suggested Starting Examinations for Lossless Evidence'}
                 </strong>
                 <p style={{ margin: '0.25rem 0 0 0', lineHeight: 1.45, color: 'var(--text-muted)' }}>
                   {isJpeg 
-                    ? 'These suggested examinations provide a preliminary multi-modality screening for JPEG evidence across five independent forensic dimensions: compression error-level variance (ELA), high-frequency spatial noise residual consistency, 8×8 block frequency characteristics, SIFT duplicate keypoint clustering, and container hardware metadata. Incompatible lossless tests are filtered automatically. These selections serve as a practical starting point and do not guarantee complete manipulation detection.'
-                    : 'These suggested examinations provide preliminary multi-modality screening for lossless evidence: container metadata integrity, high-frequency spatial noise consistency, duplicate keypoint clustering, and pixel resampling traces. JPEG-specific algorithms (such as ELA and DCT block inspection) require lossy compression structures and are excluded. These selections serve as a practical starting point and do not guarantee complete manipulation detection.'}
+                    ? 'A starting set covering compression variance, spatial noise, block frequencies, duplicate regions, and file metadata. Unsupported methods are excluded; results still require examiner review.'
+                    : 'A starting set covering metadata, spatial noise, duplicate regions, and resampling. JPEG-only methods are excluded; results still require examiner review.'}
                 </p>
               </div>
             </div>
           </div>
 
           {/* QUICK SELECTION CONTROLS */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            flexWrap: 'wrap', 
-            gap: '0.5rem', 
-            marginBottom: '0.85rem' 
-          }}>
-            <div style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-main)' }}>
-              Available Forensic Examinations ({selectedEngines.size} Selected)
+          <div className="forensic-lab-selection-toolbar">
+            <div data-testid="examination-selection-summary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span className="forensic-lab-tag">Compatible · {FORENSIC_EXAMINATION_CATALOGUE.filter(exam => isCompatible(exam)).length}</span>
+              <span className="forensic-lab-tag forensic-lab-tag--accent">Selected · {selectedEngines.size}</span>
             </div>
 
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
@@ -860,7 +833,7 @@ export default function GuidedExaminationWorkflow({
           </div>
 
           {/* GUIDED EXAMINATION CARDS GRID */}
-          <div data-tour-target="lab-engine-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.85rem' }}>
+          <div data-tour-target="lab-engine-list" className="forensic-lab-engine-grid">
             {FORENSIC_EXAMINATION_CATALOGUE.map(exam => {
               const compatible = isCompatible(exam);
               const isSelected = selectedEngines.has(exam.id);
@@ -873,19 +846,7 @@ export default function GuidedExaminationWorkflow({
                 <article
                   key={exam.id}
                   aria-label={`${exam.name} examination`}
-                  style={{
-                    background: isSelected ? 'var(--surface-raised)' : 'var(--surface-base)',
-                    border: isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                    borderLeft: isRecommended ? '4px solid #10b981' : isSelected ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
-                    borderRadius: '8px',
-                    padding: '0.85rem 1rem',
-                    opacity: compatible ? 1 : 0.65,
-                    transition: 'all 0.15s ease',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: isSelected ? '0 2px 6px -1px rgba(37, 99, 235, 0.1)' : 'none'
-                  }}
+                  className={`forensic-lab-engine-card${isSelected ? ' is-selected' : ''}${isRecommended ? ' is-recommended' : ''}${!compatible ? ' is-incompatible' : ''}`}
                 >
                   <div>
                     {/* CARD HEADER: Selection Checkbox, Title & Status */}
@@ -912,42 +873,19 @@ export default function GuidedExaminationWorkflow({
                             {exam.name}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
-                            <span style={{ 
-                              fontSize: '0.68rem', 
-                              fontWeight: 700, 
-                              fontFamily: 'var(--font-mono)', 
-                              background: 'var(--surface-base)', 
-                              border: '1px solid var(--border-color)', 
-                              padding: '0.1rem 0.35rem', 
-                              borderRadius: '3px' 
-                            }}>
+                            <span className="forensic-lab-code-tag">
                               {exam.technicalId}
                             </span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <span className="forensic-lab-category-tag" style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                               {exam.categoryLabel}
                             </span>
                             {isRecommended && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 800, 
-                                color: '#10b981', 
-                                background: 'rgba(16, 185, 129, 0.12)', 
-                                padding: '0.1rem 0.35rem', 
-                                borderRadius: '3px' 
-                              }}>
-                                SUGGESTED
+                              <span className="forensic-lab-tag forensic-lab-tag--success">
+                                Baseline
                               </span>
                             )}
                             {!compatible && (
-                              <span style={{ 
-                                fontSize: '0.65rem', 
-                                fontWeight: 800, 
-                                color: '#f59e0b', 
-                                background: 'rgba(245, 158, 11, 0.12)', 
-                                border: '1px solid rgba(245, 158, 11, 0.3)', 
-                                padding: '0.1rem 0.35rem', 
-                                borderRadius: '3px' 
-                              }}>
+                              <span className="forensic-lab-tag forensic-lab-tag--warning">
                                 INCOMPATIBLE ({rawFormat || 'FORMAT'})
                               </span>
                             )}
@@ -956,26 +894,7 @@ export default function GuidedExaminationWorkflow({
                       </label>
 
                       {/* Status Badge */}
-                      <span style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        padding: '0.15rem 0.45rem',
-                        borderRadius: '4px',
-                        whiteSpace: 'nowrap',
-                        background: status === 'COMPLETED' ? 'rgba(16, 185, 129, 0.15)' :
-                                    status === 'RUNNING' ? 'rgba(59, 130, 246, 0.15)' :
-                                    status === 'QUEUED' ? 'rgba(234, 179, 8, 0.15)' :
-                                    status === 'FAILED' ? 'rgba(239, 68, 68, 0.15)' :
-                                    !compatible ? 'rgba(156, 163, 175, 0.15)' :
-                                    isSelected ? 'var(--primary-light)' : 'transparent',
-                        color: status === 'COMPLETED' ? '#10b981' :
-                               status === 'RUNNING' ? '#3b82f6' :
-                               status === 'QUEUED' ? '#d97706' :
-                               status === 'FAILED' ? '#ef4444' :
-                               !compatible ? 'var(--text-muted)' :
-                               isSelected ? 'var(--primary-color)' : 'var(--text-muted)',
-                        border: '1px solid var(--border-color)'
-                      }}>
+                      <span className={`forensic-lab-tag ${!compatible ? '' : status === 'COMPLETED' ? 'forensic-lab-tag--success' : status === 'FAILED' ? 'forensic-lab-tag--danger' : status === 'RUNNING' ? 'forensic-lab-tag--info' : status === 'QUEUED' ? 'forensic-lab-tag--warning' : isSelected ? 'forensic-lab-tag--accent' : ''}`}>
                         {!compatible ? 'INCOMPATIBLE' : status}
                       </span>
                     </div>
@@ -994,44 +913,39 @@ export default function GuidedExaminationWorkflow({
                       </div>
                     )}
 
-                    {/* CORE EXAMINATION NARRATIVE */}
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-main)', marginTop: '0.4rem', lineHeight: 1.4 }}>
-                      <div style={{ marginBottom: '0.35rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Analyzes: </span>
-                        <span>{exam.whatItExamines}</span>
-                      </div>
-                      <div style={{ marginBottom: '0.35rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Why it matters: </span>
-                        <span>{exam.whyItMatters}</span>
-                      </div>
-                      <div style={{ marginBottom: '0.35rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Output: </span>
-                        <span>{exam.outputRepresents}</span>
-                      </div>
+                      <strong style={{ color: 'var(--text-muted)' }}>Examines: </strong>{exam.whatItExamines}
                     </div>
 
-                    {/* LIMITATIONS NOTICE */}
-                    <div style={{ 
-                      marginTop: '0.5rem', 
-                      padding: '0.4rem 0.55rem', 
-                      background: 'var(--bg-canvas, var(--surface-base))', 
-                      borderRadius: '4px', 
-                      border: '1px solid var(--border-color)',
-                      fontSize: '0.74rem',
-                      color: 'var(--text-muted)',
-                      lineHeight: 1.35
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                        <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-                        <div>
-                          <strong>Scientific limitation:</strong> {exam.limitations}
+                    <details
+                      data-testid={`examination-guidance-${exam.id}`}
+                      style={{
+                        marginTop: '0.5rem',
+                        padding: '0.4rem 0.55rem',
+                        background: 'var(--bg-canvas, var(--surface-base))',
+                        borderRadius: '4px',
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.74rem',
+                        color: 'var(--text-muted)',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-main)' }}>
+                        Purpose, output & scientific limitations
+                      </summary>
+                      <div style={{ display: 'grid', gap: '0.4rem', marginTop: '0.5rem' }}>
+                        <div><strong>Why it matters:</strong> {exam.whyItMatters}</div>
+                        <div><strong>Output:</strong> {exam.outputRepresents}</div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                          <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                          <div><strong>Scientific limitation:</strong> {exam.limitations}</div>
                         </div>
                       </div>
-                    </div>
+                    </details>
 
                     {/* EXPANDABLE TECHNICAL DETAILS */}
                     {isExpanded && (
-                      <div style={{ 
+                      <div style={{
                         marginTop: '0.65rem', 
                         padding: '0.5rem', 
                         borderRadius: '4px', 
@@ -1103,9 +1017,9 @@ export default function GuidedExaminationWorkflow({
 
       {/* ANALYST WORKBENCH MODE */}
       {examinationMode === 'analyst' && (
-        <div role="tabpanel" id="panel-analyst" aria-labelledby="tab-analyst">
+        <div role="tabpanel" id="panel-analyst" aria-labelledby="tab-analyst" tabIndex={0}>
           {/* SEARCH & CATEGORY FILTER BAR */}
-          <div style={{ 
+          <div data-tour-target="lab-analyst-filters" style={{
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
@@ -1164,7 +1078,7 @@ export default function GuidedExaminationWorkflow({
           </div>
 
           {/* ANALYST ENGINE MATRIX TABLE / GRID */}
-          <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+          <div data-tour-target="lab-engine-list" style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border-color)' }}>

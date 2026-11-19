@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, type KeyboardEvent } from 'react';
 import AuthenticatedImage from './AuthenticatedImage';
+import { fetchApi } from '../../api';
 import { 
   ShieldCheck, 
   AlertTriangle, 
@@ -44,6 +45,11 @@ export interface UnifiedForensicResultsProps {
 }
 
 export type ResultsTab = 'overview' | 'spatial' | 'disclosures' | 'findings' | 'report';
+
+interface ExaminerNote {
+  id: number;
+  content: string;
+}
 
 export interface SpatialRegion {
   id: string;
@@ -535,12 +541,59 @@ export default function UnifiedForensicResults({
     COLOR_CHANNEL: true,
     OTHER_SPATIAL: true
   });
-  const [expandedEngines, setExpandedEngines] = useState<Record<string, boolean>>({
-    metadata: true,
-    'camera-id': true,
-    ela: true
-  });
+  const [expandedEngines, setExpandedEngines] = useState<Record<string, boolean>>({});
   const [examinerNotes, setExaminerNotes] = useState<string>('');
+  const [lastSavedNotes, setLastSavedNotes] = useState<string>('');
+  const [notesLoading, setNotesLoading] = useState(Boolean(caseId));
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesStatus, setNotesStatus] = useState('');
+  const resultTabOrder: ResultsTab[] = ['overview', 'spatial', 'disclosures', 'findings', 'report'];
+  const resultTabRefs = useRef<Partial<Record<ResultsTab, HTMLButtonElement | null>>>({});
+
+  const handleResultTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentTab: ResultsTab) => {
+    const currentIndex = resultTabOrder.indexOf(currentTab);
+    let nextIndex: number | null = null;
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % resultTabOrder.length;
+    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + resultTabOrder.length) % resultTabOrder.length;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = resultTabOrder.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = resultTabOrder[nextIndex];
+    setActiveTab(nextTab);
+    resultTabRefs.current[nextTab]?.focus();
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    if (!caseId) {
+      return () => { active = false; };
+    }
+
+    fetchApi(`/cases/${encodeURIComponent(caseId)}/notes?target_type=EVIDENCE&target_id=${evidence.id}`)
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || 'Could not load examiner notes.');
+        const notes: ExaminerNote[] = Array.isArray(data) ? data : [];
+        const latestNote = notes[0];
+        if (active && latestNote) {
+          setExaminerNotes(latestNote.content);
+          setLastSavedNotes(latestNote.content);
+          setNotesStatus('Loaded the latest saved evidence note.');
+        }
+      })
+      .catch(error => {
+        if (active) setNotesError(error instanceof Error ? error.message : 'Could not load examiner notes.');
+      })
+      .finally(() => {
+        if (active) setNotesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [caseId, evidence.id]);
 
   const rawFormat = (evidence.image_format || evidence.mime_type || '').toUpperCase();
   const isJpeg = rawFormat.includes('JPEG') || rawFormat.includes('JPG');
@@ -637,6 +690,41 @@ export default function UnifiedForensicResults({
     return { completed, failed, running, queued, incompatible, notRun, withObservations, total: FORENSIC_EXAMINATION_CATALOGUE.length };
   }, [jobs, results, jobErrors, isJpeg]);
 
+  const nextStep: { title: string; description: string; action: string; tab: ResultsTab } = metrics.failed > 0
+    ? {
+        title: 'Review failed examinations',
+        description: 'A failed run is a processing issue, not evidence for or against image authenticity.',
+        action: 'Review execution status',
+        tab: 'overview'
+      }
+    : metrics.running + metrics.queued > 0
+      ? {
+          title: 'Monitor active examinations',
+          description: 'Queued or running methods have not produced final results yet.',
+          action: 'View execution status',
+          tab: 'overview'
+        }
+      : metrics.completed === 0
+        ? {
+            title: 'Choose examinations to begin',
+            description: 'Select compatible methods above; an unrun examination provides no evidence either way.',
+            action: 'View registered examinations',
+            tab: 'overview'
+          }
+        : metrics.withObservations > 0
+          ? {
+              title: 'Review the consolidated observations',
+              description: 'Compare the measurements across methods. Detector observations are screening signals, not a tampering verdict.',
+              action: 'Review observations',
+              tab: 'findings'
+            }
+          : {
+              title: 'Review completed outputs',
+              description: 'Read each method’s interpretation and limitations; no automated authenticity conclusion is made.',
+              action: 'Read interpretations',
+              tab: 'disclosures'
+            };
+
   // Plain language interpretation builder
   const getPlainLanguageInterpretation = (exam: ForensicExaminationDefinition, exec: any) => {
     const findings = exec.result?.structured_findings || {};
@@ -732,7 +820,7 @@ export default function UnifiedForensicResults({
         file_size_bytes: evidence.file_size
       },
       examination_metrics: metrics,
-      examiner_notes: examinerNotes || 'No additional human examiner notes entered.',
+      examiner_notes: examinerNotes.trim() || 'No additional human examiner notes entered.',
       disclaimer: 'AUTOMATED FORENSIC SCREENING SUMMARY: Algorithmic observations represent mathematical variance and structural patterns. They do not constitute a definitive or binary declaration of image authenticity. Observations must be corroborated by a qualified digital evidence examiner.',
       examinations_performed: FORENSIC_EXAMINATION_CATALOGUE.map(exam => {
         const exec = getEngineExecution(exam);
@@ -750,6 +838,7 @@ export default function UnifiedForensicResults({
           evidentiary_limitations: interp.doesNotEstablish,
           raw_data: exec.result?.structured_findings || null
         };
+
       })
     };
 
@@ -760,6 +849,33 @@ export default function UnifiedForensicResults({
     a.download = `forensight-report-${evidence.evidence_identifier || evidence.id}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleSaveExaminerNotes = async () => {
+    const content = examinerNotes.trim();
+    if (!caseId || !content || notesSaving || content === lastSavedNotes) return;
+
+    setNotesSaving(true);
+    setNotesError(null);
+    setNotesStatus('');
+    try {
+      const response = await fetchApi(`/cases/${encodeURIComponent(caseId)}/notes`, {
+        method: 'POST',
+        body: JSON.stringify({
+          target_type: 'EVIDENCE',
+          target_id: String(evidence.id),
+          content,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Could not save examiner notes.');
+      setLastSavedNotes(content);
+      setNotesStatus('Saved as an evidence-linked case note.');
+    } catch (error) {
+      setNotesError(error instanceof Error ? error.message : 'Could not save examiner notes.');
+    } finally {
+      setNotesSaving(false);
+    }
   };
 
   return (
@@ -830,30 +946,41 @@ export default function UnifiedForensicResults({
         marginBottom: '1.25rem'
       }}>
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>COMPLETED</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-color)' }}>{metrics.completed} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {metrics.total}</span></div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>ENGINES COMPLETED</div>
+          <div data-testid="execution-metric-completed" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-color)' }}>{metrics.completed} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }}>/ {metrics.total} registered</span></div>
         </div>
 
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>WITH OBSERVATIONS</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.withObservations > 0 ? '#f59e0b' : 'var(--text-muted)' }}>{metrics.withObservations}</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>ENGINES WITH OBSERVATIONS</div>
+          <div data-testid="execution-metric-observations" style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.withObservations > 0 ? '#f59e0b' : 'var(--text-muted)' }}>{metrics.withObservations}</div>
         </div>
 
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>FAILED EXECUTIONS</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.failed > 0 ? '#ef4444' : 'var(--text-muted)' }}>{metrics.failed}</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>IN PROGRESS</div>
+          <div data-testid="execution-metric-progress" style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.running + metrics.queued > 0 ? '#3b82f6' : 'var(--text-muted)' }}>{metrics.running + metrics.queued}</div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{metrics.running} running · {metrics.queued} queued</div>
         </div>
 
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>INCOMPATIBLE / SKIPPED</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-muted)' }}>{metrics.incompatible}</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>FAILED</div>
+          <div data-testid="execution-metric-failed" style={{ fontSize: '1.25rem', fontWeight: 800, color: metrics.failed > 0 ? '#ef4444' : 'var(--text-muted)' }}>{metrics.failed}</div>
         </div>
 
         <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
-          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>SPATIAL REGIONS</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: spatialRegions.length > 0 ? '#10b981' : 'var(--text-muted)' }}>{spatialRegions.length}</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>NOT STARTED / INCOMPATIBLE</div>
+          <div data-testid="execution-metric-not-run" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-muted)' }}>{metrics.notRun + metrics.incompatible}</div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{metrics.notRun} not started · {metrics.incompatible} incompatible</div>
+        </div>
+
+        <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', padding: '0.65rem', borderRadius: '6px' }}>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>CANDIDATE ENVELOPES</div>
+          <div data-testid="execution-metric-spatial" style={{ fontSize: '1.25rem', fontWeight: 800, color: spatialRegions.length > 0 ? '#10b981' : 'var(--text-muted)' }}>{spatialRegions.length.toLocaleString()}</div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>may overlap; not unique pixels</div>
         </div>
       </div>
+      <p data-testid="execution-metrics-explanation" style={{ margin: '-0.8rem 0 0.25rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+        Counts are per registered examination. “With observations” means a detector returned candidate output; it is not an authenticity or manipulation verdict.
+      </p>
 
       {/* Non-Authoritative Scientific Disclaimer Banner */}
       <div style={{ 
@@ -872,6 +999,23 @@ export default function UnifiedForensicResults({
         </div>
       </div>
 
+      <div data-testid="forensic-next-step" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem 0.9rem', border: '1px solid var(--border-color)', borderLeft: '3px solid var(--primary-color)', borderRadius: '6px', background: 'var(--surface-color-light)' }}>
+        <div>
+          <strong style={{ fontSize: '0.82rem', color: 'var(--text-main)' }}>Suggested next step: {nextStep.title}</strong>
+          <div style={{ marginTop: '0.15rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{nextStep.description}</div>
+        </div>
+        <button
+          type="button"
+          data-testid="forensic-next-step-button"
+          data-target-tab={nextStep.tab}
+          className="secondary-button"
+          onClick={() => setActiveTab(nextStep.tab)}
+          style={{ fontSize: '0.75rem', padding: '0.35rem 0.65rem', flexShrink: 0 }}
+        >
+          {nextStep.action}
+        </button>
+      </div>
+
       {/* Internal Navigation Tabs */}
       <div 
         role="tablist" 
@@ -888,10 +1032,13 @@ export default function UnifiedForensicResults({
         <button
           type="button"
           role="tab"
+          ref={element => { resultTabRefs.current.overview = element; }}
           id="tab-overview"
           aria-selected={activeTab === 'overview'}
           aria-controls="panel-overview"
+          tabIndex={activeTab === 'overview' ? 0 : -1}
           onClick={() => setActiveTab('overview')}
+          onKeyDown={event => handleResultTabKeyDown(event, 'overview')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -913,10 +1060,13 @@ export default function UnifiedForensicResults({
         <button
           type="button"
           role="tab"
+          ref={element => { resultTabRefs.current.spatial = element; }}
           id="tab-spatial"
           aria-selected={activeTab === 'spatial'}
           aria-controls="panel-spatial"
+          tabIndex={activeTab === 'spatial' ? 0 : -1}
           onClick={() => setActiveTab('spatial')}
+          onKeyDown={event => handleResultTabKeyDown(event, 'spatial')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -938,10 +1088,13 @@ export default function UnifiedForensicResults({
         <button
           type="button"
           role="tab"
+          ref={element => { resultTabRefs.current.disclosures = element; }}
           id="tab-disclosures"
           aria-selected={activeTab === 'disclosures'}
           aria-controls="panel-disclosures"
+          tabIndex={activeTab === 'disclosures' ? 0 : -1}
           onClick={() => setActiveTab('disclosures')}
+          onKeyDown={event => handleResultTabKeyDown(event, 'disclosures')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -963,10 +1116,13 @@ export default function UnifiedForensicResults({
         <button
           type="button"
           role="tab"
+          ref={element => { resultTabRefs.current.findings = element; }}
           id="tab-findings"
           aria-selected={activeTab === 'findings'}
           aria-controls="panel-findings"
+          tabIndex={activeTab === 'findings' ? 0 : -1}
           onClick={() => setActiveTab('findings')}
+          onKeyDown={event => handleResultTabKeyDown(event, 'findings')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -988,10 +1144,13 @@ export default function UnifiedForensicResults({
         <button
           type="button"
           role="tab"
+          ref={element => { resultTabRefs.current.report = element; }}
           id="tab-report"
           aria-selected={activeTab === 'report'}
           aria-controls="panel-report"
+          tabIndex={activeTab === 'report' ? 0 : -1}
           onClick={() => setActiveTab('report')}
+          onKeyDown={event => handleResultTabKeyDown(event, 'report')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -1013,7 +1172,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 1: INVESTIGATION OVERVIEW */}
       {activeTab === 'overview' && (
-        <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" tabIndex={0} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {/* Evidence Integrity Metadata Summary */}
           <div style={{ 
             background: 'var(--surface-color-light)', 
@@ -1046,7 +1205,7 @@ export default function UnifiedForensicResults({
           {/* 23 Engine Catalogue Grid */}
           <div>
             <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.92rem' }}>
-              Execution Summary across 23 Registered Forensic Engines
+              Execution Summary across {metrics.total} Registered Forensic Engines
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.55rem' }}>
               {FORENSIC_EXAMINATION_CATALOGUE.map(exam => {
@@ -1124,7 +1283,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 2: SPATIAL ATTENTION MAP */}
       {activeTab === 'spatial' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} role="tabpanel" id="panel-spatial" aria-labelledby="tab-spatial">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }} role="tabpanel" id="panel-spatial" aria-labelledby="tab-spatial" tabIndex={0}>
           {!hasAuthoritativeDimensions ? (
             <div 
               data-testid="spatial-dimensions-unavailable"
@@ -1340,7 +1499,7 @@ export default function UnifiedForensicResults({
                   </svg>
                 )}
 
-                {/* Clean baseline notice if 0 spatial regions */}
+                {/* Empty overlays indicate only that no spatial regions are available to display. */}
                 {spatialRegions.length === 0 && (
                   <div style={{
                     position: 'absolute',
@@ -1356,7 +1515,7 @@ export default function UnifiedForensicResults({
                     backdropFilter: 'blur(4px)',
                     border: '1px solid rgba(255,255,255,0.1)'
                   }}>
-                    🛡️ Clean Baseline: No localized anomaly envelopes detected across active examinations
+                    No candidate spatial regions are currently available to display. Check examination status; unrun or non-spatial analyses are not negative evidence.
                   </div>
                 )}
               </div>
@@ -1453,7 +1612,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 3: PLAIN-LANGUAGE INTERPRETATIONS */}
       {activeTab === 'disclosures' && (
-        <div role="tabpanel" id="panel-disclosures" aria-labelledby="tab-disclosures" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-disclosures" aria-labelledby="tab-disclosures" tabIndex={0} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
             Plain-language disclosures explain what each forensic engine examined, what was observed, what those observations may indicate, and the crucial limitations that prevent automated conclusions.
           </p>
@@ -1604,7 +1763,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 4: CONSOLIDATED FINDINGS & FACTS */}
       {activeTab === 'findings' && (
-        <div role="tabpanel" id="panel-findings" aria-labelledby="tab-findings" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-findings" aria-labelledby="tab-findings" tabIndex={0} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
           {/* Quadrant 1: Verified Facts */}
           <div style={{ 
             background: 'var(--surface-color-light)', 
@@ -1649,9 +1808,9 @@ export default function UnifiedForensicResults({
               </span>
             </div>
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.78rem', lineHeight: 1.55 }}>
-              <li><strong>Spatial Anomaly Envelopes:</strong> {spatialRegions.length} localized coordinate zones detected</li>
+              <li><strong>Candidate Spatial Regions:</strong> {spatialRegions.length} detector-generated coordinate regions available for review</li>
               <li><strong>Examinations Executed:</strong> {metrics.completed} successful, {metrics.failed} failed</li>
-              <li><strong>Coincident Anomaly Modalities:</strong> {Array.from(new Set(spatialRegions.map(r => r.modalityLabel))).join(', ') || 'None detected'}</li>
+              <li><strong>Modalities with Mapped Regions:</strong> {Array.from(new Set(spatialRegions.map(r => r.modalityLabel))).join(', ') || 'None currently mapped'}</li>
             </ul>
           </div>
 
@@ -1675,7 +1834,7 @@ export default function UnifiedForensicResults({
             <p style={{ margin: 0, fontSize: '0.78rem', lineHeight: 1.5 }}>
               {spatialRegions.length > 0 
                 ? 'Coincident spatial error variance across independent models (e.g. noise discrepancy + clone keypoints) increases investigative interest. An examiner should inspect these areas in the Microscopy & Loupe tool to evaluate whether texture boundaries explain the variance.'
-                : 'Current parameters isolate no significant localized anomaly envelopes above standard statistical boundaries across completed models.'}
+                : 'No candidate localized regions are currently available in the spatial view. Confirm which spatial examinations completed; a missing overlay is not evidence that the image is unaltered.'}
             </p>
           </div>
 
@@ -1707,7 +1866,7 @@ export default function UnifiedForensicResults({
 
       {/* TAB 5: EVIDENTIARY REPORT PREVIEW */}
       {activeTab === 'report' && (
-        <div role="tabpanel" id="panel-report" aria-labelledby="tab-report" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div role="tabpanel" id="panel-report" aria-labelledby="tab-report" tabIndex={0} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ background: 'var(--surface-color-light)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
@@ -1757,6 +1916,7 @@ export default function UnifiedForensicResults({
                 onChange={e => setExaminerNotes(e.target.value)}
                 placeholder="Enter human examiner notes, investigative hypotheses, contextual observations, or justification for further forensic inquiry..."
                 rows={4}
+                aria-describedby="examiner-notes-help"
                 style={{
                   width: '100%',
                   background: 'var(--surface-color)',
@@ -1769,15 +1929,28 @@ export default function UnifiedForensicResults({
                   resize: 'vertical'
                 }}
               />
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
-                Human examiner entries are appended directly to the final evidentiary report and preserved distinct from algorithmic outputs.
+              <div id="examiner-notes-help" style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                Human notes are saved to the case and linked to this evidence. Each save adds a case-note record; edits do not overwrite prior entries.
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={handleSaveExaminerNotes}
+                  disabled={!caseId || notesLoading || notesSaving || !examinerNotes.trim() || examinerNotes.trim() === lastSavedNotes}
+                >
+                  {notesLoading ? 'Loading saved note…' : notesSaving ? 'Saving note…' : 'Save examiner note'}
+                </button>
+                <span role={notesError ? 'alert' : 'status'} style={{ fontSize: '0.72rem', color: notesError ? 'var(--status-anomalous)' : 'var(--text-muted)' }}>
+                  {notesError || notesStatus || (!caseId ? 'Saving requires evidence associated with a case.' : '')}
+                </span>
               </div>
             </div>
 
             {/* Structured Report Breakdown */}
             <div style={{ fontSize: '0.78rem', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
-                <strong>Section 1 — Evidence Provenance:</strong> Verified SHA-256 hash <code>{evidence.sha256_hash}</code>. Original filename: {evidence.original_filename}. Container format: {evidence.image_format || evidence.mime_type}.
+                <strong>Section 1 — Evidence Provenance:</strong> SHA-256 digest recorded at intake <code>{evidence.sha256_hash}</code>. Current disk re-verification is a separate on-demand check. Original filename: {evidence.original_filename}. Container format: {evidence.image_format || evidence.mime_type}.
               </div>
 
               <div>
@@ -1785,7 +1958,7 @@ export default function UnifiedForensicResults({
               </div>
 
               <div>
-                <strong>Section 3 — Automated Algorithmic Observations:</strong> {spatialRegions.length} spatial anomaly envelopes identified across active modalities. No overall authenticity score generated.
+                <strong>Section 3 — Automated Algorithmic Observations:</strong> {spatialRegions.length} candidate spatial regions are available for examiner review. These are screening outputs, not confirmed alterations. No overall authenticity score generated.
               </div>
 
               <div>

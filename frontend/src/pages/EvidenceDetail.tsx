@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { fetchApi } from '../api';
 import EvidenceIntegrityCard from '../components/evidence/EvidenceIntegrityCard';
 import AnalysisJobCard from '../components/evidence/AnalysisJobCard';
 import AuthenticatedImage from '../components/evidence/AuthenticatedImage';
-import GuidedExaminationWorkflow from '../components/evidence/GuidedExaminationWorkflow';
+import GuidedExaminationWorkflow, { FORENSIC_EXAMINATION_CATALOGUE } from '../components/evidence/GuidedExaminationWorkflow';
 import UnifiedForensicResults from '../components/evidence/UnifiedForensicResults';
 import { EvidenceDetailSkeleton } from '../components/common/LoadingStates';
 const AdvancedJpegViewer = lazy(() => import('../components/evidence/AdvancedJpegViewer'));
@@ -57,6 +57,60 @@ interface HeatmapData {
   limitations: string;
 }
 
+interface HeatmapDensityCell {
+  id: number;
+  row: number;
+  column: number;
+  proposalCount: number;
+  countsByModality: Record<string, number>;
+  sampleRegions: HeatmapRegion[];
+}
+
+type WorkbenchTabId = 'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all';
+
+const HEATMAP_DENSITY_GRID_SIZE = 40;
+const HEATMAP_DENSITY_THRESHOLD = 250;
+
+const getVisibleHeatmapRegions = (regions: HeatmapRegion[], limit: number | 'all') => {
+  const sortedRegions = [...regions].sort((a, b) => b.intensity - a.intensity);
+  return limit === 'all' ? sortedRegions : sortedRegions.slice(0, limit);
+};
+
+const buildHeatmapDensityCells = (
+  layers: ModalityLayer[],
+  isLayerVisible: (modality: string) => boolean,
+): HeatmapDensityCell[] => {
+  const cells = new Map<number, HeatmapDensityCell>();
+
+  for (const layer of layers) {
+    if (!isLayerVisible(layer.modality)) continue;
+
+    for (const region of layer.regions) {
+      if (![region.x, region.y, region.width, region.height].every(Number.isFinite)) continue;
+
+      const centerX = Math.min(0.999999, Math.max(0, region.x + region.width / 2));
+      const centerY = Math.min(0.999999, Math.max(0, region.y + region.height / 2));
+      const column = Math.floor(centerX * HEATMAP_DENSITY_GRID_SIZE);
+      const row = Math.floor(centerY * HEATMAP_DENSITY_GRID_SIZE);
+      const id = row * HEATMAP_DENSITY_GRID_SIZE + column;
+      let cell = cells.get(id);
+
+      if (!cell) {
+        cell = { id, row, column, proposalCount: 0, countsByModality: {}, sampleRegions: [] };
+        cells.set(id, cell);
+      }
+
+      cell.proposalCount += 1;
+      cell.countsByModality[layer.modality] = (cell.countsByModality[layer.modality] ?? 0) + 1;
+      if (!cell.sampleRegions.some(sample => sample.modality === layer.modality)) {
+        cell.sampleRegions.push(region);
+      }
+    }
+  }
+
+  return [...cells.values()].sort((a, b) => a.id - b.id);
+};
+
 export default function EvidenceDetail() {
   const { caseId, evidenceId } = useParams<{ caseId: string, evidenceId: string }>();
   const navigate = useNavigate();
@@ -79,19 +133,30 @@ export default function EvidenceDetail() {
 
   // Heatmap state
   const [heatmap, setHeatmap] = useState<HeatmapData | null>(null);
-  const [heatmapOpacity, setHeatmapOpacity] = useState<number>(0.65);
+  const [heatmapOpacity, setHeatmapOpacity] = useState<number>(0.3);
+  const [overlayRegionLimit, setOverlayRegionLimit] = useState<number | 'all'>(100);
+  const [heatmapDisplayMode, setHeatmapDisplayMode] = useState<'auto' | 'density' | 'regions'>('auto');
+  const [selectedDensityCellId, setSelectedDensityCellId] = useState<number | null>(null);
+  const [selectedHeatmapRegion, setSelectedHeatmapRegion] = useState<HeatmapRegion | null>(null);
   const [showElaLayer, setShowElaLayer] = useState<boolean>(true);
   const [showNoiseLayer, setShowNoiseLayer] = useState<boolean>(true);
   const [showCloneLayer, setShowCloneLayer] = useState<boolean>(true);
 
+  const updateHeatmap = useCallback((data: HeatmapData | null) => {
+    setHeatmap(data);
+    setSelectedDensityCellId(null);
+    setSelectedHeatmapRegion(null);
+  }, []);
+
   // Custody quick verify state
   const [verifyingCustody, setVerifyingCustody] = useState(false);
   const [custodyResult, setCustodyResult] = useState<any | null>(null);
+  const [custodyError, setCustodyError] = useState<string | null>(null);
   const [c2paResult, setC2paResult] = useState<any | null>(null);
   const [checkingC2pa, setCheckingC2pa] = useState(false);
 
   // Categorized Forensic Workbench active tab
-  const [workbenchTab, setWorkbenchTab] = useState<'overview' | 'visual_inspection' | 'physics_geometry' | 'core' | 'compression' | 'color_spectrum' | 'noise_resampling' | 'cloning' | 'camera_sensor' | 'all'>('overview');
+  const [workbenchTab, setWorkbenchTab] = useState<WorkbenchTabId>('overview');
 
   // Normalization & Correlation Modals & Auto-Fusion State
   const [showNormalizationModal, setShowNormalizationModal] = useState<boolean>(false);
@@ -241,8 +306,9 @@ export default function EvidenceDetail() {
   const fetchEvidenceAndJobs = (evId: string) => {
     setJobs({});
     setResults({});
-    setHeatmap(null);
+    updateHeatmap(null);
     setCustodyResult(null);
+    setCustodyError(null);
     setJobErrors({});
 
     fetchApi(`/evidence/${evId}`)
@@ -313,7 +379,7 @@ export default function EvidenceDetail() {
 
     fetchApi(`/evidence/${evId}/heatmap`)
       .then(res => res.json())
-      .then(hData => setHeatmap(hData))
+      .then(hData => updateHeatmap(hData))
       .catch(() => {});
   };
 
@@ -333,7 +399,7 @@ export default function EvidenceDetail() {
     if (uploadResult?.id) {
       fetchApi(`/evidence/${uploadResult.id}/heatmap`)
         .then(r => r.json())
-        .then(h => setHeatmap(h))
+        .then(h => updateHeatmap(h))
         .catch(() => {});
       runFusionSync(uploadResult.id);
     }
@@ -372,7 +438,7 @@ export default function EvidenceDetail() {
                 if (uploadResult?.id) {
                   fetchApi(`/evidence/${uploadResult.id}/heatmap`)
                     .then(r => r.json())
-                    .then(h => setHeatmap(h))
+                    .then(h => updateHeatmap(h))
                     .catch(() => {});
                   runFusionSync(uploadResult.id);
                 }
@@ -384,7 +450,7 @@ export default function EvidenceDetail() {
     }, 2000);
 
     return () => clearInterval(timer);
-  }, [jobs, uploadResult?.id]);
+  }, [jobs, uploadResult?.id, updateHeatmap]);
 
   const runAsyncJob = async (analysisType: string) => {
     setJobErrors(prev => ({ ...prev, [analysisType]: '' }));
@@ -429,7 +495,7 @@ export default function EvidenceDetail() {
         // Refresh heatmap after analysis completion
         fetchApi(`/evidence/${uploadResult.id}/heatmap`)
           .then(r => r.json())
-          .then(h => setHeatmap(h))
+          .then(h => updateHeatmap(h))
           .catch(() => {});
         // Auto-run normalization and correlation
         runFusionSync(uploadResult.id);
@@ -461,28 +527,63 @@ export default function EvidenceDetail() {
     }
   };
 
-  const handleVerifyCustody = () => {
+  const handleVerifyCustody = async () => {
     if (!uploadResult) return;
     setVerifyingCustody(true);
-    fetchApi(`/evidence/${uploadResult.id}/verify-custody`, { method: 'POST' })
-      .then(res => res.json())
-      .then(data => {
-        setCustodyResult(data);
-        setVerifyingCustody(false);
-      })
-      .catch(() => setVerifyingCustody(false));
+    setCustodyResult(null);
+    setCustodyError(null);
+    try {
+      const response = await fetchApi(`/evidence/${uploadResult.id}/verify-custody`, { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Custody verification failed.');
+      if (typeof data.status !== 'string' || typeof data.integrity_intact !== 'boolean' || typeof data.verified_at !== 'string') {
+        throw new Error('Custody verification returned an incomplete result.');
+      }
+      setCustodyResult(data);
+    } catch (error) {
+      setCustodyError(error instanceof Error ? error.message : 'Custody verification failed.');
+    } finally {
+      setVerifyingCustody(false);
+    }
   };
 
   const hasResult = (key: string) => Boolean(results[key] || results[key.replace('-', '_')] || jobs[key]?.status === 'COMPLETED');
+  const effectiveFormat = (uploadResult?.image_format || uploadResult?.mime_type?.split('/')?.[1] || '').toUpperCase();
+  const isJpeg = effectiveFormat.includes('JPEG') || effectiveFormat.includes('JPG');
 
-  const coreCount = ['metadata', 'ela', 'noise', 'jpeg-dct', 'copy-move'].filter(k => hasResult(k)).length;
-  const compressionCount = ['jpeg-structure', 'jpeg-ghost', 'adjpeg', 'nadjpeg', 'blocking-artifact'].filter(k => hasResult(k)).length;
-  const colorCount = ['histogram', 'color-channel', 'fourier'].filter(k => hasResult(k)).length;
-  const noiseResamplingCount = ['advanced-noise', 'resampling'].filter(k => hasResult(k)).length;
-  const cloningCount = ['clone-block', 'clone-keypoint'].filter(k => hasResult(k)).length;
-  const cameraCount = ['prnu', 'camera-id'].filter(k => hasResult(k)).length;
-  const physicsGeometryCount = ['geometry-perspective', 'physics-lighting'].filter(k => hasResult(k)).length;
-  const totalCompleted = coreCount + compressionCount + colorCount + noiseResamplingCount + cloningCount + cameraCount + physicsGeometryCount;
+  const coreEngineIds = ['metadata', 'ela', 'noise', 'jpeg-dct', 'copy-move'];
+  const compressionEngineIds = ['jpeg-structure', 'jpeg-ghost', 'adjpeg', 'nadjpeg', 'blocking-artifact'];
+  const colorEngineIds = ['histogram', 'color-channel', 'fourier'];
+  const noiseResamplingEngineIds = ['advanced-noise', 'resampling'];
+  const cloningEngineIds = ['clone-block', 'clone-keypoint'];
+  const cameraEngineIds = ['prnu', 'camera-id'];
+  const physicsGeometryEngineIds = ['geometry-perspective', 'physics-lighting'];
+  const isEngineCompatible = (engineId: string) => {
+    const exam = FORENSIC_EXAMINATION_CATALOGUE.find(item => item.id === engineId);
+    if (!exam || (exam.requiresLossy && !isJpeg)) return false;
+    return exam.supportedFormats.includes('ALL') || exam.supportedFormats.some(format => effectiveFormat.includes(format));
+  };
+  const countGroupResults = (engineIds: string[]) => {
+    const compatibleIds = engineIds.filter(isEngineCompatible);
+    return {
+      completed: compatibleIds.filter(hasResult).length,
+      compatible: compatibleIds.length
+    };
+  };
+  const physicsGeometryCounts = countGroupResults(physicsGeometryEngineIds);
+  const coreCounts = countGroupResults(coreEngineIds);
+  const compressionCounts = countGroupResults(compressionEngineIds);
+  const colorCounts = countGroupResults(colorEngineIds);
+  const noiseResamplingCounts = countGroupResults(noiseResamplingEngineIds);
+  const cloningCounts = countGroupResults(cloningEngineIds);
+  const cameraCounts = countGroupResults(cameraEngineIds);
+  const groupBadge = (counts: { completed: number; compatible: number }) => counts.compatible > 0 ? `${counts.completed}/${counts.compatible}` : 'N/A';
+  const groupStatus = (counts: { completed: number; compatible: number }) => counts.compatible > 0
+    ? `${counts.completed} of ${counts.compatible} format-compatible examinations completed`
+    : 'No compatible examinations for this file format';
+  const totalRegistered = FORENSIC_EXAMINATION_CATALOGUE.length;
+  const totalCompleted = FORENSIC_EXAMINATION_CATALOGUE.filter(exam => hasResult(exam.id)).length;
+  const totalCandidateRegions = heatmap?.layers.reduce((count, layer) => count + layer.regions.length, 0) ?? 0;
 
   useEffect(() => {
     if (uploadResult?.id && totalCompleted > 0 && totalCompleted !== prevCompletedCountRef.current) {
@@ -491,20 +592,73 @@ export default function EvidenceDetail() {
     }
   }, [totalCompleted, uploadResult?.id, runFusionSync]);
 
-  const workbenchTabs = [
-    { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', count: heatmap?.composite_regions_count || 0, suffix: 'zones' },
-    { id: 'visual_inspection', label: 'Interactive Microscopy & Loupe', icon: '🔬', count: 1, suffix: 'active' },
-    { id: 'physics_geometry', label: 'Physics & Geometry', icon: '📐', count: physicsGeometryCount, suffix: '/2' },
-    { id: 'core', label: 'Core DIP Engines', icon: '⚙️', count: coreCount, suffix: '/5' },
-    { id: 'compression', label: 'Container & Compression', icon: '🗜️', count: compressionCount, suffix: '/3' },
-    { id: 'color_spectrum', label: 'Color & Spectrum', icon: '🌈', count: colorCount, suffix: '/3' },
-    { id: 'noise_resampling', label: 'Noise & Resampling', icon: '🔬', count: noiseResamplingCount, suffix: '/2' },
-    { id: 'cloning', label: 'Clone Detection', icon: '👯', count: cloningCount, suffix: '/2' },
-    { id: 'camera_sensor', label: 'Camera & Sensor', icon: '📷', count: cameraCount, suffix: '/2' },
-    { id: 'all', label: 'All Modalities', icon: '📑', count: totalCompleted, suffix: 'active' },
+  const workbenchTabs: Array<{ id: WorkbenchTabId; label: string; icon: string; badge: string; status: string }> = [
+    { id: 'overview', label: 'Overview & Attention Heatmap', icon: '🔍', badge: totalCandidateRegions.toLocaleString(), status: `${totalCandidateRegions.toLocaleString()} candidate region envelopes` },
+    { id: 'visual_inspection', label: 'Interactive Microscopy & Loupe', icon: '🔬', badge: 'Open', status: 'open the interactive viewer' },
+    { id: 'physics_geometry', label: 'Physics & Geometry', icon: '📐', badge: groupBadge(physicsGeometryCounts), status: groupStatus(physicsGeometryCounts) },
+    { id: 'core', label: 'Core DIP Engines', icon: '⚙️', badge: groupBadge(coreCounts), status: groupStatus(coreCounts) },
+    { id: 'compression', label: 'Container & Compression', icon: '🗜️', badge: groupBadge(compressionCounts), status: groupStatus(compressionCounts) },
+    { id: 'color_spectrum', label: 'Color & Spectrum', icon: '🌈', badge: groupBadge(colorCounts), status: groupStatus(colorCounts) },
+    { id: 'noise_resampling', label: 'Noise & Resampling', icon: '🔬', badge: groupBadge(noiseResamplingCounts), status: groupStatus(noiseResamplingCounts) },
+    { id: 'cloning', label: 'Clone Detection', icon: '👯', badge: groupBadge(cloningCounts), status: groupStatus(cloningCounts) },
+    { id: 'camera_sensor', label: 'Camera & Sensor', icon: '📷', badge: groupBadge(cameraCounts), status: groupStatus(cameraCounts) },
+    { id: 'all', label: 'All Modalities', icon: '📑', badge: `${totalCompleted}/${totalRegistered}`, status: `${totalCompleted} of ${totalRegistered} registered examinations completed` },
   ];
 
-  const effectiveFormat = (uploadResult?.image_format || uploadResult?.mime_type?.split('/')?.[1] || '').toUpperCase();
+  const unavailableHeatmapLayers = heatmap?.layers.filter(layer => layer.status !== 'AVAILABLE') ?? [];
+  const isHeatmapLayerVisible = (modality: string) =>
+    !(modality === 'ELA' && !showElaLayer) &&
+    !(modality === 'NOISE' && !showNoiseLayer) &&
+    !(modality === 'COPY_MOVE' && !showCloneLayer);
+  const visibleHeatmapRegions = useMemo(
+    () => new Map<string, HeatmapRegion[]>((heatmap?.layers ?? []).map(layer => [
+      layer.modality,
+      getVisibleHeatmapRegions(layer.regions, overlayRegionLimit)
+    ])),
+    [heatmap, overlayRegionLimit]
+  );
+  const visibleHeatmapRegionEntries = useMemo(
+    () => (heatmap?.layers ?? []).flatMap(layer => (
+      !((layer.modality === 'ELA' && !showElaLayer) ||
+        (layer.modality === 'NOISE' && !showNoiseLayer) ||
+        (layer.modality === 'COPY_MOVE' && !showCloneLayer))
+        ? (visibleHeatmapRegions.get(layer.modality) ?? []).map(region => ({ modality: layer.modality, region }))
+        : []
+    )),
+    [heatmap, visibleHeatmapRegions, showElaLayer, showNoiseLayer, showCloneLayer]
+  );
+  const heatmapRegionSequence = useMemo(
+    () => new Map(visibleHeatmapRegionEntries.map((entry, index) => [entry.region, index])),
+    [visibleHeatmapRegionEntries]
+  );
+  const densityCells = useMemo(
+    () => buildHeatmapDensityCells(heatmap?.layers ?? [], modality =>
+      !(modality === 'ELA' && !showElaLayer) &&
+      !(modality === 'NOISE' && !showNoiseLayer) &&
+      !(modality === 'COPY_MOVE' && !showCloneLayer)
+    ),
+    [heatmap, showElaLayer, showNoiseLayer, showCloneLayer]
+  );
+  const isDensityView = heatmapDisplayMode === 'density' ||
+    (heatmapDisplayMode === 'auto' && totalCandidateRegions > HEATMAP_DENSITY_THRESHOLD);
+  const selectedLayerCandidateRegions = heatmap?.layers.reduce((count, layer) => (
+    count + (isHeatmapLayerVisible(layer.modality) ? layer.regions.length : 0)
+  ), 0) ?? 0;
+  const aggregatedCandidateRegions = densityCells.reduce((count, cell) => count + cell.proposalCount, 0);
+  const omittedDensityRegions = selectedLayerCandidateRegions - aggregatedCandidateRegions;
+  const displayedCandidateRegions = isDensityView
+    ? aggregatedCandidateRegions
+    : heatmap?.layers.reduce((count, layer) => (
+    count + (isHeatmapLayerVisible(layer.modality) ? (visibleHeatmapRegions.get(layer.modality)?.length ?? 0) : 0)
+    ), 0) ?? 0;
+  const maxDensityCellCount = Math.max(1, ...densityCells.map(cell => cell.proposalCount));
+  const selectedDensityCell = densityCells.find(cell => cell.id === selectedDensityCellId) ?? null;
+  const isHeatmapFocused = Boolean(selectedDensityCell || selectedHeatmapRegion);
+  const heatmapFocusOrigin = selectedDensityCell
+    ? `${((selectedDensityCell.column + 0.5) / HEATMAP_DENSITY_GRID_SIZE) * 100}% ${((selectedDensityCell.row + 0.5) / HEATMAP_DENSITY_GRID_SIZE) * 100}%`
+    : selectedHeatmapRegion
+      ? `${Math.min(1, Math.max(0, selectedHeatmapRegion.x + selectedHeatmapRegion.width / 2)) * 100}% ${Math.min(1, Math.max(0, selectedHeatmapRegion.y + selectedHeatmapRegion.height / 2)) * 100}%`
+      : '50% 50%';
 
   if (evidenceId === 'upload' || evidenceId === 'new') {
     return <Navigate to={`/cases/${caseId}/evidence/upload`} replace />;
@@ -538,19 +692,19 @@ export default function EvidenceDetail() {
           </div>
           {/* Top Bar: Integrity Card + Quick Verify */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-            <EvidenceIntegrityCard evidence={uploadResult} />
+            <EvidenceIntegrityCard evidence={uploadResult} verification={custodyResult} />
 
             {/* Custody Card */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Chain of Custody & Storage Verification</h3>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
-                    SHA-256 INVARIANT
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', background: 'var(--surface-color-light)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                    SHA-256 RECORDED
                   </span>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                  Real-time disk bitstream verification against immutable acquisition hash.
+                  On-demand current disk check against the SHA-256 captured at intake.
                 </div>
 
                 {custodyResult && (
@@ -558,6 +712,7 @@ export default function EvidenceDetail() {
                     <strong>{custodyResult.status}:</strong> {custodyResult.message}
                   </div>
                 )}
+                {custodyError && <div className="error-banner" role="alert">{custodyError}</div>}
               </div>
 
               <button 
@@ -610,6 +765,7 @@ export default function EvidenceDetail() {
 
           {/* Guided Forensic Analysis & Transparent Engine Selection Workflow */}
           <GuidedExaminationWorkflow
+            key={`${uploadResult.id}-${uploadResult.image_format || uploadResult.mime_type || ''}`}
             evidence={uploadResult}
             jobs={jobs}
             results={results}
@@ -624,39 +780,48 @@ export default function EvidenceDetail() {
 
           {/* Unified Forensic Results & Evidentiary Synthesis */}
           <UnifiedForensicResults
+            key={`${caseId || 'standalone'}-${uploadResult.id}`}
             evidence={uploadResult}
             caseId={caseId}
             jobs={jobs}
             results={results}
             jobErrors={jobErrors}
             onNavigateToViewer={(viewerId) => {
-              setWorkbenchTab(viewerId as any);
+              if (workbenchTabs.some(tab => tab.id === viewerId)) {
+                setWorkbenchTab(viewerId as WorkbenchTabId);
+              } else {
+                console.error(`Unknown forensic viewer requested: ${viewerId}`);
+              }
               const el = document.getElementById('workbench-nav');
               if (el) el.scrollIntoView({ behavior: 'smooth' });
             }}
             onRefresh={() => { if (evidenceId) fetchEvidenceAndJobs(evidenceId); }}
           />
 
+          <div className="forensic-workbench-panel" data-testid="forensic-workbench-panel">
           {/* Categorized Forensic Workbench Navigation */}
-          <div id="workbench-nav" data-tour-target="lab-workbench-navigation" className="workbench-nav-container">
+          <div id="workbench-nav" data-tour-target="lab-workbench-navigation" className="workbench-nav-container" role="group" aria-label="Forensic modality views">
             {workbenchTabs.map(t => {
               const isActive = workbenchTab === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setWorkbenchTab(t.id as any)}
+                  aria-pressed={isActive}
+                  aria-label={`${t.label}: ${t.status}`}
+                  onClick={() => setWorkbenchTab(t.id)}
                   className={`workbench-nav-tab ${isActive ? 'active' : ''}`}
                 >
                   <span>{t.icon}</span>
                   <span>{t.label}</span>
-                  <span className="workbench-nav-badge">
-                    {t.count}
-                  </span>
+                  <span className="workbench-nav-badge" aria-hidden="true">{t.badge}</span>
                 </button>
               );
             })}
           </div>
+          <p data-testid="workbench-counts-help" className="workbench-counts-help">
+            Group badges show completed examinations out of compatible methods; the overview shows candidate-region count. These are workflow counts, not integrity conclusions.
+          </p>
 
           <Suspense
             fallback={
@@ -675,28 +840,51 @@ export default function EvidenceDetail() {
               </div>
             }
           >
+          {workbenchTab === 'all' && (
+            <div className="card" data-testid="all-modalities-summary">
+              <h3 style={{ marginTop: 0 }}>All Modalities</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Select a view to load it on demand. Only the selected forensic module is mounted, keeping this workspace responsive.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
+                {workbenchTabs.filter(tab => tab.id !== 'all').map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className="secondary-button"
+                    aria-label={`Open ${tab.label}; ${tab.status}`}
+                    onClick={() => setWorkbenchTab(tab.id)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', textAlign: 'left' }}
+                  >
+                    <span>{tab.icon} {tab.label}</span>
+                    <span aria-hidden="true">{tab.badge}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* TAB 1: OVERVIEW & MULTI-MODALITY HEATMAP */}
-          {(workbenchTab === 'overview' || workbenchTab === 'all') && heatmap && (
-            <div className="card">
-              <div data-tour-target="lab-heatmap-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          {workbenchTab === 'overview' && heatmap && (
+            <div className="workbench-overview-content">
+              <div data-tour-target="lab-heatmap-panel" className="heatmap-section-header">
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#ec4899', background: 'rgba(236, 72, 153, 0.1)', padding: '0.15rem 0.45rem', borderRadius: '4px', textTransform: 'uppercase' }}>
+                  <div className="heatmap-section-meta">
+                    <span className="heatmap-section-kicker">
                       Spatial Attention Synthesis
                     </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      {heatmap.composite_regions_count} Anomaly Zones Identified
+                    <span className="heatmap-section-count">
+                      {totalCandidateRegions.toLocaleString()} candidate envelopes across all layers
                     </span>
                   </div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Multi-Modality Forensic Anomaly Heatmap</h3>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Spatial convergence of Error Level Analysis, Noise Residual Discrepancies, and Keypoint Clusters
+                  <h3 className="heatmap-section-title">Multi-Modality Spatial Screening Map</h3>
+                  <div className="heatmap-section-description">
+                    Candidate measurement regions from completed spatial analyses; overlays are not confirmed tampering.
                   </div>
                 </div>
 
-                  {/* Heatmap Controls or Clean Baseline Empty State */}
-                  {heatmap.composite_regions_count > 0 ? (
-                    <div data-testid="heatmap-controls-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface-color-light)', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  {/* Heatmap controls or unclassified empty state */}
+                  {totalCandidateRegions > 0 ? (
+                    <div data-testid="heatmap-controls-bar" className="heatmap-controls-bar">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }} title="Adjust transparency of the spatial anomaly overlays on the evidence image">
                         <label data-testid="heatmap-opacity-label" style={{ fontWeight: 600 }}>Opacity: {Math.round(heatmapOpacity * 100)}%</label>
                         <input 
@@ -712,15 +900,61 @@ export default function EvidenceDetail() {
                         />
                       </div>
 
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600 }}>View</span>
+                        <select
+                          data-testid="heatmap-display-mode"
+                          aria-label="Heatmap display mode"
+                          value={heatmapDisplayMode}
+                          onChange={event => {
+                            const nextMode = event.target.value;
+                            setHeatmapDisplayMode(nextMode === 'density' || nextMode === 'regions' ? nextMode : 'auto');
+                            setSelectedDensityCellId(null);
+                            setSelectedHeatmapRegion(null);
+                          }}
+                          style={{ background: 'var(--surface-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.4rem' }}
+                        >
+                          <option value="auto">Auto (recommended)</option>
+                          <option value="density">Aggregated density</option>
+                          <option value="regions">Individual regions</option>
+                        </select>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600 }}>Regions / layer</span>
+                        <select
+                          data-testid="heatmap-region-limit"
+                          aria-label="Maximum displayed individual candidate regions per layer"
+                          value={overlayRegionLimit}
+                          onChange={event => {
+                            setOverlayRegionLimit(event.target.value === 'all' ? 'all' : Number(event.target.value));
+                            setSelectedDensityCellId(null);
+                            setSelectedHeatmapRegion(null);
+                          }}
+                          disabled={isDensityView}
+                          style={{ background: 'var(--surface-color)', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.25rem 0.4rem' }}
+                        >
+                          <option value="100">Focused (100 / layer)</option>
+                          <option value="250">Balanced (250 / layer)</option>
+                          <option value="500">Detailed (500 / layer)</option>
+                          <option value="all">All available</option>
+                        </select>
+                      </label>
+
                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Toggle Error Level Analysis compression variance overlay">
                         <input 
                           data-testid="heatmap-layer-ela-toggle"
                           type="checkbox" 
                           checked={showElaLayer} 
-                          onChange={e => setShowElaLayer(e.target.checked)} 
+                          onChange={e => {
+                            setShowElaLayer(e.target.checked);
+                            setSelectedDensityCellId(null);
+                            setSelectedHeatmapRegion(null);
+                          }}
+                          style={{ accentColor: '#ef4444' }}
                         />
                         <span style={{ color: '#ef4444', fontWeight: 600 }}>
-                          ELA Layer ({heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0})
+                          ELA · {heatmap.layers?.find(l => l.modality === 'ELA')?.regions?.length || 0} proposals
                         </span>
                       </label>
 
@@ -729,10 +963,15 @@ export default function EvidenceDetail() {
                           data-testid="heatmap-layer-noise-toggle"
                           type="checkbox" 
                           checked={showNoiseLayer} 
-                          onChange={e => setShowNoiseLayer(e.target.checked)} 
+                          onChange={e => {
+                            setShowNoiseLayer(e.target.checked);
+                            setSelectedDensityCellId(null);
+                            setSelectedHeatmapRegion(null);
+                          }}
+                          style={{ accentColor: '#06b6d4' }}
                         />
                         <span style={{ color: '#06b6d4', fontWeight: 600 }}>
-                          Noise Layer ({heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0})
+                          Noise · {heatmap.layers?.find(l => l.modality === 'NOISE')?.regions?.length || 0} proposals
                         </span>
                       </label>
 
@@ -741,102 +980,261 @@ export default function EvidenceDetail() {
                           data-testid="heatmap-layer-clone-toggle"
                           type="checkbox" 
                           checked={showCloneLayer} 
-                          onChange={e => setShowCloneLayer(e.target.checked)} 
+                          onChange={e => {
+                            setShowCloneLayer(e.target.checked);
+                            setSelectedDensityCellId(null);
+                            setSelectedHeatmapRegion(null);
+                          }}
+                          style={{ accentColor: '#10b981' }}
                         />
                         <span style={{ color: '#10b981', fontWeight: 600 }}>
-                          Clone Layer ({heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0})
+                          Clone · {heatmap.layers?.find(l => l.modality === 'COPY_MOVE')?.regions?.length || 0} proposals
                         </span>
                       </label>
+
+                      <button
+                        type="button"
+                        data-testid="heatmap-reset-view"
+                        className="secondary-button"
+                        onClick={() => {
+                          setHeatmapOpacity(0.3);
+                          setHeatmapDisplayMode('auto');
+                          setOverlayRegionLimit(100);
+                          setShowElaLayer(true);
+                          setShowNoiseLayer(true);
+                          setShowCloneLayer(true);
+                          setSelectedDensityCellId(null);
+                          setSelectedHeatmapRegion(null);
+                        }}
+                        style={{ fontSize: '0.72rem', padding: '0.25rem 0.5rem' }}
+                      >
+                        Reset view
+                      </button>
                     </div>
                   ) : (
                     <div data-testid="heatmap-empty-state" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--surface-color-light)', padding: '0.65rem 0.95rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                       <span style={{ fontSize: '1.1rem' }}>🛡️</span>
                       <div>
-                        <strong style={{ color: 'var(--text-main)' }}>Clean Baseline:</strong> No spatial anomaly zones detected across active modalities. Overlay controls are active when anomaly zones are present.
+                        <strong style={{ color: 'var(--text-main)' }}>No candidate regions returned.</strong>{' '}
+                        {unavailableHeatmapLayers.length > 0
+                          ? `${unavailableHeatmapLayers.length} spatial layer(s) have no available output; review their status.`
+                          : 'Completed applicable layers returned no mapped regions.'}{' '}
+                        This does not establish image integrity or authenticity.
                       </div>
                     </div>
+                  )}
+                  {totalCandidateRegions > 0 && (
+                    <>
+                      <div data-testid="heatmap-region-count" className="heatmap-region-count">
+                        {isDensityView
+                          ? `Aggregating ${displayedCandidateRegions.toLocaleString()} candidate region centers from enabled layers into ${densityCells.length.toLocaleString()} spatial cells. Cell counts are proposals, not unique pixels or a probability of manipulation.${omittedDensityRegions > 0 ? ` ${omittedDensityRegions.toLocaleString()} proposals with invalid coordinates were omitted.` : ''}`
+                          : `Showing ${displayedCandidateRegions.toLocaleString()} of ${selectedLayerCandidateRegions.toLocaleString()} candidate envelopes from enabled layers. Individual regions are ordered by display intensity; labels are limited to 8 per layer.`}
+                      </div>
+                      {isDensityView && (
+                        <div data-testid="heatmap-density-legend" className="heatmap-density-legend" role="img" aria-label="Density color scale: fewer to more candidate region centers per spatial cell">
+                          <span>Fewer proposals</span>
+                          <span className="heatmap-density-legend-gradient" aria-hidden="true" />
+                          <span>More proposals</span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
                 {/* Canvas/Overlay Container */}
-                <div style={{ position: 'relative', width: '100%', maxWidth: '900px', margin: '0 auto', background: '#000', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                <div className="heatmap-analysis-layout">
+                <div className="heatmap-visual-column">
+                <div className="heatmap-map-viewport" style={{ position: 'relative', width: 'fit-content', maxWidth: '100%', margin: '0 auto', background: 'var(--surface-color-light)', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                  <div
+                    data-testid="heatmap-map-content"
+                    className="heatmap-map-content"
+                    style={{
+                      transform: isHeatmapFocused ? 'scale(2)' : 'scale(1)',
+                      transformOrigin: heatmapFocusOrigin,
+                    }}
+                  >
                   <AuthenticatedImage
                     src={`/api/evidence/${uploadResult.id}/raw`}
                     alt={uploadResult.original_filename}
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                    className="heatmap-map-image"
+                    style={{ display: 'block' }}
                   />
 
                   {/* Overlay SVG */}
                   <svg 
                     data-testid="heatmap-overlay-svg"
+                    role="group"
+                    aria-label={isDensityView
+                      ? `Aggregated density map of ${displayedCandidateRegions} candidate region centers in ${densityCells.length} spatial cells. Cell counts are proposals, not unique pixels or a probability of manipulation.`
+                      : `Spatial screening overlay displaying ${displayedCandidateRegions} candidate regions across selected layers. These are screening outputs, not confirmed manipulation.`}
                     style={{ 
                       position: 'absolute', 
                       top: 0, 
                       left: 0, 
                       width: '100%', 
                       height: '100%', 
-                      pointerEvents: 'none',
+                      pointerEvents: 'auto',
                       opacity: heatmapOpacity,
                       transition: 'opacity 0.1s ease'
                     }}
                     viewBox="0 0 1000 1000"
                     preserveAspectRatio="none"
                   >
-                    {heatmap.layers?.map(layer => {
-                      if (layer.modality === 'ELA' && !showElaLayer) return null;
-                      if (layer.modality === 'NOISE' && !showNoiseLayer) return null;
-                      if (layer.modality === 'COPY_MOVE' && !showCloneLayer) return null;
+                    {isDensityView ? (
+                      <g data-testid="heatmap-density-layer" aria-label="Aggregated candidate proposal density">
+                        {densityCells.map(cell => {
+                          const cellSize = 1000 / HEATMAP_DENSITY_GRID_SIZE;
+                          const relativeDensity = Math.log1p(cell.proposalCount) / Math.log1p(maxDensityCellCount);
+                          const isSelected = selectedDensityCellId === cell.id;
+                          return (
+                            <rect
+                              key={cell.id}
+                              data-testid="heatmap-density-cell"
+                              data-heatmap-density-cell={cell.id}
+                              data-count={cell.proposalCount}
+                              x={cell.column * cellSize}
+                              y={cell.row * cellSize}
+                              width={cellSize}
+                              height={cellSize}
+                              rx="2"
+                              fill="var(--accent-color)"
+                              fillOpacity={0.12 + relativeDensity * 0.58}
+                              stroke={isSelected ? 'var(--text-main)' : 'var(--accent-color)'}
+                              strokeWidth={isSelected ? 5 : 1}
+                              role="button"
+                              tabIndex={isSelected || (!selectedDensityCellId && cell.id === densityCells[0]?.id) ? 0 : -1}
+                              aria-label={`${cell.proposalCount} candidate region centers in this cell; methods: ${Object.entries(cell.countsByModality).map(([modality, count]) => `${modality} ${count}`).join(', ')}. Select to inspect sample locations.`}
+                              onClick={() => {
+                                setSelectedDensityCellId(cell.id);
+                                setSelectedHeatmapRegion(null);
+                              }}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setSelectedDensityCellId(cell.id);
+                                  setSelectedHeatmapRegion(null);
+                                } else if (['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(event.key)) {
+                                  event.preventDefault();
+                                  const isHorizontal = event.key === 'ArrowLeft' || event.key === 'ArrowRight';
+                                  const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+                                  const candidates = densityCells.filter(candidate => {
+                                    const primaryDelta = isHorizontal ? candidate.column - cell.column : candidate.row - cell.row;
+                                    return primaryDelta * direction > 0;
+                                  });
+                                  candidates.sort((a, b) => {
+                                    const aPrimary = Math.abs((isHorizontal ? a.column - cell.column : a.row - cell.row));
+                                    const bPrimary = Math.abs((isHorizontal ? b.column - cell.column : b.row - cell.row));
+                                    if (aPrimary !== bPrimary) return aPrimary - bPrimary;
+                                    const aSecondary = Math.abs(isHorizontal ? a.row - cell.row : a.column - cell.column);
+                                    const bSecondary = Math.abs(isHorizontal ? b.row - cell.row : b.column - cell.column);
+                                    return aSecondary - bSecondary;
+                                  });
+                                  const nextCell = candidates[0];
+                                  if (nextCell) {
+                                    setSelectedDensityCellId(nextCell.id);
+                                    setSelectedHeatmapRegion(null);
+                                    requestAnimationFrame(() => {
+                                      document.querySelector<SVGRectElement>(`[data-heatmap-density-cell="${nextCell.id}"]`)?.focus();
+                                    });
+                                  }
+                                }
+                              }}
+                            />
+                          );
+                        })}
+                      </g>
+                    ) : (
+                      heatmap.layers?.map(layer => {
+                        if (!isHeatmapLayerVisible(layer.modality)) return null;
 
-                      const color = layer.modality === 'ELA' ? '#ef4444' : layer.modality === 'NOISE' ? '#06b6d4' : '#10b981';
+                        const color = layer.modality === 'ELA' ? '#ef4444' : layer.modality === 'NOISE' ? '#06b6d4' : '#10b981';
 
-                      return (
-                        <g key={layer.modality} data-testid={`heatmap-layer-${layer.modality.toLowerCase()}`}>
-                          {layer.regions?.map((r, rIdx) => {
-                            const rx = r.x * 1000;
-                            const ry = r.y * 1000;
-                            const rw = r.width * 1000;
-                            const rh = r.height * 1000;
-                            return (
-                              <g key={`${layer.modality}-${rIdx}`}>
-                                <rect
-                                  x={rx}
-                                  y={ry}
-                                  width={rw}
-                                  height={rh}
-                                  fill={color}
-                                  fillOpacity={r.intensity * 0.45}
-                                  stroke={color}
-                                  strokeWidth="3"
-                                  strokeDasharray="6 3"
-                                />
-                                <rect
-                                  x={rx}
-                                  y={Math.max(0, ry - 22)}
-                                  width={Math.min(220, rw)}
-                                  height={20}
-                                  fill={color}
-                                  fillOpacity={0.85}
-                                  rx={3}
-                                />
-                                <text
-                                  x={rx + 6}
-                                  y={Math.max(0, ry - 22) + 14}
-                                  fill="#ffffff"
-                                  fontSize="12"
-                                  fontWeight="bold"
-                                  fontFamily="sans-serif"
-                                >
-                                  {layer.modality}: {r.description?.slice(0, 22) || 'Anomaly Zone'}
-                                </text>
-                              </g>
-                            );
-                          })}
-                        </g>
-                      );
-                    })}
+                        return (
+                          <g key={layer.modality} data-testid={`heatmap-layer-${layer.modality.toLowerCase()}`}>
+                            {(visibleHeatmapRegions.get(layer.modality) ?? []).map((region, regionIndex) => {
+                              const rx = region.x * 1000;
+                              const ry = region.y * 1000;
+                              const rw = region.width * 1000;
+                              const rh = region.height * 1000;
+                              const isSelected = selectedHeatmapRegion === region;
+                              const regionSequenceIndex = heatmapRegionSequence.get(region) ?? -1;
+                              return (
+                                <g key={`${layer.modality}-${regionIndex}`}>
+                                  <rect
+                                    x={rx}
+                                    y={ry}
+                                    width={rw}
+                                    height={rh}
+                                    data-testid="heatmap-candidate-region"
+                                    data-heatmap-region-sequence={regionSequenceIndex}
+                                    data-selected={isSelected}
+                                    fill={color}
+                                    fillOpacity={region.intensity * 0.45}
+                                    stroke={isSelected ? 'var(--text-main)' : color}
+                                    strokeWidth={isSelected ? 5 : 3}
+                                    strokeDasharray={isSelected ? undefined : '6 3'}
+                                    role="button"
+                                    tabIndex={isSelected || (!selectedHeatmapRegion && regionSequenceIndex === 0) ? 0 : -1}
+                                    aria-label={`${layer.label} candidate region: ${region.description || 'candidate region'}, x ${Math.round(region.x * 100)}%, y ${Math.round(region.y * 100)}%, width ${Math.round(region.width * 100)}%, height ${Math.round(region.height * 100)}%`}
+                                    onClick={() => {
+                                      setSelectedHeatmapRegion(region);
+                                      setSelectedDensityCellId(null);
+                                    }}
+                                    onKeyDown={event => {
+                                      if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        setSelectedHeatmapRegion(region);
+                                        setSelectedDensityCellId(null);
+                                      } else if (['ArrowLeft', 'ArrowUp', 'ArrowRight', 'ArrowDown'].includes(event.key)) {
+                                        event.preventDefault();
+                                        const direction = event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 1;
+                                        const nextIndex = regionSequenceIndex + direction;
+                                        const nextEntry = visibleHeatmapRegionEntries[nextIndex];
+                                        if (nextEntry) {
+                                          setSelectedHeatmapRegion(nextEntry.region);
+                                          setSelectedDensityCellId(null);
+                                          requestAnimationFrame(() => {
+                                            document.querySelector<SVGRectElement>(`[data-heatmap-region-sequence="${nextIndex}"]`)?.focus();
+                                          });
+                                        }
+                                      }
+                                    }}
+                                  />
+                                  {regionIndex < 8 && (
+                                    <g aria-hidden="true" pointerEvents="none">
+                                      <rect
+                                        x={rx}
+                                        y={Math.max(0, ry - 22)}
+                                        width={Math.min(220, rw)}
+                                        height={20}
+                                        fill={color}
+                                        fillOpacity={0.85}
+                                        rx={3}
+                                      />
+                                      <text
+                                        data-testid="heatmap-candidate-label"
+                                        x={rx + 6}
+                                        y={Math.max(0, ry - 22) + 14}
+                                        fill="#ffffff"
+                                        fontSize="12"
+                                        fontWeight="bold"
+                                        fontFamily="sans-serif"
+                                      >
+                                        {layer.modality}: {region.description?.slice(0, 22) || 'Candidate Region'}
+                                      </text>
+                                    </g>
+                                  )}
+                                </g>
+                              );
+                            })}
+                          </g>
+                        );
+                      })
+                    )}
                   </svg>
+                  </div>
 
-                  {heatmap.composite_regions_count === 0 && (
+                  {totalCandidateRegions === 0 && (
                     <div style={{
                       position: 'absolute',
                       bottom: '12px',
@@ -851,41 +1249,117 @@ export default function EvidenceDetail() {
                       backdropFilter: 'blur(4px)',
                       border: '1px solid rgba(255,255,255,0.1)'
                     }}>
-                      🛡️ Clean Baseline: No spatial anomalies detected across active modalities
+                      No candidate regions returned by completed layers; this is not an authenticity or integrity finding.
                     </div>
                   )}
                 </div>
-
-              {/* Scientific Principles Context Card */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                <div style={{ background: 'var(--surface-color-light)', borderLeft: '3px solid #3b82f6', borderRadius: '4px', padding: '0.75rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>WHAT WAS FOUND?</div>
-                  <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{heatmap.what_was_found}</div>
+                {(selectedDensityCell || selectedHeatmapRegion) && (
+                  <div data-testid="heatmap-selection-detail" role="status" aria-live="polite" style={{ marginTop: '0.75rem', padding: '0.75rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: 'var(--surface-raised)', fontSize: '0.8rem' }}>
+                    {selectedDensityCell ? (
+                      <>
+                        <strong>{selectedDensityCell.proposalCount} region centers in this density cell</strong>
+                        <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>
+                          Methods: {Object.entries(selectedDensityCell.countsByModality).map(([modality, count]) => `${modality} ${count}`).join(' · ')}
+                        </span>
+                        <ul style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                          {selectedDensityCell.sampleRegions.map((region, index) => (
+                            <li key={`${region.modality}-${index}`}>
+                              {region.modality}: {region.description || 'Candidate region'} — x {Math.round(region.x * 100)}%, y {Math.round(region.y * 100)}%, {Math.round(region.width * 100)}% × {Math.round(region.height * 100)}%; {Number.isFinite(region.intensity) ? `display intensity ${Math.round(region.intensity * 100)}% (method-specific, not probability)` : 'display intensity not reported'}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : selectedHeatmapRegion && (
+                      <>
+                        <strong>{selectedHeatmapRegion.modality}: {selectedHeatmapRegion.description || 'Candidate region'}</strong>
+                        <div style={{ marginTop: '0.25rem', color: 'var(--text-muted)' }}>
+                          Bounding box: x {Math.round(selectedHeatmapRegion.x * 100)}%, y {Math.round(selectedHeatmapRegion.y * 100)}%, width {Math.round(selectedHeatmapRegion.width * 100)}%, height {Math.round(selectedHeatmapRegion.height * 100)}%. {Number.isFinite(selectedHeatmapRegion.intensity) ? `Display intensity ${Math.round(selectedHeatmapRegion.intensity * 100)}% is method-specific, not a probability.` : 'Display intensity was not reported.'}
+                        </div>
+                      </>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.45rem' }}>
+                      <button
+                        type="button"
+                        data-testid="heatmap-clear-focus"
+                        className="secondary-button"
+                        onClick={() => {
+                          setSelectedDensityCellId(null);
+                          setSelectedHeatmapRegion(null);
+                        }}
+                      >
+                        Clear focus
+                      </button>
+                    </div>
+                  </div>
+                )}
                 </div>
+                <div
+                  className="heatmap-interpretation-column"
+                  role="region"
+                  aria-label="Spatial analysis interpretation"
+                  tabIndex={0}
+                >
+                  <details className="heatmap-text-description">
+                    <summary>
+                      Text description of spatial overlay ({totalCandidateRegions.toLocaleString()} candidate envelopes)
+                    </summary>
+                    <p>
+                      {unavailableHeatmapLayers.length > 0
+                        ? `${unavailableHeatmapLayers.length} layer(s) have no available output and provide no negative evidence. `
+                        : 'All applicable spatial layers have results. '}
+                      Candidate regions are detector outputs for examiner review, not confirmed edits.
+                    </p>
+                    <ul>
+                      {heatmap.layers.map(layer => (
+                        <li key={layer.modality}>
+                          {layer.label}: {layer.status.replaceAll('_', ' ')}, {layer.regions.length.toLocaleString()} candidate proposal(s).
+                          {layer.regions.length > 0 && (
+                            <ul>
+                              {layer.regions.slice(0, 25).map((region, index) => (
+                                <li key={`${layer.modality}-${index}`}>
+                                  {region.description} (x {Math.round(region.x * 100)}%, y {Math.round(region.y * 100)}%, width {Math.round(region.width * 100)}%, height {Math.round(region.height * 100)}%)
+                                </li>
+                              ))}
+                              {layer.regions.length > 25 && <li>Showing the first 25 of {layer.regions.length} regions.</li>}
+                            </ul>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
 
-                <div style={{ background: 'var(--surface-color-light)', borderLeft: '3px solid #10b981', borderRadius: '4px', padding: '0.75rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>WHY DOES IT MATTER?</div>
-                  <div style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{heatmap.why_it_matters}</div>
+                  <div className="heatmap-insight-list">
+                    <article className="heatmap-insight-card heatmap-insight-card--finding">
+                      <h4>What was found?</h4>
+                      <p>{heatmap.what_was_found}</p>
+                    </article>
+
+                    <article className="heatmap-insight-card heatmap-insight-card--meaning">
+                      <h4>Why does it matter?</h4>
+                      <p>{heatmap.why_it_matters}</p>
+                    </article>
+
+                    <article className="heatmap-insight-card heatmap-insight-card--next">
+                      <h4>What should you do next?</h4>
+                      <ul>
+                        {heatmap.recommended_next_steps?.slice(0, 3).map((step, index) => (
+                          <li key={index}>{step}</li>
+                        ))}
+                      </ul>
+                    </article>
+                  </div>
+
+                  <div className="heatmap-limitation" role="note">
+                    <strong>Limitation</strong>
+                    <p>{heatmap.limitations}</p>
+                  </div>
                 </div>
-
-                <div style={{ background: 'var(--surface-color-light)', borderLeft: '3px solid #f59e0b', borderRadius: '4px', padding: '0.75rem' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase' }}>WHAT SHOULD YOU DO NEXT?</div>
-                  <ul style={{ margin: '0.25rem 0 0 1rem', padding: 0, fontSize: '0.75rem' }}>
-                    {heatmap.recommended_next_steps?.slice(0, 3).map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ul>
                 </div>
-              </div>
-
-              <div style={{ fontSize: '0.7rem', color: '#f59e0b', fontStyle: 'italic', marginTop: '0.75rem' }}>
-                <strong>Limitation:</strong> {heatmap.limitations}
-              </div>
             </div>
           )}
 
           {/* TAB: INTERACTIVE VISUAL INSPECTION & MICROSCOPY */}
-          {(workbenchTab === 'visual_inspection' || workbenchTab === 'all') && (
+          {workbenchTab === 'visual_inspection' && (
             <InteractiveVisualInspection 
               evidenceId={uploadResult.id} 
               filename={uploadResult.original_filename} 
@@ -893,7 +1367,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 2: CORE FORENSIC / DIP WORKLOADS */}
-          {(workbenchTab === 'core' || workbenchTab === 'all') && (
+          {workbenchTab === 'core' && (
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h2 className="card-title" style={{ margin: 0, color: 'var(--primary-color)' }}>
@@ -912,7 +1386,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 3: CONTAINER & COMPRESSION FORENSICS */}
-          {(workbenchTab === 'compression' || workbenchTab === 'all') && (
+          {workbenchTab === 'compression' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedJpegViewer
                 evidenceId={uploadResult.id}
@@ -945,7 +1419,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 4: COLOR & SPECTRUM FORENSICS */}
-          {(workbenchTab === 'color_spectrum' || workbenchTab === 'all') && (
+          {workbenchTab === 'color_spectrum' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <HistogramViewer
                 evidenceId={uploadResult.id}
@@ -971,7 +1445,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 5: NOISE & RESAMPLING FORENSICS */}
-          {(workbenchTab === 'noise_resampling' || workbenchTab === 'all') && (
+          {workbenchTab === 'noise_resampling' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <AdvancedNoiseViewer
                 evidenceId={uploadResult.id}
@@ -992,7 +1466,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 6: CLONE DETECTION FORENSICS */}
-          {(workbenchTab === 'cloning' || workbenchTab === 'all') && (
+          {workbenchTab === 'cloning' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <CloneBlockViewer
                 evidenceId={uploadResult.id}
@@ -1013,7 +1487,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 7: CAMERA ATTRIBUTION & SENSOR PRNU */}
-          {(workbenchTab === 'camera_sensor' || workbenchTab === 'all') && (
+          {workbenchTab === 'camera_sensor' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <PRNUViewer
                 evidenceId={uploadResult.id}
@@ -1033,7 +1507,7 @@ export default function EvidenceDetail() {
           )}
 
           {/* TAB 8: PHYSICS & GEOMETRY FORENSICS */}
-          {(workbenchTab === 'physics_geometry' || workbenchTab === 'all') && (
+          {workbenchTab === 'physics_geometry' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* Perspective Analysis */}
               <div className="card">
@@ -1153,18 +1627,10 @@ export default function EvidenceDetail() {
             </div>
             )}
           </Suspense>
-          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
-          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview, Core, or All) */}
-          {(workbenchTab === 'overview' || workbenchTab === 'core' || workbenchTab === 'all') && (
-            <div className="card" style={{ 
-              marginTop: '1.25rem', 
-              borderRadius: '14px', 
-              border: '1px solid var(--border-color)', 
-              boxShadow: '0 4px 24px -2px rgba(26, 22, 16, 0.08)',
-              background: 'var(--surface-color)',
-              padding: '1.5rem',
-              fontFamily: "'Plus Jakarta Sans', var(--font-sans)"
-            }}>
+          </div>
+          {/* FUSION & OBSERVATION ASSESSMENT (Always accessible on Overview or Core) */}
+          {(workbenchTab === 'overview' || workbenchTab === 'core') && (
+            <div className="card fusion-assessment-panel">
               {/* Header with Engine Tags and Re-sync */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div>
@@ -1175,15 +1641,15 @@ export default function EvidenceDetail() {
                       gap: '0.35rem',
                       fontSize: '0.68rem', 
                       fontWeight: 800, 
-                      color: '#1e3a8a', 
-                      background: 'rgba(30, 58, 138, 0.08)', 
-                      border: '1px solid rgba(30, 58, 138, 0.2)',
+                      color: 'var(--primary-color)',
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary-border)',
                       padding: '0.2rem 0.6rem', 
                       borderRadius: '9999px', 
                       letterSpacing: '0.06em',
                       textTransform: 'uppercase' 
                     }}>
-                      <Cpu size={12} style={{ color: '#2563eb' }} />
+                      <Cpu size={12} style={{ color: 'var(--primary-color)' }} />
                       Deterministic Correlation Engine
                     </span>
 
@@ -1193,9 +1659,9 @@ export default function EvidenceDetail() {
                         alignItems: 'center', 
                         gap: '0.35rem', 
                         fontSize: '0.72rem', 
-                        color: '#0284c7', 
-                        background: 'rgba(2, 132, 199, 0.1)', 
-                        border: '1px solid rgba(2, 132, 199, 0.25)',
+                        color: 'var(--primary-color)',
+                        background: 'var(--primary-light)',
+                        border: '1px solid var(--primary-border)',
                         padding: '0.2rem 0.65rem', 
                         borderRadius: '9999px', 
                         fontWeight: 700 
@@ -1208,15 +1674,15 @@ export default function EvidenceDetail() {
                         alignItems: 'center', 
                         gap: '0.4rem', 
                         fontSize: '0.72rem', 
-                        color: '#047857', 
-                        background: 'rgba(16, 185, 129, 0.1)', 
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        color: 'var(--primary-color)',
+                        background: 'var(--primary-light)',
+                        border: '1px solid var(--primary-border)',
                         padding: '0.2rem 0.65rem', 
                         borderRadius: '9999px', 
                         fontWeight: 700,
                         letterSpacing: '0.01em'
                       }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary-color)' }} />
                         Auto-synchronized
                       </span>
                     ) : null}
@@ -1259,7 +1725,7 @@ export default function EvidenceDetail() {
                     background: 'var(--surface-color)',
                     color: 'var(--text-main)',
                     cursor: (normalizing || correlating || totalCompleted === 0) ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                    boxShadow: 'var(--shadow-sm)',
                     transition: 'all 0.15s ease'
                   }}
                   title="Force re-run normalization and cross-correlation"
@@ -1276,7 +1742,7 @@ export default function EvidenceDetail() {
                   className="btn" 
                   onClick={handleOpenNormalizeModal}
                   style={{ 
-                    background: 'var(--surface-color-light)', 
+                    background: 'var(--surface-raised)',
                     color: 'var(--text-main)', 
                     padding: '0.8rem 1.25rem', 
                     borderRadius: '8px', 
@@ -1296,8 +1762,9 @@ export default function EvidenceDetail() {
                   <span style={{ fontSize: '0.92rem' }}>Normalize Observations</span>
                   {normalizing ? (
                     <span style={{ 
-                      background: 'rgba(255, 255, 255, 0.2)', 
-                      color: '#ffffff', 
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary-color)',
+                      border: '1px solid var(--primary-border)',
                       padding: '0.15rem 0.55rem', 
                       borderRadius: '9999px', 
                       fontSize: '0.72rem', 
@@ -1310,8 +1777,9 @@ export default function EvidenceDetail() {
                     </span>
                   ) : results.normalize?.observations?.length !== undefined && (
                     <span style={{ 
-                      background: 'rgba(255, 255, 255, 0.2)', 
-                      color: '#ffffff', 
+                      background: 'var(--surface-sunken)',
+                      color: 'var(--text-main)',
+                      border: '1px solid var(--border-default)',
                       padding: '0.15rem 0.55rem', 
                       borderRadius: '9999px', 
                       fontSize: '0.74rem', 
@@ -1375,8 +1843,8 @@ export default function EvidenceDetail() {
 
               {/* Informational Prerequisite if no jobs run yet */}
               {totalCompleted === 0 && (
-                <div style={{ marginBottom: '1rem', padding: '0.85rem 1.15rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '8px', fontSize: '0.825rem', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <Info size={17} style={{ color: '#d97706', flexShrink: 0 }} />
+                <div style={{ marginBottom: '1rem', padding: '0.85rem 1.15rem', background: 'var(--accent-light)',border: '1px solid var(--accent-border)',borderRadius: '8px', fontSize: '0.825rem', color: 'var(--accent-text)', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <Info size={17} style={{ color: 'var(--accent-text)', flexShrink: 0 }} />
                   <div>
                     <strong>Prerequisite:</strong> No analytical engines have run on this image yet ({totalCompleted} completed). As soon as you queue or run any forensic engine above (e.g. <strong>Core DIP Engines</strong>, <strong>Physics & Geometry</strong>, <strong>Container & Compression</strong>), normalization and correlation will execute automatically.
                   </div>
@@ -1385,8 +1853,8 @@ export default function EvidenceDetail() {
 
               {/* In-Progress Sync Indicator */}
               {(normalizing || correlating) && !results.correlate && (
-                <div style={{ padding: '1.75rem', textAlign: 'center', background: 'var(--surface-color-light)', borderRadius: '10px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  <RefreshCw size={20} className="spin-animate" style={{ marginBottom: '0.5rem', display: 'inline-block', color: '#2563eb' }} />
+                <div style={{ padding: '1.75rem', textAlign: 'center', background: 'var(--surface-raised)', borderRadius: '10px', border: '1px dashed var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  <RefreshCw size={20} className="spin-animate" style={{ marginBottom: '0.5rem', display: 'inline-block', color: 'var(--primary-color)' }} />
                   <div style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.2rem' }}>Synthesizing Forensic Correlation Matrix...</div>
                   <div style={{ fontSize: '0.76rem' }}>Normalizing active observations and computing cross-modality confluence</div>
                 </div>
@@ -1399,21 +1867,9 @@ export default function EvidenceDetail() {
                 const isModerate = concernLevel === 'MODERATE_FORENSIC_CONCERN';
                 const isLow = concernLevel === 'LOW_FORENSIC_CONCERN';
                 
-                const levelColor = isElevated ? '#dc2626' : isModerate ? '#d97706' : isLow ? '#059669' : '#64748b';
-                const levelBg = isElevated 
-                  ? 'rgba(239, 68, 68, 0.12)' 
-                  : isModerate 
-                    ? 'rgba(245, 158, 11, 0.12)' 
-                    : isLow 
-                      ? 'rgba(16, 185, 129, 0.12)' 
-                      : 'rgba(100, 116, 139, 0.12)';
-                const levelBorder = isElevated 
-                  ? 'rgba(239, 68, 68, 0.35)' 
-                  : isModerate 
-                    ? 'rgba(245, 158, 11, 0.35)' 
-                    : isLow 
-                      ? 'rgba(16, 185, 129, 0.35)' 
-                      : 'rgba(100, 116, 139, 0.35)';
+                const levelColor = 'var(--primary-color)';
+                const levelBg = 'var(--primary-light)';
+                const levelBorder = 'var(--primary-border)';
 
                 const humanizedLevel = isElevated 
                   ? 'ELEVATED FORENSIC CONCERN' 
@@ -1425,12 +1881,12 @@ export default function EvidenceDetail() {
 
                 return (
                   <div style={{ 
-                    background: 'var(--surface-color-light)', 
+                    background: 'var(--surface-raised)',
                     padding: '1.4rem 1.6rem', 
                     borderRadius: '12px', 
                     border: '1px solid var(--border-color)', 
                     borderLeft: `5px solid ${levelColor}`,
-                    boxShadow: '0 4px 18px -2px rgba(0, 0, 0, 0.04)',
+                    boxShadow: 'var(--shadow-sm)',
                     position: 'relative'
                   }}>
                     {/* Header Row */}
@@ -1457,7 +1913,7 @@ export default function EvidenceDetail() {
                             fontSize: '0.7rem', 
                             fontFamily: "'JetBrains Mono', monospace", 
                             color: 'var(--text-muted)', 
-                            background: 'rgba(0,0,0,0.04)', 
+                            background: 'var(--surface-sunken)',
                             padding: '0.12rem 0.45rem', 
                             borderRadius: '4px',
                             border: '1px solid var(--border-color)' 
@@ -1501,7 +1957,7 @@ export default function EvidenceDetail() {
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.35rem',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                            boxShadow: 'var(--shadow-sm)',
                             transition: 'all 0.15s ease'
                           }}
                           onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary-color)')}
@@ -1522,7 +1978,7 @@ export default function EvidenceDetail() {
                       fontWeight: 500,
                       padding: '0.25rem 0 0.85rem 0',
                       letterSpacing: '-0.01em',
-                      borderBottom: '1px solid var(--border-color-translucent, rgba(0,0,0,0.06))',
+                      borderBottom: '1px solid var(--border-subtle)',
                       marginBottom: '0.95rem'
                     }}>
                       {results.correlate.assessment?.summary}
@@ -1539,9 +1995,9 @@ export default function EvidenceDetail() {
                               fontWeight: 700, 
                               padding: '0.2rem 0.6rem', 
                               borderRadius: '6px', 
-                              background: 'rgba(2, 132, 199, 0.08)', 
-                              border: '1px solid rgba(2, 132, 199, 0.22)',
-                              color: '#0284c7',
+                              background: 'var(--primary-light)',
+                              border: '1px solid var(--primary-border)',
+                              color: 'var(--primary-color)',
                               letterSpacing: '-0.01em'
                             }}>
                               {f}
@@ -1559,9 +2015,9 @@ export default function EvidenceDetail() {
                               fontWeight: 800, 
                               padding: '0.16rem 0.45rem', 
                               borderRadius: '4px', 
-                              background: 'rgba(30, 58, 138, 0.08)', 
-                              border: '1px solid rgba(30, 58, 138, 0.18)',
-                              color: '#1e3a8a',
+                              background: 'var(--primary-light)',
+                              border: '1px solid var(--primary-border)',
+                              color: 'var(--primary-color)',
                               letterSpacing: '0.03em',
                               textTransform: 'uppercase'
                             }}>
@@ -1574,7 +2030,7 @@ export default function EvidenceDetail() {
                             style={{ 
                               background: 'transparent', 
                               border: 'none', 
-                              color: '#2563eb', 
+                              color: 'var(--primary-color)',
                               cursor: 'pointer', 
                               fontSize: '0.78rem', 
                               fontWeight: 700, 
@@ -1585,8 +2041,8 @@ export default function EvidenceDetail() {
                               textDecoration: 'none',
                               transition: 'color 0.15s ease'
                             }}
-                            onMouseEnter={e => (e.currentTarget.style.color = '#1d4ed8')}
-                            onMouseLeave={e => (e.currentTarget.style.color = '#2563eb')}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary-hover)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--primary-color)')}
                           >
                             <span>Inspect normalized table ({results.normalize.observations?.length || 0} metrics)</span>
                             <ArrowRight size={13} />
@@ -1598,7 +2054,7 @@ export default function EvidenceDetail() {
                             style={{ 
                               background: 'transparent', 
                               border: 'none', 
-                              color: '#0284c7', 
+                              color: 'var(--primary-color)',
                               cursor: 'pointer', 
                               fontSize: '0.78rem', 
                               fontWeight: 700, 
@@ -1609,8 +2065,8 @@ export default function EvidenceDetail() {
                               textDecoration: 'none',
                               transition: 'color 0.15s ease'
                             }}
-                            onMouseEnter={e => (e.currentTarget.style.color = '#0369a1')}
-                            onMouseLeave={e => (e.currentTarget.style.color = '#0284c7')}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary-color)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--primary-color)')}
                           >
                             <span>Open correlation dialog ({results.correlate.relations?.length || 0} relations)</span>
                             <ArrowRight size={13} />
@@ -1628,19 +2084,19 @@ export default function EvidenceDetail() {
                         <div style={{ 
                           marginTop: '1.1rem', 
                           padding: '0.8rem 1.1rem', 
-                          background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(253, 230, 138, 0.2) 100%)', 
+                          background: 'var(--accent-light)',
                           borderRadius: '8px', 
-                          border: '1px solid rgba(245, 158, 11, 0.3)', 
-                          borderLeft: '4px solid #d97706',
+                          border: '1px solid var(--accent-border)',
+                          borderLeft: '4px solid var(--accent-color)',
                           fontSize: '0.8rem', 
-                          color: '#78350f',
+                          color: 'var(--text-body)',
                           display: 'flex',
                           gap: '0.65rem',
                           alignItems: 'flex-start'
                         }}>
-                          <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
+                          <Info size={16} style={{ color: 'var(--accent-text)', flexShrink: 0, marginTop: '0.15rem' }} />
                           <div style={{ lineHeight: 1.55 }}>
-                            <strong style={{ color: '#92400e', fontWeight: 750, letterSpacing: '0.02em' }}>
+                            <strong style={{ color: 'var(--accent-text)', fontWeight: 750, letterSpacing: '0.02em' }}>
                               LIMITATIONS & ADMISSIBILITY SCOPE (ISO/IEC 27037):
                             </strong>{' '}
                             {limitationsText.replace(/observations\.They/g, 'observations. They')}
@@ -2021,7 +2477,7 @@ export default function EvidenceDetail() {
                 <div style={{ padding: '1.25rem 1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
                   {correlating ? (
                     <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                      <RefreshCw size={28} className="spin-animate" style={{ color: '#0284c7' }} />
+                      <RefreshCw size={28} className="spin-animate" style={{ color: 'var(--primary-color)' }} />
                       <div style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-main)' }}>
                         Synthesizing Multi-Modality Correlation Matrix...
                       </div>
@@ -2035,21 +2491,9 @@ export default function EvidenceDetail() {
                     const isModerate = concernLevel === 'MODERATE_FORENSIC_CONCERN';
                     const isLow = concernLevel === 'LOW_FORENSIC_CONCERN';
                     
-                    const levelColor = isElevated ? '#dc2626' : isModerate ? '#d97706' : isLow ? '#059669' : '#64748b';
-                    const levelBg = isElevated 
-                      ? 'rgba(239, 68, 68, 0.08)' 
-                      : isModerate 
-                        ? 'rgba(245, 158, 11, 0.08)' 
-                        : isLow 
-                          ? 'rgba(16, 185, 129, 0.08)' 
-                          : 'rgba(100, 116, 139, 0.08)';
-                    const levelBorder = isElevated 
-                      ? 'rgba(239, 68, 68, 0.28)' 
-                      : isModerate 
-                        ? 'rgba(245, 158, 11, 0.28)' 
-                        : isLow 
-                          ? 'rgba(16, 185, 129, 0.28)' 
-                          : 'rgba(100, 116, 139, 0.28)';
+                    const levelColor = 'var(--primary-color)';
+                    const levelBg = 'var(--primary-light)';
+                    const levelBorder = 'var(--primary-border)';
 
                     const humanizedLevel = isElevated 
                       ? 'ELEVATED FORENSIC CONCERN' 
@@ -2078,7 +2522,7 @@ export default function EvidenceDetail() {
                                 width: '32px',
                                 height: '32px',
                                 borderRadius: '8px',
-                                background: '#ffffff',
+                                background: 'var(--surface-base)',
                                 border: `1px solid ${levelBorder}`,
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2127,9 +2571,9 @@ export default function EvidenceDetail() {
                                   fontWeight: 700, 
                                   padding: '0.2rem 0.55rem', 
                                   borderRadius: '5px', 
-                                  background: 'rgba(2, 132, 199, 0.1)', 
-                                  border: '1px solid rgba(2, 132, 199, 0.22)',
-                                  color: '#0284c7'
+                                  background: 'var(--primary-light)',
+                                  border: '1px solid var(--primary-border)',
+                                  color: 'var(--primary-color)'
                                 }}>
                                   {f}
                                 </span>
@@ -2150,9 +2594,9 @@ export default function EvidenceDetail() {
                                   fontWeight: 800, 
                                   padding: '0.18rem 0.45rem', 
                                   borderRadius: '4px', 
-                                  background: 'rgba(30, 58, 138, 0.08)', 
-                                  border: '1px solid rgba(30, 58, 138, 0.18)',
-                                  color: '#1e3a8a',
+                                  background: 'var(--surface-sunken)',
+                                  border: '1px solid var(--border-default)',
+                                  color: 'var(--primary-color)',
                                   textTransform: 'uppercase'
                                 }}>
                                   {m}
@@ -2168,7 +2612,7 @@ export default function EvidenceDetail() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                              <GitMerge size={15} style={{ color: '#0284c7' }} />
+                              <GitMerge size={15} style={{ color: 'var(--primary-color)' }} />
                               <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
                                 Cross-Modality Corroboration & Conflict Matrix
                               </h4>
@@ -2181,10 +2625,9 @@ export default function EvidenceDetail() {
                           {results.correlate.relations?.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                               {results.correlate.relations.map((rel: any, idx: number) => {
-                                const isCorroborating = rel.relation_type === 'CORROBORATING';
                                 const isContradicting = rel.relation_type === 'CONTRADICTING';
-                                const relBadgeColor = isCorroborating ? '#059669' : isContradicting ? '#dc2626' : '#0284c7';
-                                const relBadgeBg = isCorroborating ? 'rgba(16, 185, 129, 0.1)' : isContradicting ? 'rgba(239, 68, 68, 0.1)' : 'rgba(2, 132, 199, 0.1)';
+                                const relBadgeColor = isContradicting ? 'var(--accent-text)' : 'var(--primary-color)';
+                                const relBadgeBg = isContradicting ? 'var(--accent-light)' : 'var(--primary-light)';
 
                                 return (
                                   <div key={idx} style={{
@@ -2234,7 +2677,7 @@ export default function EvidenceDetail() {
                             </div>
                           ) : (
                             <div style={{ padding: '1.25rem', textAlign: 'center', background: 'var(--surface-color-light)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                              🛡️ Clean Baseline: Evaluated modalities do not exhibit contradictory signals or mutual anomaly reinforcement.
+                              No contradictory signals are recorded in the current correlation output. This is not an authenticity finding; review which examinations have run and their limitations.
                             </div>
                           )}
                         </div>
@@ -2266,19 +2709,19 @@ export default function EvidenceDetail() {
                         {/* Legal & ISO Limitations Banner */}
                         <div style={{ 
                           padding: '0.8rem 1rem', 
-                          background: 'linear-gradient(135deg, rgba(254, 243, 199, 0.45) 0%, rgba(253, 230, 138, 0.2) 100%)', 
+                          background: 'var(--accent-light)',
                           borderRadius: '8px', 
-                          border: '1px solid rgba(245, 158, 11, 0.3)', 
-                          borderLeft: '4px solid #d97706',
+                          border: '1px solid var(--accent-border)',
+                          borderLeft: '4px solid var(--accent-color)',
                           fontSize: '0.78rem', 
-                          color: '#78350f',
+                          color: 'var(--text-body)',
                           display: 'flex',
                           gap: '0.65rem',
                           alignItems: 'flex-start'
                         }}>
-                          <Info size={16} style={{ color: '#d97706', flexShrink: 0, marginTop: '0.15rem' }} />
+                          <Info size={16} style={{ color: 'var(--accent-text)', flexShrink: 0, marginTop: '0.15rem' }} />
                           <div style={{ lineHeight: 1.5 }}>
-                            <strong style={{ color: '#92400e', fontWeight: 750 }}>
+                            <strong style={{ color: 'var(--accent-text)', fontWeight: 750 }}>
                               ISO/IEC 27037 ADMISSIBILITY NOTICE:
                             </strong>{' '}
                             {Array.isArray(results.correlate.assessment?.limitations) 
@@ -2321,7 +2764,7 @@ export default function EvidenceDetail() {
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#2563eb',
+                      color: 'var(--primary-color)',
                       cursor: 'pointer',
                       fontSize: '0.78rem',
                       fontWeight: 700,

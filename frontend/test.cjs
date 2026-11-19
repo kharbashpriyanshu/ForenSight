@@ -18,6 +18,8 @@ const state = {
   jobQueued: false,
   jobPolls: 0,
   reportGenerated: false,
+  savedEvidenceNotes: [],
+  nextNoteId: 1,
   requestedApiPaths: [],
   requestedApiQueries: [],
   seenCsrfTokens: [],
@@ -79,7 +81,11 @@ const heatmapData = {
   evidence_id: evidenceData.id,
   width: 1,
   height: 1,
-  layers: [],
+  layers: [
+    { modality: 'ELA', label: 'Error Level Analysis', status: 'NOT_RUN', weight: 0.35, regions: [], summary: '', limitations: '' },
+    { modality: 'NOISE', label: 'Noise Residual', status: 'NOT_RUN', weight: 0.30, regions: [], summary: '', limitations: '' },
+    { modality: 'COPY_MOVE', label: 'Copy-Move', status: 'NOT_RUN', weight: 0.35, regions: [], summary: '', limitations: '' },
+  ],
   composite_regions_count: 0,
   what_was_found: 'No test signals were injected.',
   why_it_matters: 'This is a UI workflow check only.',
@@ -263,13 +269,26 @@ async function mockApiRequest(request) {
   }
 
   if (url.pathname === '/api/auth/login' && request.method() === 'POST') {
-    return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR', mfa_enabled: false });
+    return jsonResponse({
+      authenticated: true,
+      username: state.demoMode ? 'demo_instructor' : 'workflow-user',
+      role: 'INVESTIGATOR',
+      mfa_enabled: false,
+    });
   }
   if (url.pathname === '/api/auth/logout' && request.method() === 'POST') {
     return { status: 204, contentType: 'text/plain', body: '' };
   }
   if (url.pathname === '/api/auth/session' && request.method() === 'GET') {
     return jsonResponse({ authenticated: true, username: 'workflow-user', role: 'INVESTIGATOR' });
+  }
+  if (url.pathname.endsWith('/verify-custody') && request.method() === 'POST') {
+    return jsonResponse({
+      status: 'VERIFIED_INTACT',
+      integrity_intact: true,
+      verified_at: new Date().toISOString(),
+      message: 'Mock SHA-256 verification succeeded.',
+    });
   }
   if (url.pathname === '/api/health' && request.method() === 'GET') {
     return jsonResponse(state.healthPayload);
@@ -389,7 +408,28 @@ async function mockApiRequest(request) {
     return jsonResponse([{ id: 920, title: 'Spliced Composite Region Detected', status: 'VERIFIED', severity: 'HIGH', summary: 'ELA and DCT anomalies corroborate splice.' }]);
   }
   if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/notes` && request.method() === 'GET') {
-    return jsonResponse([{ id: 1, author: 'demo_instructor', content: 'Verified composite splice against master frame.', created_at: new Date().toISOString() }]);
+    const targetId = url.searchParams.get('target_id');
+    if (targetId) {
+      return jsonResponse(state.savedEvidenceNotes.filter(note => note.target_id === targetId));
+    }
+    return jsonResponse([{ id: 1, author: 'demo_instructor', target_type: 'EVIDENCE', target_id: String(demoEvidenceData.id), content: 'Verified composite splice against master frame.', created_at: new Date().toISOString() }]);
+  }
+  if (url.pathname.endsWith('/notes') && request.method() === 'GET') {
+    const targetId = url.searchParams.get('target_id');
+    return jsonResponse(state.savedEvidenceNotes.filter(note => !targetId || note.target_id === targetId));
+  }
+  if (url.pathname.endsWith('/notes') && request.method() === 'POST') {
+    const requestBody = JSON.parse(request.postData() || '{}');
+    const note = {
+      id: state.nextNoteId++,
+      author: 'workflow-user',
+      target_type: requestBody.target_type,
+      target_id: requestBody.target_id,
+      content: requestBody.content,
+      created_at: new Date().toISOString(),
+    };
+    state.savedEvidenceNotes.unshift(note);
+    return jsonResponse(note, 201);
   }
   if (url.pathname === `/api/cases/${demoCaseData.case_identifier}/reports` && request.method() === 'GET') {
     return jsonResponse([demoReportData]);
@@ -589,8 +629,11 @@ async function main() {
   );
   await page.click('button[aria-label="Close Forensic Lab tour"]');
 
+  await page.click('#tab-guided');
+  await page.waitForSelector('#panel-guided');
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('#panel-guided button')).some(button => button.innerText.replace(/\s+/g, ' ').trim() === 'Run Single'));
+  await clickButton(page, 'Run Single', true);
   await clickButton(page, 'Core DIP Engines');
-  await clickButton(page, 'Queue Analysis', true);
   await page.waitForFunction(() => document.body.innerText.includes('Mock analysis completed.'));
   assert.equal(state.jobQueued, true, 'analysis job endpoint was called');
   assert.ok(state.jobPolls >= 2, 'job progress endpoint was polled');
@@ -998,6 +1041,56 @@ async function main() {
   // 13d: EvidenceDetail tab switching preserves scroll position and avoids remounting
   await page.goto(`${baseUrl}/cases/FS-DEMO-001/evidence/${demoEvidenceData.id}`, { waitUntil: 'networkidle0' });
   await page.waitForSelector('#workbench-nav');
+  await page.waitForSelector('#tab-analyst[aria-selected="true"]');
+  const defaultExaminationMode = await page.evaluate(() => ({
+    analystPanelVisible: Boolean(document.querySelector('#panel-analyst')),
+    guidedPanelVisible: Boolean(document.querySelector('#panel-guided')),
+    analystFiltersVisible: Boolean(document.querySelector('#panel-analyst [data-tour-target="lab-analyst-filters"]')),
+  }));
+  assert.ok(defaultExaminationMode.analystPanelVisible && defaultExaminationMode.analystFiltersVisible, 'Analyst Workbench and its filters must be open by default');
+  assert.ok(!defaultExaminationMode.guidedPanelVisible, 'Guided Investigation must remain available as an alternate mode');
+
+  await page.click('#tab-guided');
+  await page.waitForSelector('[data-testid="examination-selection-summary"]');
+  const guidedModeDetails = await page.evaluate(() => ({
+    metadataDetailsCollapsed: document.querySelector('[data-testid="examination-guidance-metadata"]')?.open === false,
+    selection: document.querySelector('[data-testid="examination-selection-summary"]')?.textContent,
+  }));
+  assert.ok(guidedModeDetails.metadataDetailsCollapsed, 'Per-examination purpose and limitation details must be collapsed initially');
+  assert.ok(guidedModeDetails.selection?.includes('Compatible') && guidedModeDetails.selection.includes('Selected'), 'The guided selector must distinguish compatibility from selection');
+  await page.click('#tab-analyst');
+  await page.waitForSelector('#panel-analyst');
+
+  const workbenchCountLabels = await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('#workbench-nav button'));
+    return {
+      compression: buttons.find((button) => button.textContent.includes('Container & Compression'))?.getAttribute('aria-label'),
+      all: buttons.find((button) => button.textContent.includes('All Modalities'))?.getAttribute('aria-label'),
+      help: document.querySelector('[data-testid="workbench-counts-help"]')?.textContent,
+      navBackground: getComputedStyle(document.querySelector('#workbench-nav')).backgroundColor,
+      panelBackground: getComputedStyle(document.querySelector('[data-testid="forensic-workbench-panel"]')).backgroundColor,
+      navPosition: getComputedStyle(document.querySelector('#workbench-nav')).position,
+      navBottom: document.querySelector('#workbench-nav').getBoundingClientRect().bottom,
+      helpTop: document.querySelector('[data-testid="workbench-counts-help"]').getBoundingClientRect().top,
+      fusionPanelPresent: Boolean(document.querySelector('.fusion-assessment-panel')),
+      fusionPanelRadius: getComputedStyle(document.querySelector('.fusion-assessment-panel')).borderRadius,
+    };
+  });
+  assert.match(workbenchCountLabels.compression || '', /\d+ of 5 (?:format-compatible )?examinations completed/, 'Container & Compression must report its actual five compatible engines');
+  assert.match(workbenchCountLabels.all || '', /\d+ of 23 registered examinations completed/, 'All Modalities must report completed versus registered engines');
+  assert.ok(workbenchCountLabels.help?.includes('workflow counts'), 'Workbench counters must explain what the counts represent');
+  assert.notEqual(workbenchCountLabels.navBackground, 'rgba(0, 0, 0, 0)', 'Workbench navigation must have an opaque theme background');
+  assert.notEqual(workbenchCountLabels.navBackground, workbenchCountLabels.panelBackground, 'Workbench navigation must have a visible theme-tinted surface');
+  assert.notEqual(workbenchCountLabels.navPosition, 'sticky', 'Workbench navigation must not overlay scrolling page content');
+  assert.ok(workbenchCountLabels.helpTop >= workbenchCountLabels.navBottom, 'Workbench helper text must not overlap the navigation');
+  assert.ok(workbenchCountLabels.fusionPanelPresent, 'Fusion assessment must render with the workbench');
+  assert.equal(workbenchCountLabels.fusionPanelRadius, '12px', 'Fusion assessment card must use the shared design-system radius');
+  await page.waitForSelector('[data-testid="forensic-next-step-button"]');
+  const nextStepTarget = await page.$eval('[data-testid="forensic-next-step-button"]', (button) => button.getAttribute('data-target-tab'));
+  await page.click('[data-testid="forensic-next-step-button"]');
+  assert.equal(await page.$eval(`#tab-${nextStepTarget}`, (tab) => tab.getAttribute('aria-selected')), 'true', 'Suggested next step must open its corresponding results view');
+  await page.click('#tab-overview');
+
   const tabScrollResult = await page.evaluate(async () => {
     const pc = document.querySelector('.page-container');
     pc.scrollTop = 450;
@@ -1083,12 +1176,54 @@ async function main() {
     `Investigation tab navigation sequence must preserve scroll position without reset to top: ${JSON.stringify(navStability.scrollPositions)}`,
   );
 
+  const allModalitiesBehavior = await page.evaluate(async () => {
+    const nav = document.getElementById('workbench-nav');
+    const allButton = Array.from(nav.querySelectorAll('button')).find((button) => (button.textContent || '').includes('All Modalities'));
+    allButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const summary = document.querySelector('[data-testid="all-modalities-summary"]');
+    const loadedAllViewers = Boolean(document.querySelector('[data-testid="core-dip-engines-grid"]'));
+    const activeButton = nav.querySelector('button[aria-pressed="true"]');
+    const summaryCoreButton = document.querySelector('[aria-label^="Open Core DIP Engines"]');
+    if (summaryCoreButton) summaryCoreButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return {
+      hasSummary: Boolean(summary),
+      loadedAllViewers,
+      selectedAllButton: activeButton?.textContent.includes('All Modalities') || false,
+      coreLoadedOnDemand: Boolean(document.querySelector('[data-testid="core-dip-engines-grid"]')),
+    };
+  });
+  assert.ok(allModalitiesBehavior.hasSummary, 'All Modalities must show a lightweight navigation summary');
+  assert.equal(allModalitiesBehavior.loadedAllViewers, false, 'All Modalities must not mount every viewer eagerly');
+  assert.ok(allModalitiesBehavior.selectedAllButton, 'Workbench navigation must expose the selected view');
+  assert.ok(allModalitiesBehavior.coreLoadedOnDemand, 'A selected modality must load when opened from the summary');
+
+  await page.focus('#tab-overview');
+  await page.keyboard.press('ArrowRight');
+  const resultsTabKeyboard = await page.$eval('#tab-spatial', (tab) => ({
+    selected: tab.getAttribute('aria-selected'),
+    tabIndex: tab.tabIndex,
+    focused: document.activeElement === tab,
+  }));
+  assert.equal(resultsTabKeyboard.selected, 'true', 'Arrow navigation must select the next results tab');
+  assert.equal(resultsTabKeyboard.tabIndex, 0, 'Only the selected results tab should be in the tab sequence');
+  assert.ok(resultsTabKeyboard.focused, 'Arrow navigation must move keyboard focus with selection');
+  await page.click('#tab-overview');
+
   // 14b: Interactive Microscopy dark-mode controls visibility & contrast
   await page.evaluate(() => {
     const nav = document.getElementById('workbench-nav');
     Array.from(nav.querySelectorAll('button')).find((b) => (b.textContent || '').includes('Microscopy')).click();
   });
   await page.waitForSelector('.microscopy-control-console');
+  await page.focus('[role="region"][aria-label^="Image inspection viewport"]');
+  await page.keyboard.press('ArrowRight');
+  const keyboardPan = await page.$eval('[role="region"][aria-label^="Image inspection viewport"] canvas', (canvas) => canvas.style.left);
+  assert.equal(keyboardPan, '-20px', 'The microscopy viewport must pan with keyboard arrow keys');
+  await page.keyboard.press('Home');
+  const keyboardReset = await page.$eval('[role="region"][aria-label^="Image inspection viewport"] canvas', (canvas) => canvas.style.left);
+  assert.equal(keyboardReset, '0px', 'Home must reset microscopy viewport pan');
 
   const microscopyDarkMetrics = await page.evaluate(async () => {
     const sweepBtn = Array.from(document.querySelectorAll('.microscopy-btn')).find((b) => (b.textContent || '').includes('Level Sweep'));
@@ -1127,6 +1262,138 @@ async function main() {
   assert.ok(microscopyDarkMetrics.selectBg, 'Select control must have styled dark background');
 
   // 15: Investigation Workbench Overview & Attention Heatmap Opacity Functional Verification
+  const demoCloneLayer = demoHeatmapData.layers.find((layer) => layer.modality === 'COPY_MOVE');
+  const originalCloneRegions = demoCloneLayer.regions;
+  const originalCompositeRegionCount = demoHeatmapData.composite_regions_count;
+  demoCloneLayer.regions = Array.from({ length: 320 }, (_, index) => ({
+    modality: 'COPY_MOVE',
+    x: (index % 10) * 0.08,
+    y: (Math.floor(index / 10) % 10) * 0.08,
+    width: 0.06,
+    height: 0.06,
+    intensity: 1 - index / 1200,
+    description: `Synthetic candidate region ${index + 1}`,
+  }));
+  demoHeatmapData.composite_regions_count = 322;
+  await page.setViewport({ width: 1366, height: 768 });
+  await page.goto(`${baseUrl}/cases/FS-DEMO-001/evidence/${demoEvidenceData.id}`, { waitUntil: 'networkidle0' });
+  await page.waitForSelector('[data-testid="heatmap-region-limit"]');
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.heatmap-map-image');
+    return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+  });
+  await page.$eval('.page-container', container => { container.scrollTop = 0; });
+  const heatmapFrameMetrics = await page.evaluate(() => {
+    const image = document.querySelector('.heatmap-map-image');
+    if (!(image instanceof HTMLImageElement)) return null;
+    return {
+      height: image.getBoundingClientRect().height,
+      horizontalGutter: (document.querySelector('.heatmap-map-viewport').getBoundingClientRect().width - image.getBoundingClientRect().width) / 2,
+      maxHeight: parseFloat(getComputedStyle(image).maxHeight),
+    };
+  });
+  assert.ok(heatmapFrameMetrics && heatmapFrameMetrics.height <= heatmapFrameMetrics.maxHeight + 1, 'Heatmap image must stay within its responsive height limit');
+  assert.ok(heatmapFrameMetrics && heatmapFrameMetrics.horizontalGutter <= 4, 'Heatmap frame must not show wide empty side bars');
+  await page.$eval('.heatmap-text-description', details => { details.open = true; });
+  const interpretationScrollMetrics = await page.$eval('.heatmap-interpretation-column', element => ({
+    clientHeight: element.clientHeight,
+    overflowY: getComputedStyle(element).overflowY,
+    scrollHeight: element.scrollHeight,
+    height: parseFloat(getComputedStyle(element).height),
+  }));
+  assert.equal(interpretationScrollMetrics.overflowY, 'auto', 'Interpretation panel must scroll internally');
+  assert.ok(interpretationScrollMetrics.scrollHeight > interpretationScrollMetrics.clientHeight, 'Long interpretation details must not expand the page panel');
+  assert.ok(Math.abs(interpretationScrollMetrics.clientHeight - interpretationScrollMetrics.height) <= 1, 'Scrollable interpretation panel must use the same height as the image viewport');
+  const desktopHeatmapColumns = await page.$eval('.heatmap-analysis-layout', element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+  assert.equal(desktopHeatmapColumns, 2, 'Heatmap interpretation must sit beside the image on desktop');
+  await page.setViewport({ width: 760, height: 768 });
+  const mobileHeatmapColumns = await page.$eval('.heatmap-analysis-layout', element => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+  assert.equal(mobileHeatmapColumns, 1, 'Heatmap interpretation must stack below the image on narrow screens');
+  await page.setViewport({ width: 1440, height: 1000 });
+
+  const combinedWorkbenchPanel = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="forensic-workbench-panel"]');
+    return {
+      containsNavigation: Boolean(panel?.contains(document.querySelector('#workbench-nav'))),
+      containsHeatmap: Boolean(panel?.contains(document.querySelector('.workbench-overview-content'))),
+      borderRadius: panel ? getComputedStyle(panel).borderRadius : null,
+    };
+  });
+  assert.ok(combinedWorkbenchPanel.containsNavigation && combinedWorkbenchPanel.containsHeatmap, 'Workbench navigation and multi-modality heatmap must share one panel');
+  assert.equal(combinedWorkbenchPanel.borderRadius, '8px', 'Combined workbench panel must use subtly rounded corners');
+
+  const initialOverlayDensity = await page.evaluate(() => ({
+    displayMode: document.querySelector('[data-testid="heatmap-display-mode"]')?.value,
+    limit: document.querySelector('[data-testid="heatmap-region-limit"]')?.value,
+    densityCells: document.querySelectorAll('[data-testid="heatmap-density-cell"]').length,
+    visibleRegions: document.querySelectorAll('[data-testid="heatmap-candidate-region"]').length,
+    visibleLabels: document.querySelectorAll('[data-testid="heatmap-candidate-label"]').length,
+    countText: document.querySelector('[data-testid="heatmap-region-count"]')?.textContent,
+  }));
+  assert.equal(initialOverlayDensity.displayMode, 'auto', 'Heatmap must use automatic density selection by default');
+  assert.ok(initialOverlayDensity.densityCells > 0 && initialOverlayDensity.densityCells <= 1600, 'Crowded results should default to a bounded density grid');
+  assert.equal(initialOverlayDensity.visibleRegions, 0, 'Automatic density view must avoid drawing the crowded set as individual boxes');
+  assert.match(initialOverlayDensity.countText || '', /Aggregating 322 candidate region centers/, 'Automatic density view must disclose how proposals are aggregated');
+  assert.equal(initialOverlayDensity.limit, '100', 'Dense heatmaps must default to a focused 100-region-per-layer view');
+  assert.equal(initialOverlayDensity.visibleLabels, 0, 'Density view must omit overlapping individual region labels');
+
+  await page.select('[data-testid="heatmap-display-mode"]', 'density');
+  await page.waitForSelector('[data-testid="heatmap-density-cell"]');
+  const densityViewState = await page.evaluate(() => ({
+    cellCount: document.querySelectorAll('[data-testid="heatmap-density-cell"]').length,
+    rawRegionCount: document.querySelectorAll('[data-testid="heatmap-candidate-region"]').length,
+    hasLegend: Boolean(document.querySelector('[data-testid="heatmap-density-legend"]')),
+    countText: document.querySelector('[data-testid="heatmap-region-count"]')?.textContent,
+  }));
+  assert.ok(densityViewState.cellCount > 0 && densityViewState.cellCount <= 1600, 'Density view must aggregate proposals into a bounded grid');
+  assert.equal(densityViewState.rawRegionCount, 0, 'Density view must not render overlapping individual region boxes');
+  assert.ok(densityViewState.hasLegend, 'Density view must show a fewer-to-more proposals legend');
+  assert.match(densityViewState.countText || '', /Aggregating 322 candidate region centers/, 'Density view must explain that cells aggregate region centers');
+  await page.$eval('[data-testid="heatmap-density-cell"]', element => element.focus());
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-testid="heatmap-selection-detail"]');
+  assert.match(
+    await page.$eval('[data-testid="heatmap-selection-detail"]', (element) => element.textContent),
+    /region centers.*Methods:/,
+    'Selecting a density cell must reveal counts and representative method details',
+  );
+  assert.equal(await page.$eval('[data-testid="heatmap-map-content"]', element => element.style.transform), 'scale(2)', 'Selecting a cell must zoom the map to that region');
+  const firstFocusedDensityCell = await page.evaluate(() => document.activeElement?.getAttribute('data-heatmap-density-cell'));
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction((previousCell) => document.activeElement?.getAttribute('data-heatmap-density-cell') !== previousCell, {}, firstFocusedDensityCell);
+  await page.click('[data-testid="heatmap-clear-focus"]');
+  assert.equal(await page.$eval('[data-testid="heatmap-map-content"]', element => element.style.transform), 'scale(1)', 'Clearing focus must restore the full-image view');
+  await page.select('[data-testid="heatmap-display-mode"]', 'regions');
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="heatmap-candidate-region"]').length === 102);
+  assert.equal(
+    await page.$$eval('[data-testid="heatmap-candidate-label"]', (elements) => elements.length),
+    10,
+    'Individual mode must limit labels to eight per layer or fewer for small layers',
+  );
+  assert.match(
+    await page.$eval('[data-testid="heatmap-region-count"]', (element) => element.textContent),
+    /Showing 102 of 322/,
+    'Individual mode must disclose the capped visible count and total proposals',
+  );
+  await page.$eval('[data-testid="heatmap-candidate-region"]', element => element.focus());
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('[data-testid="heatmap-selection-detail"]');
+  assert.match(
+    await page.$eval('[data-testid="heatmap-selection-detail"]', (element) => element.textContent),
+    /Bounding box:.*Display intensity.*not a probability/,
+    'Selecting an individual proposal must disclose its bounds without presenting display intensity as probability',
+  );
+  await page.click('[data-testid="heatmap-clear-focus"]');
+
+  await page.select('[data-testid="heatmap-region-limit"]', '250');
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="heatmap-candidate-region"]').length === 252);
+  assert.match(
+    await page.$eval('[data-testid="heatmap-region-count"]', (element) => element.textContent),
+    /Showing 252 of 322/,
+    'Increasing overlay detail must reveal the full available region set when it is below the selected limit',
+  );
+  await page.select('[data-testid="heatmap-region-limit"]', '100');
+
   // Return to Overview tab
   await page.evaluate(() => {
     const nav = document.getElementById('workbench-nav');
@@ -1136,7 +1403,7 @@ async function main() {
   await page.waitForSelector('[data-testid="heatmap-opacity-slider"]');
   await page.waitForSelector('[data-testid="heatmap-overlay-svg"]');
 
-  // 15a: Verify initial default opacity (65%)
+  // 15a: Verify initial default opacity (30%)
   const initialOpacityData = await page.evaluate(() => {
     const label = document.querySelector('[data-testid="heatmap-opacity-label"]');
     const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
@@ -1158,9 +1425,9 @@ async function main() {
     };
   });
 
-  assert.equal(initialOpacityData.labelText, 'Opacity: 65%', 'Initial opacity label must display Opacity: 65%');
-  assert.equal(initialOpacityData.sliderValue, '0.65', 'Initial slider value must be 0.65');
-  assert.equal(initialOpacityData.svgOpacity, '0.65', 'Rendered heatmap SVG overlay must have initial computed opacity of 0.65');
+  assert.equal(initialOpacityData.labelText, 'Opacity: 30%', 'Initial opacity label must display Opacity: 30%');
+  assert.equal(initialOpacityData.sliderValue, '0.3', 'Initial slider value must be 0.3');
+  assert.equal(initialOpacityData.svgOpacity, '0.3', 'Rendered heatmap SVG overlay must have initial computed opacity of 0.3');
   assert.ok(initialOpacityData.hasEla, 'Heatmap must render ELA layer');
   assert.ok(initialOpacityData.hasNoise, 'Heatmap must render Noise layer');
   assert.ok(initialOpacityData.hasClone, 'Heatmap must render Copy-Move layer');
@@ -1176,7 +1443,10 @@ async function main() {
       slider.dispatchEvent(new Event('change', { bubbles: true }));
     }, val);
 
-    await new Promise((r) => setTimeout(r, 100));
+    await page.waitForFunction((targetVal) => {
+      const svg = document.querySelector('[data-testid="heatmap-overlay-svg"]');
+      return svg && Math.abs(Number(getComputedStyle(svg).opacity) - targetVal) < 0.001;
+    }, { timeout: 2000 }, val);
 
     return page.evaluate(() => {
       const slider = document.querySelector('[data-testid="heatmap-opacity-slider"]');
@@ -1194,12 +1464,12 @@ async function main() {
   // 15b: Moving slider to 25% updates displayed value and rendered overlay opacity
   const state25 = await setSlider(0.25);
   assert.equal(state25.labelText, 'Opacity: 25%', 'Displayed opacity label must update immediately to Opacity: 25%');
-  assert.equal(state25.svgOpacity, '0.25', 'Rendered heatmap SVG overlay must visibly receive 25% (0.25) opacity');
+  assert.ok(Math.abs(Number(state25.svgOpacity) - 0.25) < 0.001, 'Rendered heatmap SVG overlay must reach 25% (0.25) opacity');
 
   // 15c: Moving slider to 90% updates displayed value and rendered overlay opacity
   const state90 = await setSlider(0.9);
   assert.equal(state90.labelText, 'Opacity: 90%', 'Displayed opacity label must update immediately to Opacity: 90%');
-  assert.equal(state90.svgOpacity, '0.9', 'Rendered heatmap SVG overlay must visibly receive 90% (0.9) opacity');
+  assert.ok(Math.abs(Number(state90.svgOpacity) - 0.9) < 0.001, 'Rendered heatmap SVG overlay must reach 90% (0.9) opacity');
 
   // 15d: Disabling an individual layer hides that layer without breaking opacity control
   await page.evaluate(() => {
@@ -1226,6 +1496,11 @@ async function main() {
   assert.equal(afterDisableEla.hasNoise, true, 'Noise layer must remain visible when ELA is disabled');
   assert.equal(afterDisableEla.hasClone, true, 'Clone layer must remain visible when ELA is disabled');
   assert.equal(afterDisableEla.svgOpacity, '0.9', 'Overlay opacity must remain at selected 0.9 when a layer is hidden');
+  assert.match(
+    await page.$eval('[data-testid="heatmap-region-count"]', (element) => element.textContent),
+    /Showing 101 of 321/,
+    'Displayed heatmap count must update when a modality layer is hidden',
+  );
 
   // 15e: Re-enabling the layer restores its visibility using selected opacity
   await page.evaluate(() => {
@@ -1341,7 +1616,7 @@ async function main() {
     }
   }
 
-  // Reset opacity to default 65% for layer toggle screenshots
+  // Reset opacity to the readable default for layer toggle screenshots
   await setSlider(0.65);
 
   // 15i: Layer toggle screenshots
@@ -1406,6 +1681,8 @@ async function main() {
   await new Promise((r) => setTimeout(r, 100));
 
   // 15j: Clean baseline empty state verification and screenshot
+  demoCloneLayer.regions = originalCloneRegions;
+  demoHeatmapData.composite_regions_count = originalCompositeRegionCount;
   await page.goto(`${baseUrl}/cases/${caseData.case_identifier}/evidence/${evidenceData.id}`, { waitUntil: 'networkidle0' });
   await page.waitForSelector('[data-testid="heatmap-empty-state"]');
 
@@ -1422,7 +1699,9 @@ async function main() {
   });
 
   assert.ok(cleanBaselineCheck.hasEmptyState, 'Clean baseline evidence must display empty state element');
-  assert.ok(cleanBaselineCheck.emptyText.includes('Clean Baseline'), 'Empty state must announce Clean Baseline');
+  assert.ok(cleanBaselineCheck.emptyText.includes('No candidate regions returned'), 'Empty state must describe the absence of candidate regions');
+  assert.ok(cleanBaselineCheck.emptyText.includes('have no available output'), 'Empty state must disclose spatial layers without available output');
+  assert.ok(cleanBaselineCheck.emptyText.includes('does not establish image integrity or authenticity'), 'Empty state must not imply a clean authenticity verdict');
   assert.equal(cleanBaselineCheck.hasSlider, false, 'Clean baseline evidence must NOT display non-functional opacity slider');
   assert.equal(cleanBaselineCheck.hasControlsBar, false, 'Clean baseline evidence must NOT display controls bar');
 
@@ -1433,6 +1712,31 @@ async function main() {
   if (cleanCardEl && cleanCardEl.asElement()) {
     await cleanCardEl.asElement().screenshot({ path: path.join(screenshotDir, '00-clean-baseline-empty-state.png') });
   }
+
+  const unverifiedHashStatus = await page.evaluate(() => {
+    const card = Array.from(document.querySelectorAll('.card')).find((candidate) => candidate.querySelector('h2')?.textContent.includes('TECHNICAL CHAIN OF CUSTODY'));
+    return card?.querySelector('.badge')?.textContent.trim();
+  });
+  assert.equal(unverifiedHashStatus, 'NOT RE-CHECKED', 'The recorded ingest hash must not imply a current verification');
+  await clickButton(page, 'On-Demand Hash Re-Verification');
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('.card')).some((candidate) =>
+    candidate.querySelector('h2')?.textContent.includes('TECHNICAL CHAIN OF CUSTODY')
+      && candidate.querySelector('.badge')?.textContent.includes('VERIFIED INTACT')
+  ));
+
+  await page.evaluate(() => localStorage.setItem('forensight_forensic_lab_tour_seen', 'true'));
+  await page.click('#tab-report');
+  await page.waitForSelector('#examiner-notes');
+  const noteText = 'E2E evidence-linked examiner note.';
+  await page.click('#examiner-notes');
+  await page.type('#examiner-notes', noteText);
+  await clickButton(page, 'Save examiner note');
+  await page.waitForFunction(() => document.body.innerText.includes('Saved as an evidence-linked case note.'));
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.click('#tab-report');
+  await page.waitForSelector('#examiner-notes');
+  const reloadedNote = await page.$eval('#examiner-notes', (textarea) => textarea.value);
+  assert.equal(reloadedNote, noteText, 'Saved evidence-linked examiner notes must survive navigation and reload');
 
   console.log('PASS: login → case intake → evidence upload → analysis job → report generation → prefetch routes → system health → investigation graph → instructor demo journey → proxy & auth → stability & navigation → workbench dark mode → heatmap opacity functional repair');
 }

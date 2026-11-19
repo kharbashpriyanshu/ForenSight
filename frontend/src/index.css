@@ -1630,11 +1630,509 @@ hr {
   margin-bottom: 1rem;
 }
 
+/* Forensic Lab summary, tags, and progressive examination cards */
+.forensic-lab-shell {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.forensic-lab-eyebrow,
+.forensic-lab-meta-label {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.forensic-lab-eyebrow {
+  color: var(--accent-text);
+}
+
+.forensic-lab-context-tag,
+.forensic-lab-code-tag,
+.forensic-lab-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 0.18rem 0.45rem;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.forensic-lab-context-tag {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+.forensic-lab-tag--success {
+  background: var(--status-nominal-bg);
+  border-color: var(--status-nominal-border);
+  color: var(--status-nominal);
+}
+
+.forensic-lab-tag--warning {
+  background: var(--status-warning-bg);
+  border-color: var(--status-warning-border);
+  color: var(--status-warning);
+}
+
+.forensic-lab-tag--danger {
+  background: var(--status-anomalous-bg);
+  border-color: var(--status-anomalous-border);
+  color: var(--status-anomalous);
+}
+
+.forensic-lab-tag--info {
+  background: var(--status-info-bg);
+  border-color: var(--status-info-border);
+  color: var(--status-info);
+}
+
+.forensic-lab-tag--accent {
+  background: var(--accent-light);
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+.forensic-lab-evidence-strip {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(110px, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0;
+  padding: 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.forensic-lab-meta-item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.25rem 0.45rem;
+}
+
+.forensic-lab-meta-value {
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.forensic-lab-run-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.45rem 0.15rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.forensic-lab-recommendation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--accent-border);
+  border-left: 3px solid var(--accent-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-main);
+  font-size: var(--text-sm);
+}
+
+.forensic-lab-recommendation strong {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.forensic-lab-category-tag {
+  font-family: var(--font-tech);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.forensic-lab-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.forensic-lab-engine-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.forensic-lab-engine-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-default);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface-base);
+  transition: border-color var(--duration-fast) var(--ease-smooth), box-shadow var(--duration-fast) var(--ease-smooth), background var(--duration-fast) var(--ease-smooth);
+}
+
+.forensic-lab-engine-card.is-selected {
+  border-color: var(--accent-border);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-xs);
+}
+
+.forensic-lab-engine-card.is-recommended {
+  border-left-color: var(--status-nominal);
+}
+
+.forensic-lab-engine-card.is-incompatible {
+  opacity: 0.68;
+}
+
+.forensic-lab-engine-card summary {
+  color: var(--text-main);
+}
+
+.forensic-lab-engine-card summary:focus-visible {
+  border-radius: var(--radius-xs);
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .forensic-lab-evidence-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .forensic-lab-evidence-file {
+    grid-column: 1 / -1;
+  }
+
+  .forensic-lab-run-status {
+    grid-column: 1 / -1;
+  }
+}
+
+.heatmap-controls-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem 0.85rem;
+  max-width: 100%;
+  align-content: flex-start;
+  padding: 0.65rem 0.75rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.heatmap-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem 1rem;
+  margin-bottom: 0.85rem;
+  padding: 0.15rem 0.2rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.heatmap-section-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.heatmap-section-kicker {
+  padding: 0.18rem 0.45rem;
+  color: var(--accent-text);
+  background: var(--accent-light);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.heatmap-section-count,
+.heatmap-section-description {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.heatmap-section-title {
+  margin: 0;
+  color: var(--text-main);
+  font-size: var(--text-lg);
+}
+
+.heatmap-region-count {
+  margin-top: 0.45rem;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+}
+
+.heatmap-density-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+}
+
+.heatmap-density-legend-gradient {
+  width: 4.5rem;
+  height: 0.55rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, rgba(184, 135, 42, 0.12), var(--accent-color));
+}
+
+.heatmap-map-viewport {
+  isolation: isolate;
+  display: flex;
+  justify-content: center;
+}
+
+.heatmap-map-content {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  transition: transform 220ms var(--ease-smooth);
+}
+
+.heatmap-map-image {
+  width: auto !important;
+  max-width: 100%;
+  max-height: var(--heatmap-content-height);
+  height: auto;
+  object-fit: contain;
+  margin-inline: auto;
+}
+
+.heatmap-analysis-layout {
+  --heatmap-content-height: clamp(120px, calc(100vh - 390px), 520px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.heatmap-visual-column,
+.heatmap-interpretation-column {
+  min-width: 0;
+}
+
+.heatmap-interpretation-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: var(--heatmap-content-height);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.4rem;
+  scrollbar-gutter: stable;
+}
+
+.heatmap-interpretation-column > details,
+.heatmap-interpretation-column > div {
+  margin-top: 0 !important;
+}
+
+.heatmap-text-description {
+  padding: 0.65rem 0.75rem;
+  color: var(--text-body);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+
+.heatmap-text-description summary {
+  color: var(--text-main);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.heatmap-text-description p {
+  line-height: 1.5;
+}
+
+.heatmap-text-description li {
+  margin-block: 0.2rem;
+}
+
+.heatmap-insight-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.heatmap-insight-card {
+  --insight-accent: var(--primary-color);
+  padding: 0.7rem 0.8rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-left: 3px solid var(--insight-accent);
+  border-radius: var(--radius-sm);
+}
+
+.heatmap-insight-card--meaning {
+  --insight-accent: var(--success-color);
+}
+
+.heatmap-insight-card--next {
+  --insight-accent: var(--warning-color);
+}
+
+.heatmap-insight-card h4 {
+  margin: 0;
+  color: var(--insight-accent);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.heatmap-insight-card p,
+.heatmap-insight-card ul {
+  margin: 0.3rem 0 0;
+  color: var(--text-body);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.heatmap-insight-card ul {
+  padding-left: 1rem;
+}
+
+.heatmap-insight-card li + li {
+  margin-top: 0.2rem;
+}
+
+.heatmap-limitation {
+  padding: 0.65rem 0.75rem;
+  color: var(--text-body);
+  background: var(--status-warning-bg);
+  border: 1px solid var(--status-warning-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+.heatmap-limitation strong {
+  color: var(--status-warning);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.heatmap-limitation p {
+  margin: 0.25rem 0 0;
+  line-height: 1.45;
+}
+
+.heatmap-map-content [data-testid="heatmap-density-cell"]:focus-visible,
+.heatmap-map-content [data-testid="heatmap-candidate-region"]:focus-visible {
+  stroke: var(--text-main);
+  stroke-width: 7;
+  outline: none;
+}
+
+@media (max-width: 760px) {
+  .heatmap-controls-bar {
+    gap: 0.55rem !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  .heatmap-analysis-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heatmap-map-content {
+    transition: none;
+  }
+}
+
 /* Forensic Workbench Top-Level Navigation Strip */
+.forensic-workbench-panel {
+  background: var(--surface-base);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+
+.forensic-workbench-panel .workbench-nav-container {
+  isolation: isolate;
+  background: var(--surface-overlay);
+  border: 0;
+  border-bottom: 1px solid var(--border-default);
+  border-radius: 0;
+  padding: 0.15rem 0 0.55rem;
+  margin: 0 0 0.5rem;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.workbench-counts-help {
+  margin: 0.35rem 0 0;
+  padding: 0 0.25rem 0.55rem;
+  color: var(--text-muted);
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+}
+
+.card.fusion-assessment-panel {
+  margin-top: 1.25rem;
+  border-radius: var(--radius-lg);
+  border-color: var(--border-default);
+  background: var(--surface-base);
+  box-shadow: var(--shadow-card);
+}
+
+.workbench-overview-content {
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+
 .workbench-nav-container {
-  position: sticky;
-  top: 0;
-  z-index: 90;
+  position: relative;
   background: var(--surface-raised);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
@@ -1643,14 +2141,29 @@ hr {
   display: flex;
   gap: 0.45rem;
   overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 0.5rem;
+  scrollbar-color: var(--accent-border) var(--surface-sunken);
+  scrollbar-width: thin;
   box-shadow: var(--shadow-sm);
   align-items: center;
   backdrop-filter: var(--glass-blur-sm);
   -webkit-backdrop-filter: var(--glass-blur-sm);
 }
 
+.workbench-nav-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.workbench-nav-container::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-full);
+  background: var(--accent-border);
+}
+
 .workbench-nav-tab {
   display: inline-flex;
+  flex: 0 0 auto;
+  scroll-snap-align: start;
   align-items: center;
   gap: 0.45rem;
   padding: 0.42rem 0.75rem;

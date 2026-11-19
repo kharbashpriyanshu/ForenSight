@@ -241,10 +241,16 @@ class HeatmapService:
         # Scientific Narrative Construction
         total_regions = len(all_regions)
         if total_regions == 0:
-            what_found = "No localized spatial anomalies detected above baseline thresholds across active modalities."
+            unavailable_count = sum(1 for layer in layers if layer.status != "AVAILABLE")
+            what_found = "No candidate regions were returned by completed spatial analyses."
+            if unavailable_count:
+                what_found += (
+                    f" {unavailable_count} spatial layer(s) have no available output; "
+                    "those layers provide no negative evidence."
+                )
             why_matters = (
-                "Absence of detectable anomalies indicates consistent high-frequency error, noise residual, "
-                "and descriptor distribution under current algorithmic parameters."
+                "This describes only the spatial outputs currently available. It does not establish image integrity "
+                "or authenticity, and unavailable methods cannot support a negative conclusion."
             )
             next_steps = [
                 "Review raw container metadata for re-encoding timestamps.",
@@ -252,14 +258,15 @@ class HeatmapService:
                 "Execute remaining unexecuted modalities if any."
             ]
         else:
-            modalities_with_anomalies = list({r.modality for r in all_regions})
+            modalities_with_regions = list({r.modality for r in all_regions})
             what_found = (
-                f"Synthesized {total_regions} spatial anomaly zones across {len(modalities_with_anomalies)} "
-                f"modalities ({', '.join(modalities_with_anomalies)})."
+                f"Mapped {total_regions} candidate spatial region envelopes across {len(modalities_with_regions)} "
+                f"modalities ({', '.join(modalities_with_regions)}). Counts are detector outputs; overlapping "
+                "regions may describe the same image area."
             )
             why_matters = (
-                "Spatial coincidence across independent physical models (e.g. compression variance + noise residual discrepancy) "
-                "significantly increases the evidentiary value compared to an isolated metric anomaly."
+                "Candidate regions can guide focused examiner review. Spatial overlap may warrant comparison, "
+                "but does not by itself establish manipulation or increase evidentiary weight."
             )
             next_steps = [
                 "Inspect coincidence regions where multiple modality layers overlap.",

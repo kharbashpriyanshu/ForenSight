@@ -34,13 +34,13 @@ const STEPS: TourStep[] = [
     target: 'lab-evidence-summary',
   },
   {
-    title: 'Start with compatible examinations',
-    description: 'Suggestions depend on the image format. Select the examinations you need, then queue them; a suggested set is a starting point, not a verdict.',
-    target: 'lab-suggested-exams',
+    title: 'Find compatible examinations',
+    description: 'Search by engine ID or keyword and filter by category. Format support is shown in the workbench, and incompatible methods cannot be queued.',
+    target: 'lab-analyst-filters',
   },
   {
-    title: 'Choose individual engines',
-    description: 'Each examination card explains its method and status. Expand details to review limitations, and select compatible tests before running them.',
+    title: 'Select and run examinations',
+    description: 'Review each method, compatibility, and run status. Select compatible examinations and queue individual methods or a batch; findings still require examiner review.',
     target: 'lab-engine-list',
   },
   {

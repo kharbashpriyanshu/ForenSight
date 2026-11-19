@@ -1,5 +1,27 @@
-export default function EvidenceIntegrityCard({ evidence }: any) {
+interface EvidenceIntegrityCardProps {
+    evidence: {
+        evidence_identifier?: string;
+        original_filename: string;
+        mime_type?: string;
+        width?: number;
+        height?: number;
+        created_at: string;
+        sha256_hash?: string;
+    };
+    verification?: {
+        status: string;
+        integrity_intact: boolean;
+        verified_at: string;
+    } | null;
+}
+
+export default function EvidenceIntegrityCard({ evidence, verification }: EvidenceIntegrityCardProps) {
     if (!evidence) return null;
+
+    const statusColor = !verification ? 'var(--text-muted)' : verification.integrity_intact ? '#10b981' : '#ef4444';
+    const statusLabel = !verification
+        ? 'NOT RE-CHECKED'
+        : verification.status.replaceAll('_', ' ');
 
     return (
         <div className="card" style={{ gridColumn: '1 / -1', borderTop: '4px solid var(--primary-color)' }}>
@@ -7,8 +29,8 @@ export default function EvidenceIntegrityCard({ evidence }: any) {
                 <h2 className="card-title" style={{ margin: 0, color: 'var(--primary-color)' }}>
                     TECHNICAL CHAIN OF CUSTODY & SOURCE INTEGRITY
                 </h2>
-                <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                    NIST FIPS 180-4 VERIFIED
+                <span className="badge" style={{ background: !verification ? 'var(--surface-color-light)' : verification.integrity_intact ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: statusColor }}>
+                    {statusLabel}
                 </span>
             </div>
             
@@ -47,12 +69,14 @@ export default function EvidenceIntegrityCard({ evidence }: any) {
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600 }}>
                             Cryptographic Digest (SHA-256 FIPS 180-4)
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>
-                            Bitstream Unaltered Since Ingestion
+                        <span style={{ fontSize: '0.75rem', color: statusColor, fontWeight: 600 }}>
+                            {verification
+                                ? `${verification.integrity_intact ? 'Re-checked' : 'Mismatch detected'} · ${new Date(verification.verified_at).toLocaleString()}`
+                                : 'Current stored bytes have not been re-checked'}
                         </span>
                     </div>
                     <div style={{ fontFamily: 'var(--font-mono, monospace)', background: '#ffffff', padding: '0.85rem', borderRadius: '6px', wordBreak: 'break-all', fontSize: '0.9rem', border: '1px solid var(--border-color)', color: '#047857', marginTop: '0.35rem', fontWeight: 600, letterSpacing: '0.02em' }}>
-                        {evidence.sha256_hash}
+                        {evidence.sha256_hash || 'Not available'}
                     </div>
                 </div>
             </div>

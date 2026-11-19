@@ -226,6 +226,9 @@ def test_forensic_heatmap_scientific_guardrails_and_isolation(client, users_and_
     assert "fake" not in str(h_data1).lower()
     assert "percent" not in str(h_data1.get("what_was_found", "")).lower()
     assert "probability" not in str(h_data1).lower()
+    assert "No candidate regions" in h_data1["what_was_found"]
+    assert "no negative evidence" in h_data1["what_was_found"]
+    assert "does not establish image integrity or authenticity" in h_data1["why_it_matters"]
 
     # Verify inspectable layers
     layer_modalities = [l["modality"] for l in h_data1["layers"]]
