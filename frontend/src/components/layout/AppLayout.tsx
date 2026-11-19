@@ -1,8 +1,7 @@
-import React, { Suspense, useState, useEffect, useRef } from 'react';
-import { NavLink, Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, FolderOpen, FlaskConical, Menu, X, Sparkles, CheckCircle2, Loader2, AlertCircle, ArrowRight } from 'lucide-react';
+import React, { Suspense, useState, useEffect } from 'react';
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
+import { Activity, FolderOpen, FlaskConical, Menu, X, Sparkles } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchApi } from '../../api';
 import AccountSecurityPanel from '../auth/AccountSecurityPanel';
 import ThemeToggle from './ThemeToggle';
 import Breadcrumbs from './Breadcrumbs';
@@ -22,23 +21,14 @@ export interface AppLayoutContext {
 const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
   const { logout, user } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
-  const [demoReady, setDemoReady] = useState(false);
-  const [demoFeedback, setDemoFeedback] = useState<{
-    type: 'success' | 'error';
-    message: string;
-    caseId?: string;
-  } | null>(null);
-  const isCreatingDemoRef = useRef(false);
 
-  const isDemoUser = user?.username === 'demo_instructor' || user?.role === 'ADMIN';
+  const isDemoUser = user?.username === 'demo_instructor';
 
-  // Automatically launch demo guided tour only once on first demo login for demo_instructor
+  // Automatically launch demo guided tour only once on first demo login
   useEffect(() => {
-    if (user?.username === 'demo_instructor') {
+    if (isDemoUser) {
       try {
         const dismissed = localStorage.getItem('forensight_demo_tour_dismissed');
         if (!dismissed) {
@@ -47,77 +37,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         }
       } catch {}
     }
-  }, [user?.username]);
-
-  // Inspect existing demonstration workspace availability
-  useEffect(() => {
-    if (isDemoUser) {
-      fetchApi('/cases/demo-investigation')
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (data?.exists) {
-            setDemoReady(true);
-          }
-        })
-        .catch(() => {});
-    }
   }, [isDemoUser]);
-
-  // Auto-dismiss feedback notification banner
-  useEffect(() => {
-    if (demoFeedback) {
-      const timer = setTimeout(() => {
-        setDemoFeedback(null);
-      }, 8000);
-      return () => clearTimeout(timer);
-    }
-  }, [demoFeedback]);
-
-  // Handle Demo Investigation creation or direct navigation
-  const handleDemoInvestigationClick = async () => {
-    if (demoReady) {
-      navigate('/cases/FS-DEMO-001');
-      return;
-    }
-
-    if (isCreatingDemoRef.current || demoLoading) {
-      return;
-    }
-
-    isCreatingDemoRef.current = true;
-    setDemoLoading(true);
-    setDemoFeedback(null);
-
-    try {
-      const response = await fetchApi('/cases/demo-investigation', {
-        method: 'POST',
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.detail || `Request failed with status ${response.status}`);
-      }
-
-      const result = await response.json();
-      setDemoReady(true);
-      const isExisting = result.status === 'already_exists';
-      setDemoFeedback({
-        type: 'success',
-        message: isExisting
-          ? 'Demo Investigation (FS-DEMO-001) is already ready.'
-          : 'Demo Investigation (FS-DEMO-001) successfully created.',
-        caseId: result.case_identifier || 'FS-DEMO-001',
-      });
-    } catch (err: any) {
-      setDemoFeedback({
-        type: 'error',
-        message: err.message || 'Failed to create demonstration investigation. Please retry.',
-      });
-    } finally {
-      setDemoLoading(false);
-      isCreatingDemoRef.current = false;
-    }
-  };
 
   // Close mobile drawer on route change
   useEffect(() => {
@@ -155,77 +75,31 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             {isCaseWorkspace ? 'INVESTIGATION WORKSPACE' : 'INVESTIGATION DIRECTORY'}
           </span>
 
-          {/* Interactive Demonstration Guided Tour Trigger & Demo Investigation Option */}
+          {/* Interactive Demonstration Guided Tour Trigger (Demo Instructor Only) */}
           {isDemoUser && (
-            <>
-              <button
-                type="button"
-                className="btn-demo-tour-launch"
-                onClick={() => setTourOpen(true)}
-                title="Open Interactive Demonstration Walkthrough"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                  background: 'rgba(184, 135, 42, 0.14)',
-                  color: 'var(--accent-color, #b8872a)',
-                  border: '1px solid var(--accent-border, rgba(184, 135, 42, 0.35))',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease-in-out',
-                }}
-              >
-                <Sparkles size={14} aria-hidden="true" />
-                <span>Demo Tour</span>
-              </button>
-
-              <button
-                type="button"
-                className={`btn-demo-investigation-launch ${demoReady ? 'demo-ready' : ''}`}
-                onClick={handleDemoInvestigationClick}
-                disabled={demoLoading}
-                title={
-                  demoReady
-                    ? "Open Demonstration Investigation (FS-DEMO-001)"
-                    : "Add Realistic Demonstration Investigation Workspace"
-                }
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.82rem',
-                  fontWeight: 600,
-                  borderRadius: '8px',
-                  background: demoReady ? 'rgba(34, 197, 94, 0.14)' : 'rgba(59, 130, 246, 0.14)',
-                  color: demoReady ? '#22c55e' : '#3b82f6',
-                  border: demoReady ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid rgba(59, 130, 246, 0.35)',
-                  cursor: demoLoading ? 'wait' : 'pointer',
-                  opacity: demoLoading ? 0.75 : 1,
-                  transition: 'all 0.15s ease-in-out',
-                }}
-              >
-                {demoLoading ? (
-                  <>
-                    <Loader2 size={14} className="spin-animate" aria-hidden="true" />
-                    <span>Creating Demo…</span>
-                  </>
-                ) : demoReady ? (
-                  <>
-                    <CheckCircle2 size={14} aria-hidden="true" />
-                    <span>Open Demo Investigation</span>
-                  </>
-                ) : (
-                  <>
-                    <FlaskConical size={14} aria-hidden="true" />
-                    <span>Add Demo Investigation</span>
-                  </>
-                )}
-              </button>
-            </>
+            <button
+              type="button"
+              className="btn-demo-tour-launch"
+              onClick={() => setTourOpen(true)}
+              title="Open Interactive Demonstration Walkthrough"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                borderRadius: '8px',
+                background: 'rgba(184, 135, 42, 0.14)',
+                color: 'var(--accent-color, #b8872a)',
+                border: '1px solid var(--accent-border, rgba(184, 135, 42, 0.35))',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease-in-out',
+              }}
+            >
+              <Sparkles size={14} aria-hidden="true" />
+              <span>Demo Tour</span>
+            </button>
           )}
 
           {/* Theme Toggle (Light / Dark) */}
@@ -261,81 +135,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           </button>
         </div>
       </header>
-
-      {/* Demonstration Provisioning Feedback Notification Banner */}
-      {demoFeedback && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'fixed',
-            top: '60px',
-            right: '1.25rem',
-            zIndex: 1100,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            padding: '0.65rem 1rem',
-            borderRadius: '8px',
-            fontSize: '0.82rem',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
-            background: demoFeedback.type === 'success' ? 'var(--surface-color, #1a1e24)' : '#450a0a',
-            color: demoFeedback.type === 'success' ? 'var(--text-main, #f1f5f9)' : '#fecaca',
-            border: demoFeedback.type === 'success' ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(239, 68, 68, 0.5)',
-          }}
-        >
-          {demoFeedback.type === 'success' ? (
-            <CheckCircle2 size={16} style={{ color: '#22c55e', flexShrink: 0 }} />
-          ) : (
-            <AlertCircle size={16} style={{ color: '#ef4444', flexShrink: 0 }} />
-          )}
-          <span style={{ fontWeight: 500 }}>{demoFeedback.message}</span>
-          {demoFeedback.caseId && (
-            <button
-              type="button"
-              onClick={() => {
-                navigate(`/cases/${demoFeedback.caseId}`);
-                setDemoFeedback(null);
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.3rem',
-                padding: '0.25rem 0.65rem',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                borderRadius: '6px',
-                background: '#22c55e',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                marginLeft: '0.25rem',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              <span>Open Investigation</span>
-              <ArrowRight size={13} />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setDemoFeedback(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted, #94a3b8)',
-              cursor: 'pointer',
-              padding: '2px',
-              display: 'flex',
-              alignItems: 'center',
-              marginLeft: '0.25rem',
-            }}
-            aria-label="Dismiss message"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
 
       {/* WORKSPACE VIEWPORT BODY */}
       <div className="app-shell-body">
