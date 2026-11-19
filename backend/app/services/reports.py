@@ -135,25 +135,14 @@ def _format_why_it_matters(raw_text: str) -> str:
 
 
 class ReportService:
-    @staticmethod
-    def generate_case_report(
+    @classmethod
+    def build_report_payload(
+        cls,
         db: Session,
-        case_id: str,
+        case: InvestigationCase,
+        report_identifier: str,
         author_username: str = "investigator",
-        report_format: str = "pdf",
-    ) -> Report:
-        case = (
-            db.query(InvestigationCase)
-            .filter(
-                (InvestigationCase.case_identifier == case_id)
-                | (InvestigationCase.id == (int(case_id) if case_id.isdigit() else -1))
-            )
-            .first()
-        )
-        if not case:
-            raise ValueError("Case not found")
-
-        report_identifier = f"FS-RPT-{uuid.uuid4().hex[:8].upper()}"
+    ) -> dict:
         now_dt = datetime.datetime.now(datetime.timezone.utc)
         now_str = now_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
 
@@ -338,7 +327,7 @@ class ReportService:
         assistant_support = AssistantService.generate_case_decision_support(db, case)
         custody_overview = CustodyService.get_chain_of_custody(db, case)
 
-        report_payload = {
+        return {
             "report_identifier": report_identifier,
             "generated_at": now_str,
             "author": author_username,
@@ -388,6 +377,28 @@ class ReportService:
             ),
         }
 
+    @classmethod
+    def generate_case_report(
+        cls,
+        db: Session,
+        case_id: str,
+        author_username: str = "investigator",
+        report_format: str = "pdf",
+    ) -> Report:
+        case = (
+            db.query(InvestigationCase)
+            .filter(
+                (InvestigationCase.case_identifier == case_id)
+                | (InvestigationCase.id == (int(case_id) if case_id.isdigit() else -1))
+            )
+            .first()
+        )
+        if not case:
+            raise ValueError("Case not found")
+
+        report_identifier = f"FS-RPT-{uuid.uuid4().hex[:8].upper()}"
+        report_payload = cls.build_report_payload(db, case, report_identifier, author_username)
+
         storage = get_storage_backend()
         actual_format = "JSON"
 
@@ -404,7 +415,7 @@ class ReportService:
                 )
                 if report_format.lower() == "pdf" and REPORTLAB_AVAILABLE:
                     pdf_path = report_dir / f"{report_identifier}.pdf"
-                    ReportService._build_pdf(pdf_path, report_payload)
+                    cls._build_pdf(pdf_path, report_payload)
                     final_artifact_path = storage.put_file(
                         f"reports/{report_identifier}.pdf",
                         pdf_path,
@@ -412,7 +423,12 @@ class ReportService:
                     )
                     actual_format = "PDF"
         else:
-            report_dir = Path("storage/reports")
+            from app.core.config import settings
+            base_storage = Path(settings.STORAGE_DIR).resolve()
+            if base_storage.name in ("evidence", "reports"):
+                report_dir = base_storage.parent / "reports"
+            else:
+                report_dir = base_storage / "reports"
             report_dir.mkdir(parents=True, exist_ok=True)
 
             # 2. Always save JSON artifact
@@ -421,12 +437,12 @@ class ReportService:
                 json.dump(report_payload, f, indent=2)
 
             # 3. Generate PDF if requested and ReportLab is available
-            final_artifact_path = str(json_path)
+            final_artifact_path = str(json_path.resolve())
 
             if report_format.lower() == "pdf" and REPORTLAB_AVAILABLE:
                 pdf_path = report_dir / f"{report_identifier}.pdf"
-                ReportService._build_pdf(pdf_path, report_payload)
-                final_artifact_path = str(pdf_path)
+                cls._build_pdf(pdf_path, report_payload)
+                final_artifact_path = str(pdf_path.resolve())
                 actual_format = "PDF"
 
         # 4. Save record in database
@@ -453,6 +469,130 @@ class ReportService:
                 "rule_version": "7B-v1",
             },
         )
+
+        return report
+
+    @classmethod
+    def ensure_report_artifacts(
+        cls,
+        db: Session,
+        report: Report,
+        desired_format: str = "pdf",
+    ) -> str:
+        """
+        Locates the report artifact on disk or remote storage. If missing
+        (e.g. after cloud container restarts or format mismatch), dynamically
+        reconstructs and persists the artifact from the database case records.
+        """
+        desired_format = (desired_format or "pdf").lower()
+        if desired_format not in ("pdf", "json"):
+            desired_format = "pdf"
+        ext = f".{desired_format}"
+        target_filename = f"{report.report_identifier}{ext}"
+        storage = get_storage_backend()
+
+        from app.core.config import settings
+        base_storage = Path(settings.STORAGE_DIR).resolve()
+        if base_storage.name in ("evidence", "reports"):
+            reports_root = base_storage.parent / "reports"
+        else:
+            reports_root = base_storage / "reports"
+        reports_root.mkdir(parents=True, exist_ok=True)
+
+        # 1. If remote storage
+        if storage.is_remote:
+            remote_key = f"reports/{target_filename}"
+            if storage.exists(remote_key):
+                return remote_key
+            if report.artifact_path and report.artifact_path.endswith(ext) and storage.exists(report.artifact_path):
+                return report.artifact_path
+
+        # 2. Local search candidates (strictly matching requested format)
+        candidates = []
+        if desired_format == "pdf":
+            if report.artifact_path and report.artifact_path.endswith(".pdf"):
+                candidates.append(Path(report.artifact_path))
+            elif report.artifact_path and report.artifact_path.endswith(".json"):
+                candidates.append(Path(report.artifact_path[:-5] + ".pdf"))
+            candidates.append(reports_root / f"{report.report_identifier}.pdf")
+            candidates.append(Path("storage/reports") / f"{report.report_identifier}.pdf")
+            candidates.append(Path("backend/storage/reports") / f"{report.report_identifier}.pdf")
+        else:
+            if report.artifact_path and report.artifact_path.endswith(".json"):
+                candidates.append(Path(report.artifact_path))
+            elif report.artifact_path and report.artifact_path.endswith(".pdf"):
+                candidates.append(Path(report.artifact_path[:-4] + ".json"))
+            candidates.append(reports_root / f"{report.report_identifier}.json")
+            candidates.append(Path("storage/reports") / f"{report.report_identifier}.json")
+            candidates.append(Path("backend/storage/reports") / f"{report.report_identifier}.json")
+
+        for c in candidates:
+            try:
+                resolved = c.resolve()
+                if resolved.is_file() and resolved.stat().st_size > 0:
+                    return str(resolved)
+            except Exception:
+                pass
+
+        # 3. Not found on disk/storage: dynamically regenerate from DB
+        case = (
+            db.query(InvestigationCase)
+            .filter(
+                (InvestigationCase.case_identifier == report.case_id)
+                | (InvestigationCase.id == (int(report.case_id) if report.case_id.isdigit() else -1))
+            )
+            .first()
+        )
+        if not case:
+            raise FileNotFoundError(f"Case {report.case_id} not found in database to reconstruct report")
+
+        payload = cls.build_report_payload(db, case, report.report_identifier, author_username="system")
+
+        if storage.is_remote:
+            with tempfile.TemporaryDirectory(prefix="forensight-rpt-") as tmp_dir:
+                tmp_dir_path = Path(tmp_dir)
+                json_path = tmp_dir_path / f"{report.report_identifier}.json"
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(payload, f, indent=2)
+                remote_json_key = storage.put_file(
+                    f"reports/{report.report_identifier}.json",
+                    json_path,
+                    content_type="application/json",
+                )
+                if desired_format == "pdf":
+                    if not REPORTLAB_AVAILABLE:
+                        raise RuntimeError("PDF generation requires ReportLab, which is not available in this environment.")
+                    pdf_path = tmp_dir_path / f"{report.report_identifier}.pdf"
+                    cls._build_pdf(pdf_path, payload)
+                    remote_pdf_key = storage.put_file(
+                        f"reports/{report.report_identifier}.pdf",
+                        pdf_path,
+                        content_type="application/pdf",
+                    )
+                    report.artifact_path = remote_pdf_key
+                    db.commit()
+                    return remote_pdf_key
+                else:
+                    report.artifact_path = remote_json_key
+                    db.commit()
+                    return remote_json_key
+        else:
+            json_path = reports_root / f"{report.report_identifier}.json"
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+
+            if desired_format == "pdf":
+                if not REPORTLAB_AVAILABLE:
+                    raise RuntimeError("PDF generation requires ReportLab, which is not available in this environment.")
+                pdf_path = reports_root / f"{report.report_identifier}.pdf"
+                cls._build_pdf(pdf_path, payload)
+                report.artifact_path = str(pdf_path.resolve())
+                db.commit()
+                return str(pdf_path.resolve())
+            else:
+                report.artifact_path = str(json_path.resolve())
+                db.commit()
+                return str(json_path.resolve())
 
         return report
 

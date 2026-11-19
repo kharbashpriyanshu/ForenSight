@@ -68,49 +68,32 @@ def download_report(
     current_user: User = Depends(get_current_user),
 ):
     report = verify_report_access(db, report_id, current_user)
-    if not report.artifact_path:
-        raise HTTPException(status_code=404, detail="Report artifact path not recorded")
+    desired_format = (format or (report.report_type or "pdf")).lower()
+    if desired_format not in ("pdf", "json"):
+        desired_format = "pdf"
 
-    target_path = report.artifact_path
+    try:
+        target_path = ReportService.ensure_report_artifacts(db, report, desired_format=desired_format)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to prepare report artifact: {str(e)}")
+
     storage = get_storage_backend()
+    is_pdf = desired_format == "pdf"
+    media_type = "application/pdf" if is_pdf else "application/json"
+    filename = f"{report.report_identifier}.pdf" if is_pdf else f"{report.report_identifier}.json"
 
     if storage.is_remote:
-        if format == "json" and target_path.endswith(".pdf"):
-            candidate_json = target_path[:-4] + ".json"
-            if storage.exists(candidate_json):
-                target_path = candidate_json
-        elif format == "pdf" and target_path.endswith(".json"):
-            candidate_pdf = target_path[:-5] + ".pdf"
-            if storage.exists(candidate_pdf):
-                target_path = candidate_pdf
-
         if not storage.exists(target_path):
             raise HTTPException(status_code=404, detail=f"Report file not found: {os.path.basename(target_path)}")
 
-        is_pdf = target_path.endswith(".pdf")
-        media_type = "application/pdf" if is_pdf else "application/json"
-        filename = f"{report.report_identifier}.pdf" if is_pdf else f"{report.report_identifier}.json"
         return StreamingResponse(
             storage.open_stream(target_path),
             media_type=media_type,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    if format == "json" and target_path.endswith(".pdf"):
-        candidate_json = target_path[:-4] + ".json"
-        if os.path.exists(candidate_json):
-            target_path = candidate_json
-    elif format == "pdf" and target_path.endswith(".json"):
-        candidate_pdf = target_path[:-5] + ".pdf"
-        if os.path.exists(candidate_pdf):
-            target_path = candidate_pdf
-
     if not os.path.exists(target_path):
         raise HTTPException(status_code=404, detail=f"Report file not found: {os.path.basename(target_path)}")
-        
-    is_pdf = target_path.endswith(".pdf")
-    media_type = "application/pdf" if is_pdf else "application/json"
-    filename = f"{report.report_identifier}.pdf" if is_pdf else f"{report.report_identifier}.json"
 
     return FileResponse(
         target_path,
